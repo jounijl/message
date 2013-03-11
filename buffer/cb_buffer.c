@@ -570,7 +570,7 @@ cb_set_cursor_alloc_name:
 	      (*fname).namelen = index; indx2=0;
               if(index<(*fname).buflen){ // Remove SP:s and tabs in name
 	        for(indx=0;indx<index;++indx){ 
-// new 14.11.2009 (too much additions allready at least in pg_responce.c)
+// new 14.11.2009 (too much additions allready)
 		  if(charbuf[indx]==(**cbs).cstart){ // Remove comment from name
 		    while( indx<index && charbuf[indx]!=(**cbs).cend && charbuf[indx]!=(**cbs).rend )
 		      ++indx;
