@@ -1,0 +1,6 @@
+- Puskuri muodossa <nimi>=<data>&<nimi>=<data>&
+- Data sisaan on erotettu \& ja \= ( \\->\ )
+- Dataosuus voi olla tiedosto
+- Kun data on luettu sen nimet ja nimen sijainti talletetaan rakenteeseen
+
+- Rakenteeseen riippuvuussuhteet ovat toteuttamatta
