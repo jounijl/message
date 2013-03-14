@@ -7,5 +7,4 @@ Encodings: UCS with UTF-8 transferring or onebyte or multibyte encoding.
 
 Testing stub is still incomplited (main.c) 11.3.2013.
 
-Information about the project:
 <a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
