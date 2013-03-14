@@ -27,10 +27,10 @@
 #include <errno.h>  // int errno
 
 #define NOTFOUND 1
-#define ERRINTAG 2
+#define ERROR 2
 
 #include "../include/cb_buffer.h"
-#include "../get_option/get_option.h"
+// #include "../get_option/get_option.h"
 
 int  main (int argc, char *argv[]);
 void usage ( char *progname[]);
@@ -40,25 +40,18 @@ int main (int argc, char *argv[]) {
 	// if(err==CBSTREAM){ err = cb_remove_name_from_stream(str); } // indicate out of buffer for next searchs
 
         // Find file position for data fields with variable name
-        if( buf!=NULL && contentlen!=0 ){
-          err = cb_set_cursor( result, &buf, &contentlen );
-          if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
-	    // Tuleeko olla: Ensin jos nimi on ulkona. Toiseksi jos data on ulkona puskurista.?
-	    // Vai: Aina kun tavujen lukeminen keskeytyy CBSTREAM:iin, poistetaan nimi listasta kuten alla:
-            cb_remove_name_from_stream(result); // indicate out of buffer
-            fprintf(stderr, "Out of buffer, %i.\n", err);
-            //cb_print_names(result);
-          }
-          if(err==CBSTREAMEND || err>CBERROR){
-            fprintf(stderr, "\nStream end ");
-            return NOTFOUND;
-          }
-          if(err==CBNOTFOUND){
-            fprintf(stderr, "Not found, returning %i.\n", err);
-            return NOTFOUND;
-          }
-        }else{
-          return ERROR;
-        }
+        //if( buf!=NULL && contentlen!=0 ){
+        //  err = cb_set_cursor( result, &buf, &contentlen );
+        //  if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
+        //  }
+        //  if(err==CBSTREAMEND || err>CBERROR){
+        //    return NOTFOUND;
+        //  }
+        //  if(err==CBNOTFOUND){
+        //    return NOTFOUND;
+        //  }
+        //}else{
+        //  return ERROR;
+        //}
 	return CBSUCCESS;
 }
