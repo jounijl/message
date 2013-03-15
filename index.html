@@ -111,14 +111,25 @@ int  cb_free_cbfile(CBFILE **buf);
 '#' Comment to next newline
 </code></pre>
 
-<p>Characters can be set to another. Tabs, new lines and white spaces are removed between pairs. </p>
+<p>Characters can be set to another. Tabs, new lines and white spaces are removed between pairs. Tabs and white spaces in names are removed before comparing them.</p>
 
-<p>Example:</p>
+<p>For example:</p>
 
 <pre><code>name_of_value=data_of_value&amp;another_name=another_data&amp;   third_name=third_data&amp;
-      fourth_name=fourth_data&amp; # Comment
-name_of_last_pair=last_datas_data&amp;
+      fourthname =fourth_data&amp; # Comment
+name of last pair =last_p\&amp;air\\s_data&amp; 
+# Last pairs value contains two bypassed control characters '&amp;' and '\'
 </code></pre>
+
+<p>Example of nesting consecutive streams:</p>
+
+<pre><code>data_field {
+  name1 = value1;
+  name2 = value2; # Comment 
+}
+</code></pre>
+
+<p>Library can be used for example in reading or writing configuration files, reading a POST responce from browser, parsing email header files or in interprocess messaging.</p>
 
 <h3>Issues and bug tracking</h3>
 
