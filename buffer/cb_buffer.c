@@ -38,6 +38,13 @@
        - put_next_pair
        - get_next_pair
  x Get and set = and & signs
+ x Document on using the library in www
+   - html meta tags
+ - Testing plan 
+ - Bug tracking
+ - Change control characters to 32-bit size integer to allow different encodings
+ - Change valuename and its comparing buffer to 32-bit
+   - in set_cursor
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -171,7 +178,8 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
 	  if( (*(**str).cb).contentlen >= (*(**str).cb).buflen )
 	    (*(*(**str).cb).current).length = (*(**str).cb).buflen; // Largest 'known' value
 	}else{
-	  err = cb_allocate_name( & (cb_name*) (*(**str).cb).name ); if(err!=CBSUCCESS){ return err; }
+	  // err = cb_allocate_name( & (cb_name*) (*(**str).cb).name ); if(err!=CBSUCCESS){ return err; }
+	  err = cb_allocate_name( &(*(**str).cb).name ); if(err!=CBSUCCESS){ return err; } // 17.3.2013
 	  (*(**str).cb).last    = &(* (cb_name*) (*(**str).cb).name); // last
 	  (*(**str).cb).current = &(* (cb_name*) (*(**str).cb).name); // current
 	  (*(*(**str).cb).current).next = NULL; // firsts next
@@ -228,10 +236,11 @@ int  cb_set_bypass(CBFILE **str, char bypass){ // bypass , new - added 19.12.200
 }
 
 int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
-	char *blk = NULL; 
+	unsigned char *blk = NULL; 
 	return cb_allocate_cbfile_from_blk(str, fd, bufsize, &blk, blocksize);
 }
-int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, char **blk, int blklen){
+//int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, char **blk, int blklen){
+int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ // 17.3.2013
 	int err=CBSUCCESS;
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
 	if(*str==NULL)
@@ -270,7 +279,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if(cbf==NULL)
 	  return CBERRALLOC;
-	(**cbf).buf = (char *) malloc(sizeof(char)*(bufsize+1));
+	(**cbf).buf = (unsigned char *) malloc(sizeof(char)*(bufsize+1));
 	if( (**cbf).buf == NULL )
 	  return CBERRALLOC;
 	for(err=0;err<bufsize;++err)
@@ -415,7 +424,8 @@ int  cb_write_to_block(CBFILE **cbs, char *buf, int size){
 	return CBERRALLOC;
 }
 
-int  cb_write(CBFILE **cbs, char *buf, int size){
+//int  cb_write(CBFILE **cbs, char *buf, int size){
+int  cb_write(CBFILE **cbs, unsigned char *buf, int size){ // 17.3.2013
 	int err=0;
 	if(*cbs!=NULL && buf!=NULL){
 	  if((**cbs).blk!=NULL){

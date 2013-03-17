@@ -57,14 +57,15 @@ typedef struct cb_name{
 } cb_name;
 
 typedef struct cbuf{
-        char    *buf;
-        int     buflen; // In bytes
-	int     index;
-	int     contentlen; // Count in numbers (first starts from 1), comment: 7.11.2009
-        cb_name *name;
-	cb_name *current;
-	cb_name *last;
-	int 	namecount;
+        // char    *buf;
+        unsigned char    *buf; // 17.3.2013
+        int               buflen; // In bytes
+	int               index;
+	int               contentlen; // Count in numbers (first starts from 1), comment: 7.11.2009
+        cb_name          *name;
+	cb_name          *current;
+	cb_name          *last;
+	int               namecount;
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -132,12 +133,14 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_put_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf); // multibyte
-int  cb_write(CBFILE **cbs, char *buf, int size); // byte by byte
+int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte , 17.3.2013
+//int  cb_write(CBFILE **cbs, char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
 int  cb_write_to_block(CBFILE **cbs, char *buf, int size); // special: write to block to read again (others use filedescriptors to read or write if useasbuffer was not set)
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
-int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, char **blk, int blklen);
+//int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, char **blk, int blklen);
+int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen); // 17.3.2013
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn);
 int  cb_reinit_buffer(cbuf **buf); // empty names
