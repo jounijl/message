@@ -59,13 +59,15 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 
 <p>The buffer does not move with the stream. When the end of buffer is reached, name-value pairs must be in the order they are used. It is best if name-value pairs are in the same order in the input as is the order of using them. If buffer end is reached, CBSTREAM is returned. If this happens, the last names value may be at the border of buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
-<p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is not in the buffer anymore. You may have to do with it immediately what was needed to do because it's allready in stream and it's not automatically saved anymore. It's better to read the values just before they are needed. </p>
+<p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is not in the buffer anymore. You may have to do with it immediately what was needed to do because it's allready in stream and it's not automatically saved anymore. </p>
 
 <pre><code>int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 </code></pre>
 
-<p>Library reads UCS 32-bit word length characters from UTF-8 transfer data. It reads and writes to or from one byte, two byte or UTF-8 encoded transfer data. </p>
+<p>Library reads UCS 32-bit word length characters from UTF-8 transfer data. It reads and writes to or from one byte, two byte or UTF-8 encoded transfer data. Two byte functionality is not implemented when writing this.</p>
+
+<p>Program sets bytecount and storedbytes. Bytecount is the count of bytes in stream and stored bytes is the size of the character after reading or before writing it.</p>
 
 <h4>Data structures</h4>
 
@@ -122,7 +124,7 @@ int  cb_free_cbfile(CBFILE **buf);
 name of last pair =last_p\&amp;air\\s_data&amp; 
 </code></pre>
 
-<p>Last pairs value contains two bypassed control characters '&amp;' and '\'.</p>
+<p>Last pairs value has control characters. cb_get_chr function reads characters without flow control. It's in the programmers responsibility to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary. Remember to stop reading at '&amp;'.</p>
 
 <p>Example of nesting consecutive streams:</p>
 
@@ -136,13 +138,15 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <h3>Issues and bug tracking</h3>
 
-<p>Information about issues and bugs are welcomed. Very welcomed is information about using the library. Library was tested with some tests before writing this. It appears useful and bugs can be fixed. Testing stub is still incomplited.</p>
+<p>Information about issues and bugs are welcomed. Very welcomed is information about using the library. Library was tested with some tests before writing this. It appears useful and bugs can be fixed. Testing program (main.c) is still under construction.</p>
+
+<p><strong>Page history</strong>
+<a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
+17:th of March 2013</p>
 
 <h3>Authors and Contributors</h3>
 
 <p>Jouni L. email: jnl (cat and tail) iki (dot) fi.</p>
-
-<p><a href="http://jounijl.github.com/message"></a><a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a></p>
       </section>
 
       <footer>
