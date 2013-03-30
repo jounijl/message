@@ -158,12 +158,13 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p>Library can be used for example in reading or writing configuration files, reading a POST responce from browser, parsing email header files or in interprocess messaging.</p>
 
 <h5>Errors</h5>
+<pre><code>cb_buffer.h</code></pre>
 <p>
   Return values between CBSUCCESS and CBNEGATION are informative. Values between CBNEGATION and CBERROR describe a usually occurring event. 
   For example CBNOTUTF informs that the stream contained unrecognized bytes and it should be handled by the programmer as a special case. 
   Errors above CBERROR should not occur and they usually depend on the outside resources, memory allocation or file operations for example.
 </p>
-<pre><code>include/cb_buffer.h</code></pre>
+
 
 <h3>Issues and bug tracking</h3>
 
