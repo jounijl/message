@@ -160,7 +160,8 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <h5>Errors</h5>
 <p>
   Return values between CBSUCCESS and CBNEGATION are informative. Values between CBNEGATION and CBERROR describe a usually occurring event. 
-  For example CBNOTUTF informs that the stream contained unrecognized bytes. Above CBERROR are fatal errors.
+  For example CBNOTUTF informs that the stream contained unrecognized bytes. Errors above CBERROR should not occur, they usually depend
+  on the outside resources, for example memory allocation or file operations.
 </p>
 
 <h3>Issues and bug tracking</h3>
