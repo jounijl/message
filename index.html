@@ -157,6 +157,13 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <p>Library can be used for example in reading or writing configuration files, reading a POST responce from browser, parsing email header files or in interprocess messaging.</p>
 
+<h5>Errors</h5>
+<p>
+  Everything between CBSUCCESS and CBNEGATION is informative. Between CBNEGATION and CBERROR describes a usually occurring state. 
+  For example CBNOTUTF informs that the data stream contains unrecognized bytes. Above CBERROR are errors that should
+  not occur.
+</p>
+
 <h3>Issues and bug tracking</h3>
 
 <p>Information about issues and bugs are welcomed. Very welcomed is information about using the library. Library was tested with some tests before writing this. It appears useful and bugs can be fixed. Testing program (main.c) is still under construction.</p>
