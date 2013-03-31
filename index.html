@@ -67,7 +67,7 @@
       <section id="main_content">
         <h3>Stream reader and writer</h3>
 
-<p>Library has seven main functions: </p>
+<p>Librarys main purpose are seven functions: </p>
 
 <pre><code>int  cb_set_cursor(CBFILE **cbs, char **name, int *namelength);
 
@@ -86,13 +86,13 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 int  cb_flush(CBFILE **cbs);
 </code></pre>
 
-<p>Library reads UCS 32-bit characters from UTF-8 transfer data. It reads and writes to or from one byte or UTF-8 encoded transfer data. 
+<p>Library reads UCS 32-bit word length characters from UTF-8 transfer data. It reads and writes to or from one byte or UTF-8 encoded transfer data. 
 UTF-8 is the default encoding.</p>
 
 <p>Program sets bytecount and storedbytes both in reading and writing. Bytecount is the count of bytes in 'chr' and storedbytes is the stored size in stream.</p>
 
-<p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. When 
-the block is full, it's written to output automatically.</p>
+<p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
+Allways when the block is full, it's written to output.</p>
 
 <p>Flow control characters must be encoded in any one byte encoding. This may change in further versions. Name can be in any encoding but it is used and compared as onebyte data. Values can be in any encoding. Two byte transfer functionality is not yet added.</p>
 
@@ -124,14 +124,14 @@ the block is full, it's written to output automatically.</p>
 } cb_name;
 </code></pre>
 
-<p>It is a linked list. This is only to understand what happens in the library. Only above functions and CBFILE allocation functions are meant to be used:</p>
+<p>It is a linked list. This is to understand what happens in the library. Only above functions and CBFILE allocation functions are meant to be used:</p>
 
 <pre><code>
 int  cb_allocate_cbfile(CBFILE **cbs, int fd, int bufsize, int blocksize);
 int  cb_free_cbfile(CBFILE **cbs);
 </code></pre>
 
-<p>CBFILE:s memory must be freed after use.</p>
+<p>Remember to free CBFILE:s memory after use.</p>
 
 <h4>Data read</h4>
 
@@ -182,7 +182,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p><strong>Page history</strong>
 <a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
 17.3.2013</p>
-<p>Last update 30.3.2013</p>
+<p>Last update 31.3.2013</p>
 <p><strong>References</strong>
 <ul>
 <li>RFC 5198 "Unicode Format for Network Interchange"</li>
