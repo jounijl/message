@@ -50,8 +50,9 @@
  x Ohjelma joka kirjoittaa UTF:aa luettuaan UCS:aa ja pain vastoin
  - cb_get_chr tunnistamaan useamman eri koodauksen virheellinen tavu, CBNOTUTF jne.
    erilaiset yhteen funktiossa cb_get_chr ja siita yleisemmin CBENOTINENCODING tms.
- - Mita tapahtuu jos arvoksi laittaa arvon nakoisen yhdistelman, ikaankuin
-   SQL injection?
+ - Testaukseen, arvoksi nimiparin nakoinen yhdistelma, ikaankuin SQL injection. (Tama
+   tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla jos syotteessa on ohjausmerkki,
+   http:ssa esim. on hex-esitysmuotoinen koodaus eika ohjausmerkit sisally.)
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
