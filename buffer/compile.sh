@@ -13,3 +13,5 @@ gcc -g -Wall -I.:/usr/include:../include -L/usr/lib cb_encoding.o cb_buffer.o ma
 cd tests
 ./compile.sh
 cd ..
+
+# ./test_cb 256 4096 ./tests/utf8_greek_2bytes.txt ./tests/utf8_greek_5bytes.txt

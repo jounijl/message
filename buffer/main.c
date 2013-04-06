@@ -25,33 +25,241 @@
 
 #include <stdio.h>
 #include <errno.h>  // int errno
+#include <string.h> // memset
+#include <stdlib.h> // strtol
+#include <limits.h> // strtol
+#include <fcntl.h>  // open
+#include <sys/types.h> // write
+#include <sys/uio.h>   // write
+#include <unistd.h>    // write
+#include <sys/stat.h>  // mode_t, chmod at open
 
-#define NOTFOUND 1
-#define ERROR 2
+
+#define NOTFOUND 	1000
+#define ERROR 		2000
+
+#define BUFSIZE 	16384
+#define BLKSIZE 	1024
+#define FILENAMELEN 	100
 
 #include "../include/cb_buffer.h"
-// #include "../get_option/get_option.h"
 
 int  main (int argc, char *argv[]);
 void usage ( char *progname[]);
 
+/*
+ * Program to test the library ("cb").
+ *
+ * progname <blocksize> <buffersize> <filename> [ <filename> ... ]
+ *
+ * Arguments are: input and outputs block size, buffer size and 
+ * a list of filenames without it's postfix.
+ *
+ * Reads name-value pairs from input and writes them to output
+ * programmatically, changes encoding and repeats to every file
+ * in list.
+ * - First run on one file:
+ *   Reads names with nonexistent name
+ * - Prints a list of names and offsets to stderr
+ * - Second run on one file: finds all the names in the same order 
+ *   from buffer and prints the name and value to output.
+ * - Prints any occurring errors and information to stderr
+ * - CBFILE has to be emptied and renewed before changing encoding
+ *
+ */
+
 int main (int argc, char *argv[]) {
+	unsigned char *nonexname;
+	int nonexnamelen = 7;
+	CBFILE *in = NULL;
+	CBFILE *out = NULL;
+	cbuf *name_list = NULL;
+	cbuf *name_list_ptr = NULL;
+	cb_name *nameptr = NULL;
+	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
+	unsigned char *filename = NULL;
+	char infile[FILENAMELEN+5];
+	char outfile[FILENAMELEN+6];
+	int filenamelen = 0, err = 0;
+	ssize_t ret = (ssize_t) 0;
+	unsigned long int chr = 0;
+	unsigned long int prevchr = 0;
+	char *str_err = NULL;
 
-	// if(err==CBSTREAM){ err = cb_remove_name_from_stream(str); } // indicate out of buffer for next searchs
+	// Allocate new name list
+	// Allocation 
+        err = cb_allocate_cbfile(&in, 0, bufsize, blksize); 
+        if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        err = cb_allocate_cbfile(&out, 1, bufsize, blksize); 
+        if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+	err = cb_allocate_buffer(&name_list, bufsize);
+	if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_buffer, namelist: %i.", err); return CBERRALLOC;}
+	// Filenames
+	memset(&(*infile), ' ', (size_t) 100); infile[FILENAMELEN+5]='\0';
+	memset(&(*outfile), ' ', (size_t) 104); outfile[FILENAMELEN+6]='\0';
 
-        // Find file position for data fields with variable name
-        //if( buf!=NULL && contentlen!=0 ){
-        //  err = cb_set_cursor( result, &buf, &contentlen );
-        //  if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
-        //  }
-        //  if(err==CBSTREAMEND || err>CBERROR){
-        //    return NOTFOUND;
-        //  }
-        //  if(err==CBNOTFOUND){
-        //    return NOTFOUND;
-        //  }
-        //}else{
-        //  return ERROR;
-        //}
+	// Unknown name
+	nonexname = (unsigned char *) malloc( 8*sizeof(unsigned char) );
+	if(nonexname==NULL){ fprintf(stderr,"\ttest: nonexname malloc error, errno %i.", errno); return CBERRALLOC; }
+	nonexname[7]='\0'; 
+	snprintf( (char *) nonexname, (size_t) 8, "unknown" );
+
+	// Block and buffer size
+	if(argc>=2 && argv[1]!=NULL){
+	  blksize = (int) strtol(argv[1],&str_err,10);
+	}
+	if(argc>=3 && argv[2]!=NULL){
+	  bufsize = (int) strtol(argv[2],&str_err,10);
+	}else{
+ 	  fprintf(stderr,"\ttest: not enough parameters: %i.", argc);
+	  if(argv[0]!=NULL)
+	    usage(&argv[0]);
+          return ERROR;
+	}
+
+	//
+	// Every filename
+	for(indx=3; indx<argc; ++indx){
+		// Filenames
+		if(argv[indx]==NULL){
+	          fprintf(stderr,"\ttest: Filename was null, argc %i, indx %i.\n", argc, indx); 
+		  return ERROR;
+		}
+		filename = &( * (unsigned char*) argv[indx]);
+		filenamelen = (int) strlen(argv[indx]);
+		if(filenamelen>FILENAMELEN+6){  fprintf(stderr,"\ttest: Filename was too long."); return ERROR;	}
+		for(indx2=0; indx2<filenamelen; ++indx2){
+	           infile[indx2] = filename[indx2];
+	           outfile[indx2] = filename[indx2];
+		}
+	        if( infile[indx2]!='\0' && infile[indx2]!=' ' && infile[indx2]!='\t' && infile[indx2]!='\n' ){ ++indx2; }
+		infile[indx2]='.'; infile[indx2+1]='0'; infile[indx2+2]='\0'; outfile[indx2]='.'; 
+		outfile[indx2+1]='0'; outfile[indx2+2]='.'; outfile[indx2+3]='o'; outfile[indx2+4]='u'; 
+		outfile[indx2+5]='t'; outfile[indx2+6]='\0';
+
+
+		//
+		// Every encoding (with file prefixes)
+		encoding=0;
+		while(encoding<2){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
+			// Set encoding
+			cb_set_encoding(&in, encoding);
+			cb_set_encoding(&out, encoding);
+
+			// Open files
+			ret = 0;
+			if(encoding==0){ outfile[indx2+1]='0'; infile[indx2+1]='0'; };
+			if(encoding==1){ outfile[indx2+1]='1'; infile[indx2+1]='1'; };
+			if(encoding==2){ outfile[indx2+1]='2'; infile[indx2+1]='2'; };
+			if(encoding==3){ outfile[indx2+1]='3'; infile[indx2+1]='3'; };
+			if(encoding==4){ outfile[indx2+1]='4'; infile[indx2+1]='4'; };
+			if(infile[0]=='-'){
+			  (*in).fd = 0; // stdin
+			  outfile[0]='0';
+			}else{
+			  (*in).fd  = open( &(*infile), ( O_RDONLY ) ); 
+			}
+			// (*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT ), chmode );
+			(*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT ), (mode_t)( S_IRWXU | S_IRWXG ) );
+			if((*in).fd<=-1 || (*out).fd<=-1 ){
+			  fprintf(stderr,"\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
+			  fprintf(stderr,"\ttest: open failed, infile %s outfile %s.\n", infile, outfile);
+        		  return ERROR;
+		        }
+
+			name_list_ptr = &(*(*in).cb);
+			(*in).cb = &(*name_list);
+
+			//
+			// First run: Reading list of names
+		        if( in!=NULL && nonexname!=NULL && nonexnamelen!=0 ){
+			   err = cb_set_cursor( &in, &nonexname , &nonexnamelen );
+		           if(err==CBSTREAM){ 
+			      err = cb_remove_name_from_stream(&in); // Is this necessary, get_chr is not used
+			      if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %i.\n", err ); }
+			   }
+		           if(err==CBNOTFOUND){ fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %i.\n", err ); }
+			   if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
+			      fprintf(stderr,"\ttest: cb_set_cursor, %i.\n", err ); }
+			   if(err==CBSTREAMEND || err>CBERROR){
+			      fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %i.\n", err ); }
+        		}else{
+			   fprintf(stderr,"\ttest: Error, in was null or nonexnamelen was 0.\n"); 
+        		}
+			fprintf(stderr,"\nFirst run, names are:\n"); 
+			err = cb_print_names(&in);
+			if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: cb_print_names returned %i.", err ); }
+			(*in).cb = &(*name_list_ptr);
+
+			//
+			// Second run: finds all names in order and prints them to output (comments are lost)
+			// After buffer, the rest of the stream. (One test: Unknown names literal name in it.) 
+			cb_reinit_cbfile(&in); 
+		        if( in!=NULL ){
+			   nameptr = &(* (cb_name *) (*name_list).name );
+			   while( nameptr != NULL ){
+			        err = cb_set_cursor( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
+				if(err==CBNOTFOUND){
+			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %i.\n", err ); }
+				if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
+			           fprintf(stderr,"\ttest: cb_set_cursor, %i.\n", err ); }
+				if(err==CBSTREAMEND || err>CBERROR){
+			           fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %i.\n", err );
+				}else if(err==CBSUCCESS || err==CBSTREAM){
+				   if(err==CBSTREAM){ 
+				      err = cb_remove_name_from_stream(&in); // Is this necessary, get_chr is not used
+			              if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %i.\n", err ); }
+				   }
+				   //
+				   // Write everything to output
+				   //
+				   // Name: 
+				   // Name can be in any encoding (even two byte encoding)
+				   // It is read encoding decoded, and SP:s removed but compared to the given name
+				   // It is found with given name. Name is written instead because the encoding can be any.
+			 	   ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); // any bytelength name
+				   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno); }
+				   //
+				   // Value:
+				   // From '=' and after it to the last nonbypassed '&' and it.
+				   while( (*out).bypass != (char) prevchr && (*out).rend != (char) chr ){
+		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
+				      if(err==CBNOTUTF){
+					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
+				      }else if(err<CBERROR){
+				        err = cb_put_chr(&out, &chr, &encbytes, &strdbytes ); 
+				      }
+				      if( err!=CBSUCCESS || err!=CBSTREAM ){
+				        fprintf(stderr,"\ttest: cb_get_chr cb_put_chr err=%i.\n", err ); }
+				      prevchr = chr;
+				   } // while
+				} // else if, move this to remove error handling
+			        nameptr = &(* (cb_name *) (*nameptr).next );
+                           } // while
+        		}else{ // if in not null
+			   fprintf(stderr,"\ttest: Error, in was null.\n"); 
+        		}
+
+			//
+			// Return
+			cb_reinit_cbfile(&in); 
+			cb_reinit_cbfile(&out); 			
+			cb_reinit_buffer(&name_list); // free names and init
+			++encoding;
+
+			// Close files
+			if(infile[0]=='-')
+			  err = close( (*in).fd ); if(err!=0){ fprintf(stderr,"\ttest: close in failed."); }
+			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
+		} // while
+	} // for
 	return CBSUCCESS;
+}
+
+void usage (char *progname[]){
+        printf("\nUsage:\n");
+        printf("\t%s <blocksize> <buffersize> <filename> [<filename> [<filename> ...] ]\n", progname[0]);
+        printf("\tProgram to test reading and writing. Reads filename.<encodingnumber>\n");
+        printf("\tand outputs its found valuenames and values to \n");
+        printf("\tfilename.<encodingnumber>.out . Stdin to EOF is '-' .\n");
 }
