@@ -203,7 +203,11 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 
 	err = cb_get_ch(cbs, &byte);
 	*chr=byte; *bytecount=1;
-	if( *chr == EOF || err > CBNEGATION ) { return err; }
+
+	//
+	if( *chr == EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
+	//
+
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
           return CBSUCCESS;
 	}else if( byteisutf8head2( byte ) && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=2 ))  state=2;
@@ -313,7 +317,8 @@ cb_get_ucs_ch_return:
 	if(*bytecount==0) *bytecount=1;
 	*chr = result;
 //	fprintf(stderr,"[%c]%i", (char)*chr, *bytecount );
-	return CBSUCCESS;
+	//return CBSUCCESS;
+	return err; // 30.3.2013, all from cb_get_utf8_ch
 }
 
 int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){

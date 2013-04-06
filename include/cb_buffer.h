@@ -28,6 +28,7 @@
 #define CBNAMEOUTOFBUF      14
 #define CBNOTUTF            15
 #define CBNOENCODING        16
+#define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
 
 #define CBERROR	            20
 #define CBERRALLOC          21
@@ -45,46 +46,50 @@
 #define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
 #define CBENCODING           0   // Default encoding, 0 utf, 1 any one byte encoding (programs control characters are ascii characters)
 
+/* #define SP( x )              ( x == 0x20 && x == 0x09 )  */
+
 #include "./cb_encoding.h"
 
 typedef struct cb_name{
-        char  *namebuf; // name
-	int   buflen;  // name+excess buffer space
-        int   namelen; // name length
-        int   offset; // offset from the beginning of data
-        int   length; // unknown (almost allways -1) (length of data)
-        void  *next; // Last is NULL
+        unsigned char      *namebuf; // name 
+	int                 buflen;  // name+excess buffer space
+        int                 namelen; // name length
+        int                 offset; // offset from the beginning of data
+        int                 length; // unknown (almost allways -1) (length of data), possibly set after it's known
+        void               *next; // Last is NULL
 } cb_name;
 
 typedef struct cbuf{
-        // char    *buf;
-        unsigned char    *buf; // 17.3.2013
-        int               buflen; // In bytes
-	int               index;
-	int               contentlen; // Count in numbers (first starts from 1), comment: 7.11.2009
-        cb_name          *name;
-	cb_name          *current;
-	cb_name          *last;
-	int               namecount;
+        unsigned char      *buf; 
+        int                 buflen; // In bytes
+	int                 index;
+	int                 contentlen; // Count in numbers (first starts from 1), comment: 7.11.2009
+        cb_name            *name;
+	cb_name            *current;
+	cb_name            *last;
+	int                 namecount;
 } cbuf;
 
 typedef struct cbuf cblk;
 
 typedef struct CBFILE{
-	int    fd;	// Stream file descriptor
-	cbuf  *cb;	// Data in valuepairs (preferably in application order)
-	cblk  *blk;	// Input read or output write -block 
-	int    onlybuffer; // If fd is not in use
-	char   rstart;	// Result start character
-	char   rend;	// Result end character
-	char   bypass;	// Bypass character, bypasses next special characters function
-	char   cstart;	// Comment start character (comment can appear from rend to rstart)
-	char   cend;	// Comment end character
-	int    encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
-	int    encoding; // utf=0, any one byte=1, 
+	int                 fd;	// Stream file descriptor
+	cbuf               *cb;	// Data in valuepairs (preferably in application order)
+	cblk               *blk;	// Input read or output write -block 
+	int                 onlybuffer; // If fd is not in use
+	unsigned long int   rstart;	// Result start character
+	unsigned long int   rend;	// Result end character
+	unsigned long int   bypass;	// Bypass character, bypasses next special characters function
+	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
+	unsigned long int   cend;	// Comment end character
+	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
+	int                 encoding; // utf=0, any one byte=1, 
 } CBFILE;
 
 /*
+ * name is a namelength size pointer to unsigned char array to
+ * search and set cursor to.
+ *
  * Set cursor to position name or return CBNOTFOUND or CBSTREAM.
  * 'bufsize' buf is saved and other data is read as a stream or
  * lost. Cursor is allways at the end of read buffer and characters
@@ -95,7 +100,9 @@ typedef struct CBFILE{
  * fd points to. For example &  <name>=<value>& and &<name>=<value>&
  * are similar.
  */
-int  cb_set_cursor(CBFILE **cbs, char **name, int *namelength);
+//int  cb_set_cursor(CBFILE **cbs, char **name, int *namelength);
+int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength); // 17.3.2013
+//int  cb_set_cursor(CBFILE **cbs, int **name, int *namelength); // 30.3.2013
 
 /*
  * If while reading character, is found, that cb_set_cursor found name
@@ -133,14 +140,12 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_put_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf); // multibyte
-int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte , 17.3.2013
-//int  cb_write(CBFILE **cbs, char *buf, int size); // byte by byte
+int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
-int  cb_write_to_block(CBFILE **cbs, char *buf, int size); // special: write to block to read again (others use filedescriptors to read or write if useasbuffer was not set)
+int  cb_write_to_block(CBFILE **cbs, unsigned char *buf, int size); // special: write to block to read again (others use filedescriptors to read or write if useasbuffer was not set)
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
-//int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, char **blk, int blklen);
-int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen); // 17.3.2013
+int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn);
 int  cb_reinit_buffer(cbuf **buf); // empty names
@@ -148,18 +153,18 @@ int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 
 int  cb_use_as_buffer(CBFILE **buf);
-int  cb_get_buffer(cbuf *cbs, char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
-int  cb_get_buffer_range(cbuf *cbs, char **buf, int *size, int *from, int *to); // Allocate and copy range, new
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
 int  cb_copy_name(cb_name **from, cb_name **to);
-int  cb_compare(char **name1, int len1, char **name2, int len2);
+int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
 //int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
-int  cb_set_rstart(CBFILE **str, char rstart); // character between valuename and value, '='
-int  cb_set_rend(CBFILE **str, char rend); // character between value and next valuename, '&'
-int  cb_set_cstart(CBFILE **str, char cstart); // comment start character inside valuename, '#'
-int  cb_set_cend(CBFILE **str, char cend); // comment end character, '\n'
-int  cb_set_bypass(CBFILE **str, char bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
+int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
+int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
+int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start character inside valuename, '#'
+int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character, '\n'
+int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); // 0 utf, 1 one byte
 
