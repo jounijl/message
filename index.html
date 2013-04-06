@@ -70,7 +70,6 @@
 <p>Librarys main purpose are seven functions: </p>
 
 <pre><code>int  cb_set_cursor(CBFILE **cbs, char **name, int *namelength);
-
 int  cb_remove_name_from_stream(CBFILE **cbs);
 </code></pre>
 
@@ -80,8 +79,7 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is not in the buffer anymore. You may have to do with it immediately what was needed to do because it's allready in stream and it's not automatically saved anymore. </p>
 
-<pre><code>
-int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+<pre><code>int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_flush(CBFILE **cbs);
 </code></pre>
@@ -128,8 +126,7 @@ Two byte transfer functionality, UTF-16 for example is not yet added.</p>
 
 <p>It is a linked list. This is to understand what happens in the library. Only above functions and CBFILE allocation functions are meant to be used:</p>
 
-<pre><code>
-int  cb_allocate_cbfile(CBFILE **cbs, int fd, int bufsize, int blocksize);
+<pre><code>int  cb_allocate_cbfile(CBFILE **cbs, int fd, int bufsize, int blocksize);
 int  cb_free_cbfile(CBFILE **cbs);
 </code></pre>
 
@@ -184,7 +181,8 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p><strong>Page history</strong>
 <a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
 17.3.2013</p>
-<p>Last update 31.3.2013</p>
+<p>Last update 6.4.2013</p>
+<p>Branch 'ucsflowcontrol' released 6.4.2013</p>
 <p><strong>References</strong>
 <ul>
 <li>RFC 5198 "Unicode Format for Network Interchange"</li>
