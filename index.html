@@ -151,10 +151,12 @@ int  cb_free_cbfile(CBFILE **cbs);
 name of last pair =last_p\&amp;air\\s_data&amp; 
 </code></pre>
 
-<p>Last pairs value has control characters. cb_get_chr function reads characters without flow control. It's in the programmers responsibility to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary. Remember to stop reading at '&amp;'.</p>
+<p>Last pairs value has control characters. cb_get_chr function reads characters without flow control. It's in the programmers responsibility to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary. 
+Remember to stop reading at '&amp;' and if possible, leave cursor at the end of the value.</p>
 
-<p>In the first version, values can be only CBNAMEBUFLEN size unordered. Leave cursor at the end 
-of the next value after reading.</p>
+<p>In the first version, values can be only CBNAMEBUFLEN size unordered. In new branch there is a macro define to choose
+to avoid length boundary and to prevent new name addition if value has additional unbypassed '=' sign in value.
+</p>
 
 <p>Example of nesting consecutive streams:</p>
 
