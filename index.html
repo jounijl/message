@@ -153,11 +153,8 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <p>Last pairs value has control characters. cb_get_chr function reads characters without flow control. It's in the programmers responsibility to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary. Remember to stop reading at '&amp;'.</p>
 
-<p>Valuepairs are preferably ordered in application order. In the first version, the values can be only 
-CBNAMEBUFLEN size unordered. It's enough for smaller data fields. Leave the CBFILE:s cursor at the end 
-of value after reading. Biggest values can be put last. (This way the name can start without '&' but the 
-value may contain erroneus '='.)
-</p>
+<p>In the first version, the values can be only CBNAMEBUFLEN size unordered. Use 'cb_set_cursor' only and leave cursor at the end 
+of the next value after reading.</p>
 
 <p>Example of nesting consecutive streams:</p>
 
