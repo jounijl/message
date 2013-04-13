@@ -46,6 +46,9 @@
 #define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
 #define CBENCODING           0   // Default encoding, 0 utf, 1 any one byte encoding (programs control characters are ascii characters)
 
+// Different (stateful) name/value parsing, not necessary
+#define VALUENOTINCHARBUF
+
 /* #define SP( x )              ( x == 0x20 && x == 0x09 )  */
 
 #include "./cb_encoding.h"

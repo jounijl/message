@@ -42,6 +42,8 @@
 #define BLKSIZE 	1024
 #define FILENAMELEN 	100
 
+#define ENCODINGS 2
+
 #include "../include/cb_buffer.h"
 
 int  main (int argc, char *argv[]);
@@ -50,7 +52,7 @@ void usage ( char *progname[]);
 /*
  * Program to test the library ("cb").
  *
- * progname <blocksize> <buffersize> <filename> [ <filename> ... ]
+ * progname <encoding> <blocksize> <buffersize> <filename> [ <filename> ... ]
  *
  * Arguments are: input and outputs block size, buffer size and 
  * a list of filenames without it's postfix.
@@ -77,6 +79,7 @@ int main (int argc, char *argv[]) {
 	cbuf *name_list_ptr = NULL;
 	cb_name *nameptr = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
+	int encodingstested=0;
 	unsigned char *filename = NULL;
 	char infile[FILENAMELEN+5];
 	char outfile[FILENAMELEN+6];
@@ -104,12 +107,16 @@ int main (int argc, char *argv[]) {
 	nonexname[7]='\0'; 
 	snprintf( (char *) nonexname, (size_t) 8, "unknown" );
 
-	// Block and buffer size
+	// Encoding number
 	if(argc>=2 && argv[1]!=NULL){
-	  blksize = (int) strtol(argv[1],&str_err,10);
+	  encoding = (int) strtol(argv[1],&str_err,10);
 	}
+	// Block and buffer size
 	if(argc>=3 && argv[2]!=NULL){
-	  bufsize = (int) strtol(argv[2],&str_err,10);
+	  blksize = (int) strtol(argv[2],&str_err,10);
+	}
+	if(argc>=4 && argv[3]!=NULL){
+	  bufsize = (int) strtol(argv[3],&str_err,10);
 	}else{
  	  fprintf(stderr,"\ttest: not enough parameters: %i.", argc);
 	  if(argv[0]!=NULL)
@@ -119,7 +126,7 @@ int main (int argc, char *argv[]) {
 
 	//
 	// Every filename
-	for(indx=3; indx<argc; ++indx){
+	for(indx=4; indx<argc; ++indx){
 		// Filenames
 		if(argv[indx]==NULL){
 	          fprintf(stderr,"\ttest: Filename was null, argc %i, indx %i.\n", argc, indx); 
@@ -133,33 +140,27 @@ int main (int argc, char *argv[]) {
 	           outfile[indx2] = filename[indx2];
 		}
 	        if( infile[indx2]!='\0' && infile[indx2]!=' ' && infile[indx2]!='\t' && infile[indx2]!='\n' ){ ++indx2; }
-		infile[indx2]='.'; infile[indx2+1]='0'; infile[indx2+2]='\0'; outfile[indx2]='.'; 
-		outfile[indx2+1]='0'; outfile[indx2+2]='.'; outfile[indx2+3]='o'; outfile[indx2+4]='u'; 
-		outfile[indx2+5]='t'; outfile[indx2+6]='\0';
-
+		infile[indx2]='\0'; outfile[indx2]='.'; outfile[indx2+1]='0'; outfile[indx2+2]='.'; 
+	        outfile[indx2+3]='o'; outfile[indx2+4]='u'; outfile[indx2+5]='t'; outfile[indx2+6]='\0';
+	        fprintf(stderr,"\ninfile: [%s] encoding: %i.", infile, encoding);
 
 		//
-		// Every encoding (with file prefixes)
-		encoding=0;
-		while(encoding<2){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
+		// Every encoding to output (with file prefixes)
+		cb_set_encoding(&in, encoding);
+		//while(encoding<2){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
+		while(encodingstested<ENCODINGS){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
 			// Set encoding
-			cb_set_encoding(&in, encoding);
 			cb_set_encoding(&out, encoding);
 
 			// Open files
 			ret = 0;
-			if(encoding==0){ outfile[indx2+1]='0'; infile[indx2+1]='0'; };
-			if(encoding==1){ outfile[indx2+1]='1'; infile[indx2+1]='1'; };
-			if(encoding==2){ outfile[indx2+1]='2'; infile[indx2+1]='2'; };
-			if(encoding==3){ outfile[indx2+1]='3'; infile[indx2+1]='3'; };
-			if(encoding==4){ outfile[indx2+1]='4'; infile[indx2+1]='4'; };
+                        outfile[indx2+1]=(char) ( 0x30 + encoding ); 
 			if(infile[0]=='-'){
 			  (*in).fd = 0; // stdin
 			  outfile[0]='0';
 			}else{
 			  (*in).fd  = open( &(*infile), ( O_RDONLY ) ); 
 			}
-			// (*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT ), chmode );
 			(*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT ), (mode_t)( S_IRWXU | S_IRWXG ) );
 			if((*in).fd<=-1 || (*out).fd<=-1 ){
 			  fprintf(stderr,"\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
@@ -245,20 +246,25 @@ int main (int argc, char *argv[]) {
 			cb_reinit_cbfile(&in); 
 			cb_reinit_cbfile(&out); 			
 			cb_reinit_buffer(&name_list); // free names and init
-			++encoding;
+		        if(encoding>=(ENCODINGS-1))
+	                  encoding=0;
+	                else
+	                  ++encoding;
+	                ++encodingstested;
 
-			// Close files
-			if(infile[0]=='-')
-			  err = close( (*in).fd ); if(err!=0){ fprintf(stderr,"\ttest: close in failed."); }
 			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
-		} // while
-	} // for
+		} // while (encodings)
+		// Close files
+		if(infile[0]=='-'){
+		  err = close( (*in).fd ); if(err!=0){ fprintf(stderr,"\ttest: close in failed."); }
+		}
+	} // for (files)
 	return CBSUCCESS;
 }
 
 void usage (char *progname[]){
         printf("\nUsage:\n");
-        printf("\t%s <blocksize> <buffersize> <filename> [<filename> [<filename> ...] ]\n", progname[0]);
+        printf("\t%s <encoding> <blocksize> <buffersize> <filename> [<filename> [<filename> ...] ]\n", progname[0]);
         printf("\tProgram to test reading and writing. Reads filename.<encodingnumber>\n");
         printf("\tand outputs its found valuenames and values to \n");
         printf("\tfilename.<encodingnumber>.out . Stdin to EOF is '-' .\n");

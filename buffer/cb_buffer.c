@@ -27,7 +27,7 @@
    - Nesting =<text>& => <value1>=<text><value1.1>=<text2>&<text3>&
      ( cb_buffer only shows the start of <text> and has nothing to do with the
      rest of the <text>.)
-     - Make nesting to a reader funktion and writer funktion.
+     - Make nesting to a reader funktion and writer function.
        - Number showing nesting level and subfiles for example
          for subnests.
    x As in stanza or http, two '\n'-characters ends value (now default is '&')
@@ -594,7 +594,8 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
 	unsigned char *charbuf   = NULL;
 	int  charbuflen = 0;
 	cb_name *fname  = NULL;
-	int temp=0; // Temp 30.3.2013 
+	char atvalue=0;
+//	int temp=0; // Temp 30.3.2013 
 
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
@@ -636,8 +637,14 @@ cb_set_cursor_alloc_name:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
-	while( err<CBERROR && err!=CBSTREAMEND && index < CBNAMEBUFLEN && buferr == CBSUCCESS){ // 5.4.2013
+	//while( err<CBERROR && err!=CBSTREAMEND && index < CBNAMEBUFLEN && buferr == CBSUCCESS){ // 5.4.2013
+	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ // 9.4.2013
+#ifdef VALUENOTINCHARBUF
+	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && atvalue!=1){ // '=', save name, 13.4.2013, do not save when = is in value
+#else
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
+#endif
+	      atvalue=1;
 	      (*fname).namelen = index; indx2=0;
               if(index<(*fname).buflen){ // Remove SP:s and tabs in name
 	        // 5.4.2013:
@@ -667,7 +674,7 @@ cb_set_cursor_alloc_name:
 		cb_remove_name_from_stream(cbs);
 	        fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	      }
-	      if( name == NULL )
+/*	      if( name == NULL )
 	        fprintf(stderr,"\nname was null.");
 	      if( (*name) == NULL )
 	        fprintf(stderr,"\n(*name) was null.");
@@ -679,6 +686,7 @@ cb_set_cursor_alloc_name:
 	      else
 	        for(temp=0; temp<*namelength; ++temp)
 	          fprintf(stderr,"%c", (*fname).namebuf[temp]);
+*/
   	      if(cb_compare((unsigned char **)name, *namelength, &(*fname).namebuf, (*fname).namelen) == CBMATCH){ // 30.3.2013
 	        (**cbs).cb->index = (**cbs).cb->contentlen; // cursor
 	        if(err==CBSTREAM)
@@ -687,10 +695,18 @@ cb_set_cursor_alloc_name:
 		  return CBSUCCESS; // cursor set
 	      }
 	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
-	      free(fname); fname = NULL; charbuflen=0;
+	      atvalue=0; free(fname); fname = NULL;
  	      goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
 	      chr=' '; // any char not '\'
+#ifdef VALUENOTINCHARBUF
+	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
+	      /* This state is to use indefinite values. Index does not increase and unordered values length is
+	       * not bounded to length CBNAMEBUFLEN. 
+               * ( name1=name2=value& becomes name1 two times, not name1name2.)
+	       */
+	      ;
+#endif
 	  }else{ // save character to buffer
 	      //fprintf(stderr, "set_cursor: talletetaan merkki:");
 	      buferr = cb_put_ucs_chr(chr, &charbuf, &index, CBNAMEBUFLEN); // 5.4.2013
