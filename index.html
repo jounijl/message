@@ -92,9 +92,8 @@ UTF-8 is the default encoding.</p>
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
 Allways when the block is full, it's written to output.</p>
 
-<p>Flow control characters must be encoded in any one byte encoding. This may change in further versions. 
-Names can be in any encoding but they are used and compared as onebyte data. Values can be in any encoding. 
-Two byte transfer functionality, UTF-16 for example is not yet added.</p>
+<p>Flow control characters can be added in UCS encoding. Names are compared in UCS and values can be in any encoding. 
+UTF-8 is 5 byte compatible. Two byte transfer functionality is not yet added.</p>
 
 <h4>Data structures</h4>
 
