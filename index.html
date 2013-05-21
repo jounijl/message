@@ -160,11 +160,9 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p>
   Last pairs value has control characters. cb_get_chr function reads 
   characters without flow control. It's in the programmers responsibility 
-  to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary. 
+  to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary.
+  Best practise </i> is to leave the cursor at the end of the value after reading.  
   Remember to stop reading at '&amp;'.
-</p>
-<p>
-  <i> Best practise </i> is to leave the cursor at the end of the value after reading.  
 </p>
 
 <p>Example of nesting consecutive streams:</p>
