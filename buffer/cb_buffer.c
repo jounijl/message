@@ -394,11 +394,11 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	    name = &(* nextname);
 	  }
 	  (**buf).namecount=0;
-	  (**buf).name=NULL; // 1.6.2013
-	  (**buf).current=NULL; // 1.6.2013
-	  (**buf).last=NULL; // 1.6.2013
 	}
 	free(name); free(nextname);
+	(**buf).name=NULL; // 1.6.2013
+	(**buf).current=NULL; // 1.6.2013
+	(**buf).last=NULL; // 1.6.2013
 	return CBSUCCESS;
 }
 

@@ -80,8 +80,7 @@ int main (int argc, char *argv[]) {
 	cb_name *nameptr = NULL;
 	cb_name *nameptrtmp = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
-	int fromend=0;
-	int encodingstested=0;
+	int fromend=0,	encodingstested=0, atoms=0;
 	unsigned char *filename = NULL;
 	char infile[FILENAMELEN+5];
 	char outfile[FILENAMELEN+6];
@@ -126,9 +125,14 @@ int main (int argc, char *argv[]) {
           return ERROR;
 	}
 
+        // Special case: last parameter was null (FreeBSD)
+        atoms=argc;
+        if(argv[(atoms-1)]==NULL && argc>0)
+          --atoms;
+
 	//
 	// Every filename
-	for(indx=4; indx<argc; ++indx){
+	for(indx=4; indx<atoms; ++indx){
 		// Filenames
 		if(argv[indx]==NULL){
 	          fprintf(stderr,"\ttest: Filename was null, argc %i, indx %i.\n", argc, indx); 
@@ -289,7 +293,7 @@ if(nameptr==NULL){
 void usage (char *progname[]){
         printf("\nUsage:\n");
         printf("\t%s <encoding> <blocksize> <buffersize> <filename> [<filename> [<filename> ...] ]\n", progname[0]);
-        printf("\tProgram to test reading and writing. Reads filename.<encodingnumber>\n");
+        printf("\tProgram to test reading and writing. Reads filename in encoding <encoding>\n");
         printf("\tand outputs its found valuenames and values to \n");
-        printf("\tfilename.<encodingnumber>.out . Stdin to EOF is '-' .\n");
+        printf("\tfilename.<encodingnumber>.out with every encoding. Stdin to EOF is '-' .\n");
 }
