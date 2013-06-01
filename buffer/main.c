@@ -78,7 +78,9 @@ int main (int argc, char *argv[]) {
 	cbuf *name_list = NULL;
 	cbuf *name_list_ptr = NULL;
 	cb_name *nameptr = NULL;
+	cb_name *nameptrtmp = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
+	int fromend=0;
 	int encodingstested=0;
 	unsigned char *filename = NULL;
 	char infile[FILENAMELEN+5];
@@ -147,7 +149,6 @@ int main (int argc, char *argv[]) {
 		//
 		// Every encoding to output (with file prefixes)
 		cb_set_encoding(&in, encoding);
-		//while(encoding<2){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
 		while(encodingstested<ENCODINGS){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
 			// Set encoding
 			cb_set_encoding(&out, encoding);
@@ -180,7 +181,7 @@ int main (int argc, char *argv[]) {
 			      if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %i.\n", err ); }
 			   }
 		           if(err==CBNOTFOUND){ fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %i.\n", err ); }
-			   if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
+			   if(err!=CBNOTFOUND && ( err<=CBERROR && err>=CBNEGATION ) ){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
 			      fprintf(stderr,"\ttest: cb_set_cursor, %i.\n", err ); }
 			   if(err==CBSTREAMEND || err>CBERROR){
 			      fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %i.\n", err ); }
@@ -190,19 +191,42 @@ int main (int argc, char *argv[]) {
 			fprintf(stderr,"\nFirst run, names are:\n"); 
 			err = cb_print_names(&in);
 			if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: cb_print_names returned %i.", err ); }
-			(*in).cb = &(*name_list_ptr);
+			(*in).cb = &(*name_list_ptr); 
 
 			//
 			// Second run: finds all names in order and prints them to output (comments are lost)
 			// After buffer, the rest of the stream. (One test: Unknown names literal name in it.) 
 			cb_reinit_cbfile(&in); 
+			err = lseek( (*in).fd, (off_t) 0 , (int) SEEK_SET); // off_t on tyyppia long long, 64 bit
+			if(err<0){fprintf(stderr,"\ttest: fseek returned %i, errno set is %i.", err, errno ); }
+			fprintf(stderr,"\nSecond run, names are backwards:\n"); 
 		        if( in!=NULL ){
 			   nameptr = &(* (cb_name *) (*name_list).name );
-			   while( nameptr != NULL ){
+			   fromend=0;
+			   while( nameptr != NULL && fromend<(*name_list).namecount ){
+				// Next name from end
+				if(fromend<(*name_list).namecount && nameptr!=NULL){
+			           nameptr = &(* (cb_name *) (*name_list).name );
+			           for(err=fromend; err<((*name_list).namecount-1) && fromend<(*name_list).namecount && nameptr!=NULL ;++err){
+				      fprintf(stderr," [ %i | %i | %i ]", err, fromend, (*name_list).namecount);
+			              nameptrtmp = &(* (cb_name *) (*nameptr).next ); // count-1 pointers and a null pointer
+			              if(nameptrtmp!=NULL)
+				        nameptr = &(* nameptrtmp);
+				   }
+				}
+// 24.5.2013, jäi kohtaan: nimi ei tulostu, aiempi segfaultkorjaus (pointerien takia) voi olla huonosti tehty
+if(nameptr==NULL){
+  fprintf(stderr," nameptr was NULL ");
+}
+				fromend++;
+				fprintf(stderr," [%i/%i] setting cursor to name [", ((*name_list).namecount-fromend+1), (*name_list).namecount );
+				err = cb_print_ucs_chrbuf( &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
+				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %i.", err); }
+				fprintf(stderr,"], length %i.\n", (*nameptr).namelen);
 			        err = cb_set_cursor( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
 				if(err==CBNOTFOUND){
 			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %i.\n", err ); }
-				if(err<=CBERROR && err>=CBNEGATION){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
+				if(err!=CBNOTFOUND && ( err<=CBERROR && err>=CBNEGATION ) ){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
 			           fprintf(stderr,"\ttest: cb_set_cursor, %i.\n", err ); }
 				if(err==CBSTREAMEND || err>CBERROR){
 			           fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %i.\n", err );
@@ -214,28 +238,28 @@ int main (int argc, char *argv[]) {
 				   //
 				   // Write everything to output
 				   //
-				   // Name: 
-				   // Name can be in any encoding (even two byte encoding)
-				   // It is read encoding decoded, and SP:s removed but compared to the given name
-				   // It is found with given name. Name is written instead because the encoding can be any.
-			 	   ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); // any bytelength name
-				   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno); }
-				   //
+				   // Name:
+				   if( nameptr!=NULL && (*nameptr).namebuf!=NULL )
+                                     ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); 
+                                   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno); }
 				   // Value:
 				   // From '=' and after it to the last nonbypassed '&' and it.
+	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
+				   fprintf(stderr," content: [");
 				   while( (*out).bypass != (char) prevchr && (*out).rend != (char) chr ){
-		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				      if(err==CBNOTUTF){
 					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
 				      }else if(err<CBERROR){
 				        err = cb_put_chr(&out, &chr, &encbytes, &strdbytes ); 
 				      }
-				      if( err!=CBSUCCESS || err!=CBSTREAM ){
+				      if( err!=CBSUCCESS && err!=CBSTREAM ){
 				        fprintf(stderr,"\ttest: cb_get_chr cb_put_chr err=%i.\n", err ); }
+				      fprintf(stderr,"%C", (unsigned int) chr );
 				      prevchr = chr;
+		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				   } // while
-				} // else if, move this to remove error handling
-			        nameptr = &(* (cb_name *) (*nameptr).next );
+				   fprintf(stderr,"]\n" );
+				} // else if
                            } // while
         		}else{ // if in not null
 			   fprintf(stderr,"\ttest: Error, in was null.\n"); 
