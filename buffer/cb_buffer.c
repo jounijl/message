@@ -639,7 +639,7 @@ cb_set_cursor_alloc_name:
 	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
 	//while( err<CBERROR && err!=CBSTREAMEND && index < CBNAMEBUFLEN && buferr == CBSUCCESS){ // 5.4.2013
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ // 9.4.2013
-#ifdef STATEFULPARSING
+#ifdef CBSTATEFUL
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && atvalue!=1){ // '=', save name, 13.4.2013, do not save when = is in value
 #else
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
@@ -699,7 +699,7 @@ cb_set_cursor_alloc_name:
  	      goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
 	      chr=' '; // any char not '\'
-#ifdef STATEFULPARSING
+#ifdef CBSTATEFUL
 	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
 	      /* This state is to use indefinite length values. Index does not increase and
 	       * unordered values length is not bound to length CBNAMEBUFLEN. 

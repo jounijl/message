@@ -48,7 +48,18 @@
 
 // Different (stateful) name/value parsing, not necessary
 //#define VALUENOTINCHARBUF
-#define STATEFULPARSING
+/*
+ * Stateful. After value separator ('='), state is changed to read only name separator
+ * and leave the value unread. This way values can not be used to change values occurring
+ * after deliberately. Improves safety.
+ */
+#define CBSTATEFUL
+
+/*
+ * To use only value separator ('=') to separate names. Values can contain new
+ * inner names and new values.
+ */
+#undef CBSTATEFUL
 
 // CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
 #define SP( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
