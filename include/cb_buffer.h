@@ -47,9 +47,11 @@
 #define CBENCODING           0   // Default encoding, 0 utf, 1 any one byte encoding (programs control characters are ascii characters)
 
 // Different (stateful) name/value parsing, not necessary
-#define VALUENOTINCHARBUF
+//#define VALUENOTINCHARBUF
+#define STATEFULPARSING
 
-/* #define SP( x )              ( x == 0x20 && x == 0x09 )  */
+// CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
+#define SP( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
 
 #include "./cb_encoding.h"
 
@@ -170,6 +172,11 @@ int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); // 0 utf, 1 one byte
+
+// 4-byte character array
+int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 
 // Debug
 int  cb_print_names(CBFILE **str);

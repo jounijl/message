@@ -60,9 +60,9 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen);
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 
 // 5.4.2013:
-int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
+//int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+//int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+//int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 
 int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
@@ -119,7 +119,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize){
         if( chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
         if( *bufindx>(bufsize-4) ){              return CBNOTFOUND; }
-        *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & 4294967040; *bufindx+=1; // 4294967295 - 255 = 4294967040
+        *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & (unsigned int) 4294967040; *bufindx+=1; // 4294967295 - 255 = 4294967040
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & 4294967040; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & 4294967040; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *bufindx+=1;
@@ -639,7 +639,7 @@ cb_set_cursor_alloc_name:
 	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
 	//while( err<CBERROR && err!=CBSTREAMEND && index < CBNAMEBUFLEN && buferr == CBSUCCESS){ // 5.4.2013
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ // 9.4.2013
-#ifdef VALUENOTINCHARBUF
+#ifdef STATEFULPARSING
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && atvalue!=1){ // '=', save name, 13.4.2013, do not save when = is in value
 #else
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
@@ -660,8 +660,8 @@ cb_set_cursor_alloc_name:
                         buferr = cb_get_ucs_chr( &cmp, &charbuf, &indx, CBNAMEBUFLEN);
                       }
                     }
-                    //if( ! SP( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
-                    if( cmp!=' ' && cmp!='\t' && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
+                    //if( cmp!=' ' && cmp!='\t' && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
+                    if( ! SP( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
                       buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
@@ -699,11 +699,11 @@ cb_set_cursor_alloc_name:
  	      goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
 	      chr=' '; // any char not '\'
-#ifdef VALUENOTINCHARBUF
+#ifdef STATEFULPARSING
 	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
-	      /* This state is to use indefinite values. Index does not increase and unordered values length is
-	       * not bounded to length CBNAMEBUFLEN. 
-               * ( name1=name2=value& becomes name1 two times, not name1name2.)
+	      /* This state is to use indefinite length values. Index does not increase and
+	       * unordered values length is not bound to length CBNAMEBUFLEN. 
+               * ( name1=name2=value& becomes name1 once, otherwice (was) name1name2. )
 	       */
 	      ;
 #endif
