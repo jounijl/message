@@ -1,7 +1,7 @@
 
 Buffer to read and write streams. 
 
-Reader reads valuepairs location in buffer to a linked list.
+Reader reads valuepairs location in a buffer to a linked list.
 
 Encodings: UCS with UTF-8 transferring or onebyte or multibyte encoding.
 
