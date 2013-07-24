@@ -56,8 +56,10 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount){
 int  cb_set_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
-	if(number==1)
+	if(number==1) // 1 byte
 	  cb_set_encodingbytes(str,1);
+	if(number==0) // utf, 24.7.2013
+	  cb_set_encodingbytes(str,0); // 25.7.2013
 	return CBSUCCESS;
 }
 
@@ -327,11 +329,11 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	unsigned char byte1=0, byte2=0, byte3=0, byte4=0, byte5=0, byte6=0;
 
 	if(cbs==NULL || *cbs==NULL) { return CBERRALLOC; }
-	cb_bytecount( chr, &bytes );
+	cb_bytecount( chr, &bytes ); // if first bit is 1, should put two bytes, first byte 0x00
 	if( (**cbs).encodingbytes<bytes && (**cbs).encodingbytes!=0 ){
 	  return CBERRBYTECOUNT;
 	}
-	  
+
 	byte1 = (unsigned char) *chr; *bytecount=bytes;
 	if( bytes==1 && byteisascii( byte1 ) ){
 	  low=byte1;

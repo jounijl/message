@@ -157,6 +157,9 @@ int main (int argc, char *argv[]) {
 			// Set encoding
 			cb_set_encoding(&out, encoding);
 
+			fprintf(stderr,"\n\t Encoding %i", encoding);
+			fprintf(stderr,"\n\t -----------\n");
+
 			// Open files
 			ret = 0;
                         outfile[indx2+1]=(char) ( 0x30 + encoding ); 
@@ -212,7 +215,7 @@ int main (int argc, char *argv[]) {
 				if(fromend<(*name_list).namecount && nameptr!=NULL){
 			           nameptr = &(* (cb_name *) (*name_list).name );
 			           for(err=fromend; err<((*name_list).namecount-1) && fromend<(*name_list).namecount && nameptr!=NULL ;++err){
-				      fprintf(stderr," [ %i | %i | %i ]", err, fromend, (*name_list).namecount);
+				      //fprintf(stderr," [ %i | %i | %i ]", err, fromend, (*name_list).namecount);
 			              nameptrtmp = &(* (cb_name *) (*nameptr).next ); // count-1 pointers and a null pointer
 			              if(nameptrtmp!=NULL)
 				        nameptr = &(* nameptrtmp);
@@ -249,7 +252,7 @@ if(nameptr==NULL){
 				   // Value:
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
-				   fprintf(stderr," content: [");
+				   fprintf(stderr," (*out).encoding=%d (*out).encodingbytes=%d content: [", (*out).encoding, (*out).encodingbytes );
 				   while( (*out).bypass != (char) prevchr && (*out).rend != (char) chr ){
 				      if(err==CBNOTUTF){
 					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
@@ -257,7 +260,7 @@ if(nameptr==NULL){
 				        err = cb_put_chr(&out, &chr, &encbytes, &strdbytes ); 
 				      }
 				      if( err!=CBSUCCESS && err!=CBSTREAM ){
-				        fprintf(stderr,"\ttest: cb_get_chr cb_put_chr err=%i.\n", err ); }
+				        fprintf(stderr,"\ttest: encbytes=%d strdbytes=%d cb_get_chr cb_put_chr err=%i.\n", encbytes, strdbytes, err ); }
 				      fprintf(stderr,"%C", (unsigned int) chr );
 				      prevchr = chr;
 		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
