@@ -46,18 +46,28 @@
 #define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
 #define CBENCODING           0   // Default encoding, 0 utf, 1 any one byte encoding (programs control characters are ascii characters)
 
-// Different (stateful) name/value parsing, not necessary
-//#define VALUENOTINCHARBUF
 /*
- * Stateful. After value separator ('='), state is changed to read only name separator
- * and leave the value unread. This way values can not be used to change values occurring
- * after deliberately. Improves safety.
+ * Stateful. After first value separator ('='), state is changed to read to next name separator 
+ * ('&') when leaving the value unread. State changes back at rend ('&'). This way values 
+ * can not be used to change values occurring after for example programmatically or by changing
+ * values deliberately from the user interface.
+ *
+ * This setting improves safety and is more restrictive.
  */
 #define CBSTATEFUL
 
 /*
  * To use only value separator ('=') to separate names. Values can contain new
- * inner names and new values.
+ * inner names and new values. 
+ *
+ * If reader ignores flow control characters, this setting might cause invalid names
+ * in name-valuepair list. In return, values can be defined as values and
+ * the value can contain new values depending on what rstart or rend the programmer 
+ * leaves the cursor at. Searching the next name starts where the reading of the value 
+ * ended. 
+ *
+ * This is more relaxed setting and provides more features. Programmer has to decide
+ * how to read the values flow control characters.
  */
 #undef CBSTATEFUL
 

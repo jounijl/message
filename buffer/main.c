@@ -253,7 +253,7 @@ if(nameptr==NULL){
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				   fprintf(stderr," (*out).encoding=%d (*out).encodingbytes=%d content: [", (*out).encoding, (*out).encodingbytes );
-				   while( (*out).bypass != (char) prevchr && (*out).rend != (char) chr ){
+				   while( ! ( (*out).bypass != prevchr && (*out).rend == chr ) && err<CBNEGATION){
 				      if(err==CBNOTUTF){
 					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
 				      }else if(err<CBERROR){

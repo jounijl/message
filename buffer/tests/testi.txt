@@ -7,5 +7,5 @@ neljös=4&
 neljÄs=4&
 neljÅs=4&
 neljÖs=4&
-viides=kuudes=viimeisen arvo, viides ja kuudes&
-seitsemäs=seitsemännen arvo&
+viides=kuudes=viimeisen v\&o, vd ja kdes&
+seitsemäs=stsemännen arvo&

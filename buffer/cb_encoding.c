@@ -59,7 +59,7 @@ int  cb_set_encoding(CBFILE **str, int number){
 	if(number==1) // 1 byte
 	  cb_set_encodingbytes(str,1);
 	if(number==0) // utf, 24.7.2013
-	  cb_set_encodingbytes(str,0); // 25.7.2013
+	  cb_set_encodingbytes(str,0); // 24.7.2013
 	return CBSUCCESS;
 }
 
