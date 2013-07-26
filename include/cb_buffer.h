@@ -52,7 +52,11 @@
  * can not be used to change values occurring after for example programmatically or by changing
  * values deliberately from the user interface.
  *
- * This setting improves safety and is more restrictive.
+ * This setting improves safety and is more restrictive. Cursor has to be left at the end
+ * of the value. If reader function ignores flow control characters, this setting might 
+ * cause invalid names in name-valuepair list. 
+ *
+ * Reading a value is unlimited (infinite). Buffer is in use only from '&' to '='.
  */
 #define CBSTATEFUL
 
@@ -60,14 +64,19 @@
  * To use only value separator ('=') to separate names. Values can contain new
  * inner names and new values. 
  *
+ * Values can be defined as values and the value can contain new values depending 
+ * on what rstart or rend the programmer leaves the cursor at. Searching the next 
+ * name starts where the reading of the value ended. 
+ *
  * If reader ignores flow control characters, this setting might cause invalid names
- * in name-valuepair list. In return, values can be defined as values and
- * the value can contain new values depending on what rstart or rend the programmer 
- * leaves the cursor at. Searching the next name starts where the reading of the value 
- * ended. 
+ * in name-valuepair list. 
  *
  * This is more relaxed setting and provides more features. Programmer has to decide
- * how to read the values flow control characters.
+ * how to read the values flow control characters. Cursor has to be left at the end
+ * of the value.
+ *
+ * Reading names and values are restricted to read buffer size, size is CBNAMEBUFLEN 
+ * with 4 byte characters.
  */
 #undef CBSTATEFUL
 
@@ -201,3 +210,6 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 
 // Debug
 int  cb_print_names(CBFILE **str);
+
+// Returns boms (byte order marks) encoding of 8 char array (bom is allways the first character)
+int  cb_bom_encoding(unsigned char **eightbytes); // not yet tested 26.7.2013

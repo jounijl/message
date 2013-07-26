@@ -58,8 +58,20 @@ int  cb_set_encoding(CBFILE **str, int number){
 	(**str).encoding=number;
 	if(number==1) // 1 byte
 	  cb_set_encodingbytes(str,1);
-	if(number==0) // utf, 24.7.2013
-	  cb_set_encodingbytes(str,0); // 24.7.2013
+	if(number==0) // UTF-8
+	  cb_set_encodingbytes(str,0); 
+	//if(number==2) // 2 byte
+	//  cb_set_encodingbytes(str,2); 
+	//if(number==3) // UTF-16 LE
+	//  cb_set_encodingbytes(str,2); 
+	//if(number==4) // 4 byte
+	//  cb_set_encodingbytes(str,4); 
+	//if(number==5) // UTF-16 BE
+	//  cb_set_encodingbytes(str,2); 
+	//if(number==6) // UTF-32 LE
+	//  cb_set_encodingbytes(str,4); 
+	//if(number==7) // UTF-32 BE
+	//  cb_set_encodingbytes(str,4); 
 	return CBSUCCESS;
 }
 
@@ -382,4 +394,20 @@ void cb_bytecount(unsigned long int *chr, int *count){
         else if( *chr > 0x1FFFFF && *chr <= 0x7FFFFFF ) *count = 5; // <= 26 bits
 	else if( *chr <= 0x7FFFFFFF ) *count = 6; // <= 31 bits
 	else count = 0;
+}
+
+// From array of 8 bytes, BOM detection
+int  cb_bom_encoding(unsigned char **eightbytes){
+	if(eightbytes!=NULL){
+	  if( (*eightbytes)[0]==0xEF && (*eightbytes)[1]==0xBB && (*eightbytes)[2]==0xBF ) // UTF-8
+	    return ENCUTF8;
+	  else if( (*eightbytes)[0]==0xFE && (*eightbytes)[1]==0xFF ) // UTF-16 big endian
+	    return ENCUTF16BE;
+	  else if( (*eightbytes)[0]==0x00 && (*eightbytes)[1]==0x00 && (*eightbytes)[2]==0xFE && (*eightbytes)[3]==0xFF ) // UTF-32 big endian
+	    return ENCUTF32BE;
+	  else if( (*eightbytes)[0]==0xFF && (*eightbytes)[1]==0xFE && (*eightbytes)[2]==0x00 && (*eightbytes)[3]==0x00 ) // UTF-32 little endian
+	    return ENCUTF32LE;
+	  else if( (*eightbytes)[0]==0xFF && (*eightbytes)[1]==0xFE ) // UTF-16 little endian
+	    return ENCUTF16LE;
+	}
 }
