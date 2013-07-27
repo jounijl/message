@@ -406,7 +406,7 @@ int  cb_bom_encoding(CBFILE **cbs){
 	  if( (*(**cbs).cb).contentlen >= 2 ){
             if( (*(**cbs).cb).buf[0]==0xFE && (*(**cbs).cb).buf[1]==0xFF ) // UTF-16 big endian
 	      return CBENCUTF16BE;
- 	  }else
+	  }else
 	    return CBEMPTY;
 	  if( (*(**cbs).cb).contentlen >= 4 ){
 	    if( (*(**cbs).cb).buf[0]==0x00 && (*(**cbs).cb).buf[1]==0x00 && (*(**cbs).cb).buf[2]==0xFE && (*(**cbs).cb).buf[3]==0xFF ) // UTF-32 big endian
@@ -421,5 +421,5 @@ int  cb_bom_encoding(CBFILE **cbs){
  	    return CBEMPTY;
 	}else
 	    return CBERRALLOC;
-	return CBNOENCONDING;
+	return CBNOENCODING;
 }
