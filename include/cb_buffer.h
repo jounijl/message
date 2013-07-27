@@ -29,6 +29,7 @@
 #define CBNOTUTF            15
 #define CBNOENCODING        16
 #define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY             18
 
 #define CBERROR	            20
 #define CBERRALLOC          21
@@ -54,7 +55,7 @@
  *
  * This setting improves safety and is more restrictive. Cursor has to be left at the end
  * of the value. If reader function ignores flow control characters, this setting might 
- * cause invalid names in name-valuepair list. 
+ * cause invalid names in name-valuepair list. This is a better setting for input.
  *
  * Reading a value is unlimited (infinite). Buffer is in use only from '&' to '='.
  */
@@ -73,7 +74,8 @@
  *
  * This is more relaxed setting and provides more features. Programmer has to decide
  * how to read the values flow control characters. Cursor has to be left at the end
- * of the value.
+ * of the value. This is a good setting for output from known input source, for
+ * reporting.
  *
  * Reading names and values are restricted to read buffer size, size is CBNAMEBUFLEN 
  * with 4 byte characters.
@@ -211,5 +213,5 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 // Debug
 int  cb_print_names(CBFILE **str);
 
-// Returns boms (byte order marks) encoding of 8 char array (bom is allways the first character)
-int  cb_bom_encoding(unsigned char **eightbytes); // not yet tested 26.7.2013
+// Returns byte order marks encoding from up to eight first characters (bom is allways the first character)
+int  cb_bom_encoding(CBFILE **cbs); // not yet tested 26.7.2013

@@ -396,18 +396,30 @@ void cb_bytecount(unsigned long int *chr, int *count){
 	else count = 0;
 }
 
-// From array of 8 bytes, BOM detection
-int  cb_bom_encoding(unsigned char **eightbytes){
-	if(eightbytes!=NULL){
-	  if( (*eightbytes)[0]==0xEF && (*eightbytes)[1]==0xBB && (*eightbytes)[2]==0xBF ) // UTF-8
-	    return ENCUTF8;
-	  else if( (*eightbytes)[0]==0xFE && (*eightbytes)[1]==0xFF ) // UTF-16 big endian
-	    return ENCUTF16BE;
-	  else if( (*eightbytes)[0]==0x00 && (*eightbytes)[1]==0x00 && (*eightbytes)[2]==0xFE && (*eightbytes)[3]==0xFF ) // UTF-32 big endian
-	    return ENCUTF32BE;
-	  else if( (*eightbytes)[0]==0xFF && (*eightbytes)[1]==0xFE && (*eightbytes)[2]==0x00 && (*eightbytes)[3]==0x00 ) // UTF-32 little endian
-	    return ENCUTF32LE;
-	  else if( (*eightbytes)[0]==0xFF && (*eightbytes)[1]==0xFE ) // UTF-16 little endian
-	    return ENCUTF16LE;
-	}
+// From array of 8 first bytes if length is > 8
+int  cb_bom_encoding(CBFILE **cbs){
+	if(cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL ){
+	  if( (*(**cbs).cb).contentlen >= 3 ){
+	    if( (*(**cbs).cb).buf[0]==0xEF && (*(**cbs).cb).buf[1]==0xBB && (*(**cbs).cb).buf[2]==0xBF ) // UTF-8
+	      return CBENCUTF8;
+	  }
+	  if( (*(**cbs).cb).contentlen >= 2 ){
+            if( (*(**cbs).cb).buf[0]==0xFE && (*(**cbs).cb).buf[1]==0xFF ) // UTF-16 big endian
+	      return CBENCUTF16BE;
+ 	  }else
+	    return CBEMPTY;
+	  if( (*(**cbs).cb).contentlen >= 4 ){
+	    if( (*(**cbs).cb).buf[0]==0x00 && (*(**cbs).cb).buf[1]==0x00 && (*(**cbs).cb).buf[2]==0xFE && (*(**cbs).cb).buf[3]==0xFF ) // UTF-32 big endian
+	      return CBENCUTF32BE;
+	    if( (*(**cbs).cb).buf[0]==0xFF && (*(**cbs).cb).buf[1]==0xFE && (*(**cbs).cb).buf[2]==0x00 && (*(**cbs).cb).buf[3]==0x00 ) // UTF-32 little endian
+	      return CBENCUTF32LE;
+  	  }
+ 	  if( (*(**cbs).cb).contentlen >= 2 )
+	    if( (*(**cbs).cb).buf[0]==0xFF && (*(**cbs).cb).buf[1]==0xFE ) // UTF-16 little endian
+	      return CBENCUTF16LE;
+	  if( (*(**cbs).cb).contentlen < 4 )
+ 	    return CBEMPTY;
+	}else
+	    return CBERRALLOC;
+	return CBNOENCONDING;
 }

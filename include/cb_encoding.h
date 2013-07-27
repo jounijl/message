@@ -44,3 +44,13 @@
  *    111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
  *    1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
  */
+
+#define CBENCUTF8	0
+#define CBENC1BYTE 	1
+#define CBENC2BYTE 	2
+#define CBENCUTF16LE 	3
+#define CBENC4BYTE 	4
+#define CBENCUTF16BE 	5
+#define CBENCUTF32LE	6
+#define CBENCUTF32BE	7
+
