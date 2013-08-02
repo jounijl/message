@@ -44,8 +44,12 @@
 #define CBBYPASS            '\\'
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rstart to rend
 #define CBCOMMENTEND        '\n'
-#define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
-#define CBENCODING           0   // Default encoding, 0 utf, 1 any one byte encoding (programs control characters are ascii characters)
+
+// cb_encoding.h
+//#define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
+//#define CBENCODING           0   // Default encoding, 0 auto, 3 utf, 1 any one byte
+
+/* #define CBNESTING */
 
 /*
  * Stateful. After first value separator ('='), state is changed to read to next name separator 
@@ -136,10 +140,17 @@ typedef struct CBFILE{
  * writing the name-value pairs in fixed length blocks in any memory
  * fd points to. For example &  <name>=<value>& and &<name>=<value>&
  * are similar.
+ *
+ * Names are kept internally in character array where four bytes 
+ * represent one character (UCS, 31-bits). 
  */
-//int  cb_set_cursor(CBFILE **cbs, char **name, int *namelength);
-int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength); // 17.3.2013
-//int  cb_set_cursor(CBFILE **cbs, int **name, int *namelength); // 30.3.2013
+
+/* 
+ * One byte represents a character */
+int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength); 
+/*
+ * Four bytes represents one character */
+int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
  * If while reading character, is found, that cb_set_cursor found name

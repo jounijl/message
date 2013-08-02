@@ -169,7 +169,7 @@ int main (int argc, char *argv[]) {
 			}else{
 			  (*in).fd  = open( &(*infile), ( O_RDONLY ) ); 
 			}
-			(*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT ), (mode_t)( S_IRWXU | S_IRWXG ) );
+			(*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT | O_TRUNC ), (mode_t)( S_IRWXU | S_IRWXG ) );
 			if((*in).fd<=-1 || (*out).fd<=-1 ){
 			  fprintf(stderr,"\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
 			  fprintf(stderr,"\ttest: open failed, infile %s outfile %s.\n", infile, outfile);
@@ -230,7 +230,7 @@ if(nameptr==NULL){
 				err = cb_print_ucs_chrbuf( &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
 				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %i.", err); }
 				fprintf(stderr,"], length %i.\n", (*nameptr).namelen);
-			        err = cb_set_cursor( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
+			        err = cb_set_cursor_ucs( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
 				if(err==CBNOTFOUND){
 			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %i.\n", err ); }
 				if(err!=CBNOTFOUND && ( err<=CBERROR && err>=CBNEGATION ) ){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally

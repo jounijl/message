@@ -56,21 +56,27 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount){
 int  cb_set_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
-	if(number==1) // 1 byte
-	  cb_set_encodingbytes(str,1);
-	if(number==0) // UTF-8
-	  cb_set_encodingbytes(str,0); 
-	//if(number==2) // 2 byte
+	if(number==CBENCAUTO) // automatic detection
+	  cb_set_encodingbytes(str,1); // detection has to be at one byte
+	if(number==CBENC1BYTE) // 1 byte
+	  cb_set_encodingbytes(str,1); // one byte
+	//if(number==CBENC2BYTE) // 2 byte
 	//  cb_set_encodingbytes(str,2); 
-	//if(number==3) // UTF-16 LE
-	//  cb_set_encodingbytes(str,2); 
-	//if(number==4) // 4 byte
+	if(number==CBENCUTF8) // UTF-8
+	  cb_set_encodingbytes(str,0); // zero is any length
+	//if(number==CBENC4BYTE) // 4 byte
 	//  cb_set_encodingbytes(str,4); 
+	//if(number==CBENCUTF16LE) // UTF-16 LE
+	//  cb_set_encodingbytes(str,2); 
+	//if(number==CBENCPOSSIBLEUTF16LE) // Possible UTF-16 LE (bytecount in detection was less than 4), used as it is the same, UTF-16 LE
+	//  cb_set_encodingbytes(str,2); 
+	//if(number==CBENCUTF16BE) // UTF-16 BE
+	//  cb_set_encodingbytes(str,2); 
 	//if(number==5) // UTF-16 BE
 	//  cb_set_encodingbytes(str,2); 
-	//if(number==6) // UTF-32 LE
+	//if(number==CBENCUTF32LE) // UTF-32 LE
 	//  cb_set_encodingbytes(str,4); 
-	//if(number==7) // UTF-32 BE
+	//if(number==CBENCUTF32BE) // UTF-32 BE
 	//  cb_set_encodingbytes(str,4); 
 	return CBSUCCESS;
 }
@@ -396,7 +402,7 @@ void cb_bytecount(unsigned long int *chr, int *count){
 	else count = 0;
 }
 
-// From array of 8 first bytes if length is > 8
+// From four first bytes, use if contentlen is more than four
 int  cb_bom_encoding(CBFILE **cbs){
 	if(cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL ){
 	  if( (*(**cbs).cb).contentlen >= 3 ){
@@ -415,8 +421,12 @@ int  cb_bom_encoding(CBFILE **cbs){
 	      return CBENCUTF32LE;
   	  }
  	  if( (*(**cbs).cb).contentlen >= 2 )
-	    if( (*(**cbs).cb).buf[0]==0xFF && (*(**cbs).cb).buf[1]==0xFE ) // UTF-16 little endian
-	      return CBENCUTF16LE;
+	    if( (*(**cbs).cb).buf[0]==0xFF && (*(**cbs).cb).buf[1]==0xFE ){ // UTF-16 little endian
+ 	      if((*(**cbs).cb).contentlen<=3)
+	        return CBENCPOSSIBLEUTF16LE;
+	      else
+	        return CBENCUTF16LE;
+	    }
 	  if( (*(**cbs).cb).contentlen < 4 )
  	    return CBEMPTY;
 	}else
