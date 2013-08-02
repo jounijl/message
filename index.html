@@ -99,7 +99,9 @@ int  cb_flush(CBFILE **cbs);
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
 Allways when the block is full, it's written to output.</p>
 
-<p>Two byte transfer functionality, fixed or UTF-16 is not yet added.</p>
+<p>Two or four byte transfer functionality, fixed, UTF-16 or UTF-32 is not yet added. Automatic encoding detection
+  based on BOM from first bytes is in progress.
+</p>
 
 <h4>Data structures</h4>
 
@@ -138,7 +140,7 @@ Allways when the block is full, it's written to output.</p>
 int  cb_free_cbfile(CBFILE **cbs);
 </code></pre>
 
-<p>Remember to free CBFILE:s memory after use.</p>
+<p>CBFILE:s memory should be freed after use.</p>
 
 <h4>Data read</h4>
 
@@ -169,8 +171,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
   Last pairs value has control characters. cb_get_chr function reads 
   characters without flow control. It's in the programmers responsibility 
   to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary.
-  Best practise </i> is to leave the cursor at the end of the value after reading.  
-  Remember to stop reading at '&amp;'.
+  The cursor has to be left at the end of the value after reading, at character '&amp;'.  
 </p>
 
 <p>Example of nesting consecutive streams:</p>
