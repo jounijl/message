@@ -598,7 +598,9 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
 	for( indx=0; indx<*namelength && err==CBSUCCESS; ++indx ){
 	  err = cb_put_ucs_chr( (unsigned long int)(*name)[indx], &ucsname, &chrbufindx, bufsize);
 	}
-	return cb_set_cursor_ucs( &(*cbs), &ucsname, &chrbufindx);
+	err = cb_set_cursor_ucs( &(*cbs), &ucsname, &chrbufindx);
+	free(ucsname);
+	return err;
 }
 
 /*
