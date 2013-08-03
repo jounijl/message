@@ -282,6 +282,7 @@ if(nameptr==NULL){
         		}else{ // if in not null
 			   fprintf(stderr,"\ttest: Error, in was null.\n"); 
         		}
+			cb_flush(&out);
 
 			//
 			// Return
