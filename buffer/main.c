@@ -52,10 +52,12 @@ void usage ( char *progname[]);
 /*
  * Program to test the library ("cb").
  *
- * progname <encoding> <blocksize> <buffersize> <filename> [ <filename> ... ]
+ * progname <encoding> <blocksize> <buffersize> <filename> [ <filename> [...] ]
  *
  * Arguments are: input and outputs block size, buffer size and 
- * a list of filenames without it's postfix.
+ * a list of filenames without it's postfix. Encoding is input-files
+ * encoding. Program outputs ENCODINGS amount encodings starting 
+ * from 0.
  *
  * Reads name-value pairs from input and writes them to output
  * programmatically, changes encoding and repeats to every file
@@ -63,7 +65,7 @@ void usage ( char *progname[]);
  * - First run on one file:
  *   Reads names with nonexistent name
  * - Prints a list of names and offsets to stderr
- * - Second run on one file: finds all the names in the same order 
+ * - Second run on one file: finds all the names in reverse order 
  *   from buffer and prints the name and value to output.
  * - Prints any occurring errors and information to stderr
  * - CBFILE has to be emptied and renewed before changing encoding
@@ -215,16 +217,16 @@ int main (int argc, char *argv[]) {
 				if(fromend<(*name_list).namecount && nameptr!=NULL){
 			           nameptr = &(* (cb_name *) (*name_list).name );
 			           for(err=fromend; err<((*name_list).namecount-1) && fromend<(*name_list).namecount && nameptr!=NULL ;++err){
-				      //fprintf(stderr," [ %i | %i | %i ]", err, fromend, (*name_list).namecount);
 			              nameptrtmp = &(* (cb_name *) (*nameptr).next ); // count-1 pointers and a null pointer
 			              if(nameptrtmp!=NULL)
 				        nameptr = &(* nameptrtmp);
 				   }
 				}
-// 24.5.2013, jäi kohtaan: nimi ei tulostu, aiempi segfaultkorjaus (pointerien takia) voi olla huonosti tehty
-if(nameptr==NULL){
-  fprintf(stderr," nameptr was NULL ");
-}
+
+				if(nameptr==NULL){ // 24.5.2013, ehka turha
+				  fprintf(stderr," nameptr was NULL ");
+				}
+
 				fromend++;
 				fprintf(stderr," [%i/%i] setting cursor to name [", ((*name_list).namecount-fromend+1), (*name_list).namecount );
 				err = cb_print_ucs_chrbuf( &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
@@ -246,20 +248,20 @@ if(nameptr==NULL){
 				   // Write everything to output
 				   //
 				   // Name:
-                                   err=CBSUCCESS;
+                                   err=CBSUCCESS; ret=CBSUCCESS;
 				   if( nameptr!=NULL && (*nameptr).namebuf!=NULL ){
-                                     while( err==CBSUCCESS && ret==CBSUCCESS && outindx<(*nameptr).namelen){
-				       // kesken
-                                       fprintf(stderr,"+");
+                                     while( err<CBERROR && ret==CBSUCCESS && outindx<(*nameptr).namelen){
                                        ret = cb_get_ucs_chr(&chrout, &( (*nameptr).namebuf ), &outindx, (*nameptr).namelen);
                                        outbcount = 4;
 				       if( ret<CBERROR && ret!=CBBUFFULL )
                                          err = cb_put_chr(&out, &chrout, &outbcount, &outstoredsize);
                                        if( err!=CBSUCCESS ){ fprintf(stderr,"\ttest:  cb_put_chr, err %i.", err ); }
                                      }
-                                     //ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); 
-                                   } err=CBSUCCESS;
+                                   } err=CBSUCCESS; outindx=0;
                                    if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno ); }
+				   //
+				   // '='
+				   err = cb_put_chr(&out, &(*out).rstart, &outbcount, &outstoredsize);
 				   // Value:
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
@@ -277,6 +279,9 @@ if(nameptr==NULL){
 		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				   } // while
 				   fprintf(stderr,"]\n" );
+				   //
+				   // '&'
+				   err = cb_put_chr(&out, &(*out).rend, &outbcount, &outstoredsize);
 				} // else if
                            } // while
         		}else{ // if in not null
@@ -297,6 +302,7 @@ if(nameptr==NULL){
 
 			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
 		} // while (encodings)
+
 		// Close files
 		if(infile[0]=='-'){
 		  err = close( (*in).fd ); if(err!=0){ fprintf(stderr,"\ttest: close in failed."); }
