@@ -80,13 +80,13 @@ int main (int argc, char *argv[]) {
 	cb_name *nameptr = NULL;
 	cb_name *nameptrtmp = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
-	int fromend=0,	encodingstested=0, atoms=0;
+	int fromend=0,	encodingstested=0, atoms=0, outindx=0, outbcount=0, outstoredsize=0;
 	unsigned char *filename = NULL;
 	char infile[FILENAMELEN+5];
 	char outfile[FILENAMELEN+6];
 	int filenamelen = 0, err = 0;
 	ssize_t ret = (ssize_t) 0;
-	unsigned long int chr = 0;
+	unsigned long int chr = 0, chrout = 0;
 	unsigned long int prevchr = 0;
 	char *str_err = NULL;
 
@@ -246,9 +246,20 @@ if(nameptr==NULL){
 				   // Write everything to output
 				   //
 				   // Name:
-				   if( nameptr!=NULL && (*nameptr).namebuf!=NULL )
-                                     ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); 
-                                   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno); }
+                                   err=CBSUCCESS;
+				   if( nameptr!=NULL && (*nameptr).namebuf!=NULL ){
+                                     while( err==CBSUCCESS && ret==CBSUCCESS && outindx<(*nameptr).namelen){
+				       // kesken
+                                       fprintf(stderr,"+");
+                                       ret = cb_get_ucs_chr(&chrout, &( (*nameptr).namebuf ), &outindx, (*nameptr).namelen);
+                                       outbcount = 4;
+				       if( ret<CBERROR && ret!=CBBUFFULL )
+                                         err = cb_put_chr(&out, &chrout, &outbcount, &outstoredsize);
+                                       if( err!=CBSUCCESS ){ fprintf(stderr,"\ttest:  cb_put_chr, err %i.", err ); }
+                                     }
+                                     //ret = write( (*out).fd, &( (*nameptr).namebuf ), (size_t) (*nameptr).namelen ); 
+                                   } err=CBSUCCESS;
+                                   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno ); }
 				   // Value:
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
