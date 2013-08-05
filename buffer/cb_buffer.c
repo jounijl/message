@@ -765,9 +765,9 @@ cb_set_cursor_alloc_name:
 	      ;
 #endif
 #ifdef CBSTATETOPOLOGY
-//	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
-//	      /* The same as in CBSTATEFUL. Saves space. */
-//	      ;
+	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
+	      /* The same as in CBSTATEFUL. Saves space. */
+	      ;
 #endif
 	  }else{ // save character to buffer
 	      //fprintf(stderr, "set_cursor: talletetaan merkki:");
