@@ -45,11 +45,19 @@
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rstart to rend
 #define CBCOMMENTEND        '\n'
 
-// cb_encoding.h
-//#define CBENCODINGBYTES      0   // Default maximum bytes, set as 0 for any bytes
-//#define CBENCODING           0   // Default encoding, 0 auto, 3 utf, 1 any one byte
 
-/* #define CBNESTING */
+/*
+ * This setting takes account only outermost name and leaves all inner 
+ * name-value pairs in the value. 
+ *
+ * It is possible to open a new CBFILE to read from a value. Inner names 
+ * can not be used from the same CBFILE.
+ *
+ * Reading a value is unlimited. Buffer is in use only from '&' to '='.
+ *
+ * Presedence is over CBSTATEFUL if it is set at the same time. 
+ */
+#define CBSTATETOPOLOGY
 
 /*
  * Stateful. After first value separator ('='), state is changed to read to next name separator 
@@ -61,11 +69,13 @@
  * of the value. If reader function ignores flow control characters, this setting might 
  * cause invalid names in name-valuepair list. This is a better setting for input.
  *
- * Reading a value is unlimited (infinite). Buffer is in use only from '&' to '='.
+ * Reading a value is unlimited. Buffer is in use only from '&' to '='.
  */
 #define CBSTATEFUL
 
 /*
+ * Default setting, no defines.
+ *
  * To use only value separator ('=') to separate names. Values can contain new
  * inner names and new values. 
  *
@@ -78,16 +88,17 @@
  *
  * This is more relaxed setting and provides more features. Programmer has to decide
  * how to read the values flow control characters. Cursor has to be left at the end
- * of the value. This is a good setting for output from known input source, for
- * reporting.
+ * of the value. This is a good setting to read output from known input source, in
+ * reporting for example.
  *
  * Reading names and values are restricted to read buffer size, size is CBNAMEBUFLEN 
  * with 4 byte characters.
  */
 #undef CBSTATEFUL
+//#undef CBSTATETOPOLOGY
 
 // CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
-#define SP( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
+#define LWS( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
 
 #include "./cb_encoding.h"
 
@@ -224,5 +235,5 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 // Debug
 int  cb_print_names(CBFILE **str);
 
-// Returns byte order marks encoding from up to eight first characters (bom is allways the first character)
+// Returns byte order marks encoding from two to four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // not yet tested 26.7.2013

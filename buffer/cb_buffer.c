@@ -623,6 +623,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int  charbuflen = 0;
 	cb_name *fname  = NULL;
 	char atvalue=0;
+#ifdef CBSTATETOPOLOGY
+	int openpairs=0; // starts from 0
+#endif
 //	int temp=0; // Temp 30.3.2013 
 
 	if( cbs==NULL || *cbs==NULL )
@@ -683,7 +686,12 @@ cb_set_cursor_alloc_name:
 	  }
 	  // End of automatic encoding detection
 
-#ifdef CBSTATEFUL
+#ifdef CBSTATETOPOLOGY
+	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs!=0) // count of rstarts can be greater than the count of rends
+	     ++openpairs; 
+	  else if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs==0){ // outermost pair
+             ++openpairs;
+#elif CBSTATEFUL
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && atvalue!=1){ // '=', save name, 13.4.2013, do not save when = is in value
 #else
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
@@ -705,7 +713,7 @@ cb_set_cursor_alloc_name:
                       }
                     }
                     //if( cmp!=' ' && cmp!='\t' && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
-                    if( ! SP( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
+                    if( ! LWS( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
                       buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
@@ -738,7 +746,12 @@ cb_set_cursor_alloc_name:
 		else
 		  return CBSUCCESS; // cursor set
 	      }
+#ifdef CBSTATETOPOLOGY
+	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend ){ // '&', start new name
+	      if(openpairs>=1) --openpairs;
+#else
 	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
+#endif
 	      atvalue=0; free(fname); fname = NULL;
  	      goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
@@ -750,6 +763,11 @@ cb_set_cursor_alloc_name:
                * ( name1=name2=value& becomes name1 once, otherwice (was) name1name2. )
 	       */
 	      ;
+#endif
+#ifdef CBSTATETOPOLOGY
+//	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
+//	      /* The same as in CBSTATEFUL. Saves space. */
+//	      ;
 #endif
 	  }else{ // save character to buffer
 	      //fprintf(stderr, "set_cursor: talletetaan merkki:");

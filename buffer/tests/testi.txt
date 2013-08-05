@@ -8,5 +8,7 @@ neljÄs=4&
 un_known=unknown here&
 neljÅs=4&
 neljÖs=4&
-viides=kuudes=viimeisen v\&o, vd ja kdes&
-seitsemäs=stsemännen arvo&
+viides=kuudes<rstart here>viimeisen v\&o, vd ja kdes&
+seitsemäs=stsemännen arvo&a&b&c&
+kahdeksas=sisakkain on yhdeksas=yhdeksannen arvo& kahdeksannen loppu&
+kymmenes=kymmenennen arvo&
