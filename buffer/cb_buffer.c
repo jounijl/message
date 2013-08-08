@@ -50,22 +50,14 @@
  x Ohjelma joka kirjoittaa UTF:aa luettuaan UCS:aa ja pain vastoin
  - cb_get_chr tunnistamaan useamman eri koodauksen virheellinen tavu, CBNOTUTF jne.
    erilaiset yhteen funktiossa cb_get_chr ja siita yleisemmin CBENOTINENCODING tms.
- - Testaukseen, arvoksi nimiparin nakoinen yhdistelma, ikaankuin SQL injection. (Tama
-   tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla jos syotteessa on ohjausmerkki,
-   http:ssa esim. on hex-esitysmuotoinen koodaus eika ohjausmerkit sisally.)
- - CBSTATEFULNESTING 
-   cb_set_cursor, laskuri merkille '=' ja merkille '&', jos '&'='=', vahentaa molempia ja kun molemmat ovat taas
-   '1', lisaa nimen listaan (ei ota sisakkaisia nimia), todellinen "topologia" jos topologian haluaa
+ - Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
+   (Tama tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla, http:ssa ei tarvitse.)
+ x CBSTATETOPOLOGY
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen);
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
-
-// 5.4.2013:
-//int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-//int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-//int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 
 int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
@@ -254,8 +246,7 @@ int  cb_allocate_name(cb_name **cbn){
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
 	if(*cbn==NULL)
 	  return CBERRALLOC;
-	// (**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(CBNAMEBUFLEN+1));
-	(**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(CBNAMEBUFLEN+1)); // 17.3.2013
+	(**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(CBNAMEBUFLEN+1));
 	if((**cbn).namebuf==NULL)
 	  return CBERRALLOC;
 	for(err=0;err<CBNAMEBUFLEN;++err)
@@ -364,15 +355,12 @@ int  cb_reinit_cbfile(CBFILE **buf){
 }
 
 int  cb_free_cbfile(CBFILE **buf){ 
-	int err=CBSUCCESS; // char *point = NULL;
+	int err=CBSUCCESS; 
 	cb_reinit_buffer(&(**buf).cb); // free names
 	if((*(**buf).cb).buf!=NULL)
 	  free((**buf).cb->buf); // free buffer data
 	free((**buf).cb); // free buffer
-//	if(leavebuf!=1)
-	  free((**buf).blk->buf); // free block data
-//	else
-//	  point = &(*(*(**buf).blk).buf);
+        free((**buf).blk->buf); // free block data
 	free((**buf).blk); // free block
 	if((**buf).onlybuffer==0){
 	  err = close((**buf).fd); // close stream
@@ -470,8 +458,7 @@ int  cb_flush(CBFILE **cbs){
 
 /* added 15.12.2009, not yet tested */
 // Write to block to read again (in regular expression matches for example).
-//int  cb_write_to_block(CBFILE **cbs, char *buf, int size){
-int  cb_write_to_block(CBFILE **cbs, unsigned char *buf, int size){ // 17.3.2013
+int  cb_write_to_block(CBFILE **cbs, unsigned char *buf, int size){ 
 	int indx=0;
 	if(*cbs!=NULL && buf!=NULL && size!=0)
 	  if((**cbs).blk!=NULL){
@@ -571,6 +558,7 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size){
 	return cb_get_buffer_range(cbs,buf,size,&from,&to);
 }
 
+// Allocates new buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to){ 
 	int index=0;
 	if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
@@ -581,7 +569,6 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, i
 	  (*buf)[index] = (*cbs).buf[index+*from];
 	}
 	*size = index;
-//	*buf = &(*(*cbs).buf); *size=(*cbs).contentlen;
 	return CBSUCCESS;
 }
 
@@ -626,7 +613,6 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 #ifdef CBSTATETOPOLOGY
 	int openpairs=0; // starts from 0
 #endif
-//	int temp=0; // Temp 30.3.2013 
 
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
@@ -667,7 +653,6 @@ cb_set_cursor_alloc_name:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
-	//while( err<CBERROR && err!=CBSTREAMEND && index < CBNAMEBUFLEN && buferr == CBSUCCESS){ // 5.4.2013
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ // 9.4.2013
 
 	  //
@@ -726,19 +711,7 @@ cb_set_cursor_alloc_name:
 		cb_remove_name_from_stream(cbs);
 	        fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	      }
-/*	      if( ucsname == NULL )
-	        fprintf(stderr,"\nname was null.");
-	      if( (*ucsname) == NULL )
-	        fprintf(stderr,"\n(*ucsname) was null.");
-	      else
-	        for(temp=0; temp<*namelength; ++temp)
-	          fprintf(stderr,"%c", (*ucsname)[temp]);
-	      if( (*fname).namebuf == NULL )
-	        fprintf(stderr,"(*fname).namebuf was null.");
-	      else
-	        for(temp=0; temp<*namelength; ++temp)
-	          fprintf(stderr,"%c", (*fname).namebuf[temp]);
-*/
+
   	      if(cb_compare((unsigned char **)ucsname, *namelength, &(*fname).namebuf, (*fname).namelen) == CBMATCH){ // 30.3.2013
 	        (**cbs).cb->index = (**cbs).cb->contentlen; // cursor
 	        if(err==CBSTREAM)
@@ -747,8 +720,8 @@ cb_set_cursor_alloc_name:
 		  return CBSUCCESS; // cursor set
 	      }
 #ifdef CBSTATETOPOLOGY
-	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend ){ // '&', start new name
-	      if(openpairs>=1) --openpairs;
+          }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
+	      if(openpairs>=1) --openpairs; // (reader must read similarly, with openpairs count or otherwice)
 #else
 	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
 #endif
@@ -770,7 +743,6 @@ cb_set_cursor_alloc_name:
 	      ;
 #endif
 	  }else{ // save character to buffer
-	      //fprintf(stderr, "set_cursor: talletetaan merkki:");
 	      buferr = cb_put_ucs_chr(chr, &charbuf, &index, CBNAMEBUFLEN); // 5.4.2013
 	  }
 	  chprev = chr;

@@ -55,7 +55,9 @@
  *
  * Reading a value is unlimited. Buffer is in use only from '&' to '='.
  *
- * Presedence is over CBSTATEFUL if it is set at the same time. 
+ * Reader function should also implement counter counting the open pairs.
+ * It should count every open '=' and read beyond every paired '&' until 
+ * count is zero at last '&'.
  */
 #define CBSTATETOPOLOGY
 
@@ -71,10 +73,10 @@
  *
  * Reading a value is unlimited. Buffer is in use only from '&' to '='.
  */
-#define CBSTATEFUL
+//#define CBSTATEFUL
 
 /*
- * Default setting, no defines.
+ * Default setting with no defines.
  *
  * To use only value separator ('=') to separate names. Values can contain new
  * inner names and new values. 
@@ -94,7 +96,7 @@
  * Reading names and values are restricted to read buffer size, size is CBNAMEBUFLEN 
  * with 4 byte characters.
  */
-#undef CBSTATEFUL
+//#undef CBSTATEFUL
 //#undef CBSTATETOPOLOGY
 
 // CR LF Space Tab (RFC 5198: CR can appear only followed by LF)

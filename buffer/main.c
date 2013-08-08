@@ -44,26 +44,28 @@
 
 #define ENCODINGS 2
 
+#undef WINDOWSOS
+
 #include "../include/cb_buffer.h"
 
 int  main (int argc, char *argv[]);
 void usage ( char *progname[]);
 
 /*
+ *
  * Program to test the library ("cb").
  *
  * progname <encoding> <blocksize> <buffersize> <filename> [ <filename> [...] ]
  *
  * Arguments are: input and outputs block size, buffer size and 
- * a list of filenames without it's postfix. Encoding is input-files
- * encoding. Program outputs ENCODINGS amount encodings starting 
- * from 0.
+ * a list of filenames. Encoding is input-files encoding. 
+ * Program outputs ENCODINGS amount encodings starting from 0.
  *
  * Reads name-value pairs from input and writes them to output
  * programmatically, changes encoding and repeats to every file
  * in list.
  * - First run on one file:
- *   Reads names with nonexistent name
+ *   Reads names with nonexisting name
  * - Prints a list of names and offsets to stderr
  * - Second run on one file: finds all the names in reverse order 
  *   from buffer and prints the name and value to output.
@@ -83,6 +85,10 @@ int main (int argc, char *argv[]) {
 	cb_name *nameptrtmp = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
 	int fromend=0,	encodingstested=0, atoms=0, outindx=0, outbcount=0, outstoredsize=0;
+	static unsigned long int nl = 0x0A; // lf
+#ifdef WINDOWSOS
+	static unsigned long int cr = 0x0D; // cr
+#endif
 	unsigned char *filename = NULL;
 	char infile[FILENAMELEN+5];
 	char outfile[FILENAMELEN+6];
@@ -91,6 +97,9 @@ int main (int argc, char *argv[]) {
 	unsigned long int chr = 0, chrout = 0;
 	unsigned long int prevchr = 0;
 	char *str_err = NULL;
+#ifdef CBSTATETOPOLOGY
+	int openpairs=0;
+#endif
 
 	// Allocate new name list
 	// Allocation 
@@ -266,7 +275,13 @@ int main (int argc, char *argv[]) {
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				   fprintf(stderr," (*out).encoding=%d (*out).encodingbytes=%d content: [", (*out).encoding, (*out).encodingbytes );
+#ifdef CBSTATETOPOLOGY
+				   if( (*out).rstart == chr )
+				     ++openpairs;
+				   while( ! ( (*out).bypass != prevchr && (*out).rend == chr ) && openpairs==0 && err<CBNEGATION){
+#else
 				   while( ! ( (*out).bypass != prevchr && (*out).rend == chr ) && err<CBNEGATION){
+#endif
 				      if(err==CBNOTUTF){
 					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
 				      }else if(err<CBERROR){
@@ -277,11 +292,21 @@ int main (int argc, char *argv[]) {
 				      fprintf(stderr,"%C", (unsigned int) chr );
 				      prevchr = chr;
 		                      err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
+#ifdef CBSTATETOPOLOGY
+				      if( (*out).bypass != prevchr && (*out).rstart == chr )
+				        ++openpairs;
+				      if( (*out).bypass != prevchr && (*out).rend == chr && openpairs>0)
+				        --openpairs;
+#endif
 				   } // while
 				   fprintf(stderr,"]\n" );
 				   //
-				   // '&'
+				   // '&' and new line
 				   err = cb_put_chr(&out, &(*out).rend, &outbcount, &outstoredsize);
+#ifdef WINDOWSOS
+				   err = cb_put_chr(&out, &cr, &outbcount, &outstoredsize);
+#endif
+				   err = cb_put_chr(&out, &nl, &outbcount, &outstoredsize);
 				} // else if
                            } // while
         		}else{ // if in not null
