@@ -84,22 +84,22 @@ using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
-not in the buffer anymore. It is allready in stream and is not automatically saved anymore. </p>
+not automatically saved in the buffer anymore.</p>
 
 <pre><code>int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_flush(CBFILE **cbs);
 </code></pre>
 
-<p>Library reads UCS 32-bit word length characters from UTF-8 transfer data. It reads and writes to or from one byte or UTF-8 encoded transfer data.</p>
+<p>Library reads UCS 32-bit length characters from UTF-8 transfer data. It reads and writes to or from one byte or UTF-8 encoded transfer data.</p>
 
 <p>Program sets bytecount and storedbytes both in reading and writing. Bytecount is the count of bytes in 'chr' and storedbytes is the stored size in stream.</p>
 
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
 Allways when the block is full, it's written to output.</p>
 
-<p>Automatic encoding detection based on first bytes BOM is added. It is possible to use also UTF-16 and 
-UTF-32 transfer encodings or any two or four byte encoding. Adding an encoding is possible.
+<p>Automatic encoding detection based on first bytes BOM is added. Now it is possible to use also UTF-16 and 
+UTF-32 transfer encoding or any two or four byte encoding. 
 </p>
 
 <h4>Data structures</h4>
@@ -189,8 +189,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
   reading a POST responce from browser, parsing internet message header files 
   or in interprocess messaging.
 </p>
-<p>Files cb_buffer.h and cb_encoding.h contain more specific notes on defines and some
-explanations on other functions.</p>
+<p>Include -files contain specific notes on defines and explanations on other functions.</p>
 
 <h5>Return values</h5>
 <p>Return values are listed in:</p>
@@ -205,7 +204,9 @@ explanations on other functions.</p>
 
 <h3>Issues and bug tracking</h3>
 
-<p>Information about issues and bugs are welcomed. Very welcomed is information about using the library. Library was tested with some tests before writing this. It appears useful and bugs can be fixed.</p>
+<p>Information about issues and bugs are welcomed. Very welcomed is information about using the library.
+Using the library validates it.</p>
+<p>Library was tested with some tests before writing this. New features should be tested.</p>
 
 <p><strong>Page history</strong>
 <a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
@@ -214,12 +215,12 @@ explanations on other functions.</p>
 <p>Branch 'ucsflowcontrol' 6.4.2013</p>
 <p><strong>References</strong>
 <ul>
+<li>RFC-822  "Standard Format of the ARPA Internet Text Messages"</li>
 <li>RFC-2822 "Internet Message Format"</li>
-<li>RFC-822 "Standard Format of the ARPA Internet Text Messages"</li>
 <li>RFC-2616 "Hypertext Transfer Protocol"</li>
 <li>RFC 5198 "Unicode Format for Network Interchange"</li>
 <li>RFC 3629 "UTF-8, a transformation format of ISO 10646"</li>
-<li>RFC 20 "ASCII format for Network Interchange"</li>
+<li>RFC 20   "ASCII format for Network Interchange"</li>
 </ul>
 </p>
 
