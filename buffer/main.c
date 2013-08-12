@@ -42,7 +42,7 @@
 #define BLKSIZE 	1024
 #define FILENAMELEN 	100
 
-#define ENCODINGS 10
+#define ENCODINGS 9
 
 #undef WINDOWSOS
 
@@ -164,7 +164,7 @@ int main (int argc, char *argv[]) {
 		//
 		// Every encoding to output (with file prefixes)
 		cb_set_encoding(&in, encoding);
-		while(encodingstested<ENCODINGS){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
+		while(encodingstested<=ENCODINGS){ // 0 one byte, 1 utf-8, 2 not ready (encodingbytes not set from set_encoding)
 			// Set encoding
 			cb_set_encoding(&out, encoding);
 

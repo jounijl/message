@@ -50,7 +50,7 @@
 /*
  * This setting enables multibyte, UTF-16 and UTF-32 support if
  * the machine processor has big endian words (for example PowerPC, ARM, 
- * Sparc or some Motorola processors). Multibyte does not yet function
+ * Sparc and some Motorola processors). Multibyte does not yet function
  * properly 11.8.2013.
  */
 //#undef BIGENDIAN
@@ -146,7 +146,7 @@ typedef struct CBFILE{
 	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
 	unsigned long int   cend;	// Comment end character
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
-	int                 encoding;   // list of encodings are in cb_encoding.h 
+	int                 encoding;   // list of encodings is in file cb_encoding.h 
 } CBFILE;
 
 /*
