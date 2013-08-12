@@ -78,7 +78,8 @@ int write_ucs_5B( int count ) {
 	          continue;
 
 		chr = orchr | (unsigned int) str[0] ;
-	        err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
+                //err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
+                err = cb_put_chr(&out, chr, &bcount, &strdbytes ); // 12.8.2013
 		--count;
 		//fprintf(stderr, "|%lx", chr );
 		if(err>CBERROR)
@@ -126,7 +127,8 @@ int write_ucs_2B( int count ) {
 
 		chr = orchr | str[0] ;
 		//fprintf(stderr, "|%x%x", (int) chr>>8, (int) ( chr & 0xff ) );
-	        err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
+	        //err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
+	        err = cb_put_chr(&out, chr, &bcount, &strdbytes ); // 12.8.2013
 		--count;
 		if(err>CBERROR)
 		  fprintf(stderr,"\nError at cb_put_chr.");

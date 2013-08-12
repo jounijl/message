@@ -30,13 +30,15 @@
 #define CBNOENCODING        16
 #define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
 #define CBEMPTY             18
+#define CBWRONGENCODINGCALL 19
+#define CBUCSCHAROUTOFRANGE 20
 
-#define CBERROR	            20
-#define CBERRALLOC          21
-#define CBERRFD             22
-#define CBERRFILEOP         23
-#define CBERRFILEWRITE      24
-#define CBERRBYTECOUNT      25
+#define CBERROR	            30
+#define CBERRALLOC          31
+#define CBERRFD             32
+#define CBERRFILEOP         33
+#define CBERRFILEWRITE      34
+#define CBERRBYTECOUNT      35
 
 #define CBNAMEBUFLEN        1024
 #define CBRESULTSTART       '='
@@ -45,6 +47,13 @@
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rstart to rend
 #define CBCOMMENTEND        '\n'
 
+/*
+ * This setting enables multibyte, UTF-16 and UTF-32 support if
+ * the machine processor has big endian words (for example PowerPC, ARM, 
+ * Sparc or some Motorola processors). Multibyte does not yet function
+ * properly 11.8.2013.
+ */
+//#undef BIGENDIAN
 
 /*
  * This setting takes account only outermost name and leaves all inner 
@@ -59,7 +68,7 @@
  * It should count every open '=' and read beyond every paired '&' until 
  * count is zero at last '&'.
  */
-#define CBSTATETOPOLOGY
+//#define CBSTATETOPOLOGY
 
 /*
  * Stateful. After first value separator ('='), state is changed to read to next name separator 
@@ -137,7 +146,7 @@ typedef struct CBFILE{
 	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
 	unsigned long int   cend;	// Comment end character
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
-	int                 encoding; // utf=0, any one byte=1, 
+	int                 encoding;   // list of encodings are in cb_encoding.h 
 } CBFILE;
 
 /*
@@ -190,7 +199,8 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 
 // Characters according to bytecount and encoding.
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
-int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+//int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes); // 12.8.2013
 // From unicode to and from utf-8
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
@@ -199,7 +209,7 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
-int  cb_put_ch(CBFILE **cbs, unsigned char *ch);
+int  cb_put_ch(CBFILE **cbs, unsigned char ch); // *ch -> ch 12.8.2013
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf); // multibyte
 int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
@@ -237,5 +247,19 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 // Debug
 int  cb_print_names(CBFILE **str);
 
-// Returns byte order marks encoding from two to four first bytes (bom is allways the first character)
-int  cb_bom_encoding(CBFILE **cbs); // not yet tested 26.7.2013
+// Returns byte order marks encoding from two to four first bytes (bom is allways at first)
+int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013
+int  cb_write_bom(CBFILE **cbs); // 12.8.2013
+
+// New encodings 10.8.2013, not yet ready or tested, chr is in UCS-encoding
+int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
+int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
+int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
+int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
+
+// Big and little endian functions
+unsigned int  cb_reverse_four_bytes(unsigned int  from); // change four bytes order
+unsigned int  cb_reverse_two_bytes(unsigned  int  from); // change two bytes order (first 16 bits are lost)
+unsigned int  cb_reverse_int32_bits(unsigned int  from); // 32 bits
+unsigned int  cb_reverse_int16_bits(unsigned int  from); // reverse last 16 bits and return them
+unsigned char cb_reverse_char8_bits(unsigned char from); // 8 bits

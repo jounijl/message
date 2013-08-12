@@ -42,7 +42,7 @@
 #define BLKSIZE 	1024
 #define FILENAMELEN 	100
 
-#define ENCODINGS 2
+#define ENCODINGS 10
 
 #undef WINDOWSOS
 
@@ -186,6 +186,8 @@ int main (int argc, char *argv[]) {
 			  fprintf(stderr,"\ttest: open failed, infile %s outfile %s.\n", infile, outfile);
         		  return ERROR;
 		        }
+                        // Byte order mark
+                        cb_write_bom(&out);
 
 			name_list_ptr = &(*(*in).cb);
 			(*in).cb = &(*name_list);
@@ -263,14 +265,16 @@ int main (int argc, char *argv[]) {
                                        ret = cb_get_ucs_chr(&chrout, &( (*nameptr).namebuf ), &outindx, (*nameptr).namelen);
                                        outbcount = 4;
 				       if( ret<CBERROR && ret!=CBBUFFULL )
-                                         err = cb_put_chr(&out, &chrout, &outbcount, &outstoredsize);
+                                         err = cb_put_chr(&out, chrout, &outbcount, &outstoredsize); // 12.8.2013
+                                         //err = cb_put_chr(&out, &chrout, &outbcount, &outstoredsize);
                                        if( err!=CBSUCCESS ){ fprintf(stderr,"\ttest:  cb_put_chr, err %i.", err ); }
                                      }
                                    } err=CBSUCCESS; outindx=0;
                                    if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno ); }
 				   //
 				   // '='
-				   err = cb_put_chr(&out, &(*out).rstart, &outbcount, &outstoredsize);
+				   //err = cb_put_chr(&out, &(*out).rstart, &outbcount, &outstoredsize);
+				   err = cb_put_chr(&out, (*out).rstart, &outbcount, &outstoredsize); // 12.8.2013
 				   // Value:
 				   // From '=' and after it to the last nonbypassed '&' and it.
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
@@ -285,7 +289,8 @@ int main (int argc, char *argv[]) {
 				      if(err==CBNOTUTF){
 					fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
 				      }else if(err<CBERROR){
-				        err = cb_put_chr(&out, &chr, &encbytes, &strdbytes ); 
+				        //err = cb_put_chr(&out, &chr, &encbytes, &strdbytes ); 
+				        err = cb_put_chr(&out, chr, &encbytes, &strdbytes ); // 12.8.2013
 				      }
 				      if( err!=CBSUCCESS && err!=CBSTREAM ){
 				        fprintf(stderr,"\ttest: encbytes=%d strdbytes=%d cb_get_chr cb_put_chr err=%i.\n", encbytes, strdbytes, err ); }
@@ -302,11 +307,14 @@ int main (int argc, char *argv[]) {
 				   fprintf(stderr,"]\n" );
 				   //
 				   // '&' and new line
-				   err = cb_put_chr(&out, &(*out).rend, &outbcount, &outstoredsize);
+				   //err = cb_put_chr(&out, &(*out).rend, &outbcount, &outstoredsize);
+				   err = cb_put_chr(&out, (*out).rend, &outbcount, &outstoredsize); // 12.8.2013
 #ifdef WINDOWSOS
-				   err = cb_put_chr(&out, &cr, &outbcount, &outstoredsize);
+				   //err = cb_put_chr(&out, &cr, &outbcount, &outstoredsize);
+				   err = cb_put_chr(&out, cr, &outbcount, &outstoredsize); // 12.8.2013
 #endif
-				   err = cb_put_chr(&out, &nl, &outbcount, &outstoredsize);
+				   //err = cb_put_chr(&out, &nl, &outbcount, &outstoredsize);
+				   err = cb_put_chr(&out, nl, &outbcount, &outstoredsize); // 12.8.2013
 				} // else if
                            } // while
         		}else{ // if in not null

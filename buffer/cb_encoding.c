@@ -26,26 +26,66 @@ int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
 int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
 
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-	if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
-	if((**cbs).encoding==0) // utf
-	  return cb_get_ucs_ch(cbs, &(*chr), &(*bytecount), &(*storedbytes) );
-	if((**cbs).encoding==1){ // 1 byte
-	  *bytecount=(**cbs).encodingbytes;
-	  *storedbytes=(**cbs).encodingbytes;
-	  return cb_get_multibyte_ch(cbs, &(*chr));
-	}else
-	  return CBNOENCODING;
+       int err=CBSUCCESS;
+       if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
+        if((**cbs).encoding==CBENCAUTO) // auto
+          return cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+        if((**cbs).encoding==CBENCUTF8) // utf-8
+         return cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+        if((**cbs).encoding==CBENC1BYTE){ // 1 byte or more
+          *bytecount=(**cbs).encodingbytes;
+          *storedbytes=(**cbs).encodingbytes;
+          return cb_get_multibyte_ch(&(*cbs), &(*chr));
+        }
+        if((**cbs).encoding==CBENC2BYTE || (**cbs).encoding==CBENC4BYTE){ // 2 bytes or more, endianness
+          *bytecount=(**cbs).encodingbytes;
+          *storedbytes=(**cbs).encodingbytes;
+          err = cb_get_multibyte_ch(&(*cbs), &(*chr)); 
+#ifdef BIGENDIAN
+          // In stream allways in little endian form if LE machine or if BIGENDIAN is defined in BE machines
+          if( (**cbs).encoding==CBENC4BYTE )
+            *chr = cb_reverse_four_bytes(*chr);
+          if( (**cbs).encoding==CBENC2BYTE )
+            *chr = cb_reverse_two_bytes(*chr);
+#endif
+          return err;
+        }
+        if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
+          return cb_get_utf32_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+        if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
+          return cb_get_utf16_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+        return CBNOENCODING;
 }
-int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-	if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
-	if((**cbs).encoding==0) // utf
-	  return cb_put_ucs_ch(cbs, &(*chr), &(*bytecount), &(*storedbytes) );
-	if((**cbs).encoding==1){ // 1 byte
-	  *bytecount=(**cbs).encodingbytes;
-	  *storedbytes=(**cbs).encodingbytes;
-	  return cb_put_multibyte_ch( cbs, *chr );
-	}else
-	  return CBNOENCODING;
+//int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
+int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes){ // 12.8.2013
+        unsigned long int schr; schr = chr;
+        int err=CBSUCCESS; 
+        if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
+        if((**cbs).encoding==CBENCUTF8) // utf
+          return cb_put_ucs_ch(cbs, &chr, &(*bytecount), &(*storedbytes) );
+        if((**cbs).encoding==CBENC1BYTE){ // 1 byte
+          *bytecount=(**cbs).encodingbytes;
+          *storedbytes=(**cbs).encodingbytes;
+          return cb_put_multibyte_ch( cbs, chr );
+        }
+        if((**cbs).encoding==CBENC2BYTE || (**cbs).encoding==CBENC4BYTE){ // 2 bytes or more, endianness
+          *bytecount=(**cbs).encodingbytes;
+          *storedbytes=(**cbs).encodingbytes;
+#ifdef BIGENDIAN
+          // In stream allways in little endian order if LE machine or if BIGENDIAN is defined in BE machines
+          if( (**cbs).encoding==CBENC4BYTE )
+            schr = cb_reverse_four_bytes(chr);
+          if( (**cbs).encoding==CBENC2BYTE )
+            schr = cb_reverse_two_bytes(chr);
+#endif
+          err = cb_put_multibyte_ch( cbs, schr );
+          return err;
+        }
+        if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
+          return cb_put_utf32_ch(&(*cbs), &chr, &(*bytecount), &(*storedbytes) );
+        if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
+          return cb_put_utf16_ch(&(*cbs), &chr, &(*bytecount), &(*storedbytes) );
+        return CBNOENCODING;
 }
 
 int  cb_set_encodingbytes(CBFILE **str, int bytecount){
@@ -56,28 +96,28 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount){
 int  cb_set_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
-	if(number==CBENCAUTO) // automatic detection
+	if(number==CBENCAUTO) // automatic, tries bom and reverts to default if encoding is not found
 	  cb_set_encodingbytes(str,1); // detection has to be at one byte
 	if(number==CBENC1BYTE) // 1 byte
 	  cb_set_encodingbytes(str,1); // one byte
-	//if(number==CBENC2BYTE) // 2 byte
-	//  cb_set_encodingbytes(str,2); 
+	if(number==CBENC2BYTE) // 2 byte
+	  cb_set_encodingbytes(str,2); 
 	if(number==CBENCUTF8) // UTF-8
 	  cb_set_encodingbytes(str,0); // zero is any length
-	//if(number==CBENC4BYTE) // 4 byte
-	//  cb_set_encodingbytes(str,4); 
-	//if(number==CBENCUTF16LE) // UTF-16 LE
-	//  cb_set_encodingbytes(str,2); 
-	//if(number==CBENCPOSSIBLEUTF16LE) // Possible UTF-16 LE (bytecount in detection was less than 4), used as it is the same, UTF-16 LE
-	//  cb_set_encodingbytes(str,2); 
-	//if(number==CBENCUTF16BE) // UTF-16 BE
-	//  cb_set_encodingbytes(str,2); 
-	//if(number==5) // UTF-16 BE
-	//  cb_set_encodingbytes(str,2); 
-	//if(number==CBENCUTF32LE) // UTF-32 LE
-	//  cb_set_encodingbytes(str,4); 
-	//if(number==CBENCUTF32BE) // UTF-32 BE
-	//  cb_set_encodingbytes(str,4); 
+	if(number==CBENC4BYTE) // 4 byte
+	  cb_set_encodingbytes(str,4); 
+	if(number==CBENCUTF16LE) // UTF-16 LE
+	  cb_set_encodingbytes(str,2); // in case of third, reads one character more (not yet done 11.8.2013)
+	if(number==CBENCPOSSIBLEUTF16LE) // Possible UTF-16 LE (bytecount in detection was less than 4), used as it is the same, UTF-16 LE
+	  cb_set_encodingbytes(str,2); 
+	if(number==CBENCUTF16BE) // UTF-16 BE
+	  cb_set_encodingbytes(str,2); 
+	if(number==5) // UTF-16 BE
+	  cb_set_encodingbytes(str,2); 
+	if(number==CBENCUTF32LE) // UTF-32 LE
+	  cb_set_encodingbytes(str,4); 
+	if(number==CBENCUTF32BE) // UTF-32 BE
+	  cb_set_encodingbytes(str,4); 
 	return CBSUCCESS;
 }
 
@@ -114,7 +154,8 @@ int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
 	    tmp = tmp>>8;
 	  }
 	  byte = (unsigned char) tmp; tmp = ch;
-	  err  = cb_put_ch(cbs, &byte);
+	  //err  = cb_put_ch(cbs, &byte);
+	  err  = cb_put_ch(cbs, byte); // 12.8.2013
 	}
 	return err;
 }
@@ -147,7 +188,8 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	    chr_tmp = chr_tmp2>>8; chr_tmp2=chr_tmp;
 	  }
 	  byte = (unsigned char) chr_tmp;
-	  err = cb_put_ch(cbs, &byte); byteswritten++;
+	  // err = cb_put_ch(cbs, &byte); byteswritten++;
+	  err = cb_put_ch(cbs, byte); byteswritten++; // 12.8.2013
 	  if(err>CBNEGATION){ fprintf(stderr,"\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
 	  if(byteswritten==1){
 	        if(byteisutf8head2( byte )){  utfbytes=2;
@@ -269,7 +311,7 @@ cb_get_utf8_ch_return_bom:
 	return CBUTFBOM;
 }
 /*
- * Returns one 32 bit UCS word from UTF-8 and number of bytes UTF-8 uses to save
+ * Returns one 32 bit UCS word from UTF-8 and a number of bytes UTF-8 uses to save
  * it, 'bytecount'. Returns errors.
  */
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
@@ -336,7 +378,6 @@ int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 cb_get_ucs_ch_return:
 	if(*bytecount==0) *bytecount=1;
 	*chr = result;
-//	fprintf(stderr,"[%c]%i", (char)*chr, *bytecount );
 	//return CBSUCCESS;
 	return err; // 30.3.2013, all from cb_get_utf8_ch
 }
@@ -402,9 +443,9 @@ void cb_bytecount(unsigned long int *chr, int *count){
 	else count = 0;
 }
 
-// From four first bytes, use if contentlen is more than four
+// From four first bytes, use if contentlen is more than two, three or four
 int  cb_bom_encoding(CBFILE **cbs){
-	if(cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL ){
+	if( cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL ){
 	  if( (*(**cbs).cb).contentlen >= 3 ){
 	    if( (*(**cbs).cb).buf[0]==0xEF && (*(**cbs).cb).buf[1]==0xBB && (*(**cbs).cb).buf[2]==0xBF ) // UTF-8
 	      return CBENCUTF8;
@@ -432,4 +473,196 @@ int  cb_bom_encoding(CBFILE **cbs){
 	}else
 	    return CBERRALLOC;
 	return CBNOENCODING;
+}
+/*
+ * BOM should allways be the first characters, U+FEFF in encoding.
+ */
+int  cb_write_bom(CBFILE **cbs){
+        int err=CBNOENCODING; int e=0, y=0;
+        if(cbs==NULL || *cbs==NULL)
+          return CBERRALLOC;
+        // (**cbs).encoding==CBENCUTF8
+        if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || \
+            (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE ){
+          err = cb_put_chr(&(*cbs), (unsigned long int) 0xFEFF, &e, &y);
+        }
+        return err;
+}
+/* 
+ * UTF-16 Bit Distribution (Table 3-5, Unicode standard v.6.2)
+ * Scalar Value			UTF-16
+ * xxxxxxxxxxxxxxxx		xxxxxxxxxxxxxxxx
+ * 000uuuuuxxxxxxxxxxxxxxxx 	110110wwwwxxxxxx 110111xxxxxxxxxx
+ * wwww = uuuuu - 1 , in case if chr is greater than 0xFFFF and still less or equal than 0xFFFFF
+ */
+int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+        unsigned long int upper=0xD800, lower=0xDC00; // 110110 0000 000000 = 0xD800 ; 110111 00000 00000 = 0xDC00
+        int err=CBSUCCESS;
+	if(cbs==NULL || *cbs==NULL || chr==NULL )
+	  return CBERRALLOC;
+
+        if(*chr<=0xFFFF){
+          if( (**cbs).encoding==CBENCUTF16BE )
+            return cb_put_multibyte_ch(&(*cbs), *chr);
+          if( (**cbs).encoding==CBENCUTF16LE )
+            return cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(*chr) );            
+        }else if(*chr<=0xFFFFF){
+          lower = lower | ( *chr & 0x3FF ) ; // last ten bits
+          upper = upper | ( (*chr)>>10 & 0x3FF ) ; // upper ten bits
+          if( (**cbs).encoding==CBENCUTF16BE ){
+            err = cb_put_multibyte_ch(&(*cbs), upper ); // order of upper and lower is propably the same both in LE and BE
+            err = cb_put_multibyte_ch(&(*cbs), lower );
+          }
+          if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE ){
+            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(upper) );
+            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(lower) );
+          }
+          return err;
+        }else{
+          fprintf(stderr,"\ncb_put_utf16_ch: char %lX was out of range, err=%i.", *chr, err);
+          return CBUCSCHAROUTOFRANGE;
+        }
+        return CBWRONGENCODINGCALL;
+}
+int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+        unsigned long int upper=0, lower=0; 
+        int err=CBSUCCESS; 
+	if(cbs==NULL || *cbs==NULL || chr==NULL )
+	  return CBERRALLOC;
+
+cb_get_utf16_ch_get_next_chr:
+        err = cb_get_multibyte_ch( &(*cbs), &(*chr));
+        if(err>CBERROR){ fprintf(stderr,"\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
+        if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800
+          upper = *chr & 0x3FF;
+          goto cb_get_utf16_ch_get_next_chr;
+        }
+        if( ( *chr & 0xFC00 ) == 0xDC00 ){ // 1111110000000000 = 0xFC00 ; 110111 00000 00000 = 0xDC00
+          lower = *chr & 0x3FF;
+          *chr = upper; *chr = (*chr)<<10;
+          *chr = *chr | lower;
+        }
+#ifdef BIGENDIAN 
+// turha (?)
+//        if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE )
+//          *chr = cb_reverse_two_bytes(*chr); // correct to UCS after reading like BE
+#else
+        if( (**cbs).encoding==CBENCUTF16BE )
+          *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
+#endif            
+        if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE )
+          return CBWRONGENCODINGCALL;
+        if( *chr > 0xFFFFF )
+          return CBUCSCHAROUTOFRANGE;
+        return err;
+}
+
+int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+	if(cbs==NULL || *cbs==NULL || chr==NULL )
+	  return CBERRALLOC;
+	if((**cbs).encoding==CBENCUTF32LE){
+          *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
+          return cb_put_multibyte_ch(&(*cbs), *chr);
+        }
+        if((**cbs).encoding==CBENCUTF32BE){
+          *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
+          return cb_put_multibyte_ch( &(*cbs), cb_reverse_four_bytes(*chr) );          
+        }
+        return CBWRONGENCODINGCALL;
+}
+int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+        unsigned long int rev = 0;
+	int err=CBSUCCESS;
+	if(cbs==NULL || *cbs==NULL || chr==NULL )
+	  return CBERRALLOC;
+#ifdef BIGENDIAN
+	if((**cbs).encoding==CBENCUTF32BE){
+#else
+	if((**cbs).encoding==CBENCUTF32LE){
+#endif
+          *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
+          return cb_get_multibyte_ch(&(*cbs), &(*chr));
+        }
+#ifdef BIGENDIAN
+        if((**cbs).encoding==CBENCUTF32LE){
+#else
+        if((**cbs).encoding==CBENCUTF32BE){
+#endif
+          *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
+          err = cb_get_multibyte_ch(&(*cbs), &rev);
+	  if(err<CBERROR){
+             *chr = cb_reverse_four_bytes(rev);
+          }else{
+             fprintf(stderr,"cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
+          }
+          return err;
+        }
+        return CBWRONGENCODINGCALL;
+}
+
+/* 
+ * Reverse 32 bits.
+ */
+unsigned int  cb_reverse_int32_bits(unsigned int from){
+	unsigned int upper=0, lower=0, new=0;
+        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+	upper = from>>16; // 16 upper bits
+	lower = 0xFFFF & from; // 16 lower bits
+        lower = cb_reverse_int16_bits(lower);
+	upper = cb_reverse_int16_bits(upper);
+	new = lower<<16;
+	new = new | upper;
+	return new;
+}
+/* 
+ * Reverse integers last 16 bits. First 16 bits are meaningless.
+ */
+unsigned int  cb_reverse_int16_bits(unsigned int from){
+	unsigned int  new=0;
+	unsigned char upper=0, lower=0;
+	upper = from>>8; // 8 upper bits
+	lower = 0xFF & from; // 8 lower bits
+        lower = cb_reverse_char8_bits(lower);
+	upper = cb_reverse_char8_bits(upper);
+	new = lower<<8;
+	new = new | upper;
+	return new;
+}
+/*
+ * Reverse 8 bits.
+ * 1. 2. 3. 4. 5. 6. 7. 8.
+ * 1  2  4  8  16 32 64 128
+ */
+unsigned char  cb_reverse_char8_bits(unsigned char from){
+	unsigned char new=0; 
+	new = new | (from & 0x01)<<7; 
+	new = new | (from & 0x02)<<5;
+	new = new | (from & 0x04)<<3;
+	new = new | (from & 0x08)<<1;
+
+	new = new | (from & 0x10)>>1; // 16
+	new = new | (from & 0x20)>>3; // 32
+	new = new | (from & 0x40)>>5; // 64
+	new = new | (from & 0x80)>>7; // 128
+	return new;
+}
+unsigned int  cb_reverse_four_bytes(unsigned int  from){
+	unsigned int upper=0, lower=0, new=0;
+        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+	upper = from>>16; // 16 upper bits
+	lower = 0xFFFF & from; // 16 lower bits
+        lower = cb_reverse_two_bytes(lower);
+	upper = cb_reverse_two_bytes(upper);
+	new = lower; new = new<<16;
+	new = new | upper;
+	return new;
+}
+unsigned int  cb_reverse_two_bytes(unsigned int  from){
+	unsigned int  new=0;
+	unsigned char upper=0, lower=0;
+	upper = from>>8; // 8 upper bits
+	lower = 0xFF & from; // 8 lower bits
+	new = lower; new = new<<8;
+	new = new | upper;
+	return new;
 }

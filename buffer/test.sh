@@ -13,6 +13,10 @@ export LANG
 #
 ./test_cb 1 1024 4096 tests/testi.txt
 
+file tests/*.out
+
+exit 0
+
 # Output
 echo
 echo "Output, original:"
@@ -25,7 +29,6 @@ echo "Output, encoding 1:"
 cat tests/testi.txt.1.out
 echo 
 
-exit 0
 
 #
 # UTF-8 to all encodings
@@ -60,4 +63,5 @@ echo
 echo "Output, encoding 1:"
 cat tests/testi.txt.1.out
 echo 
+
 

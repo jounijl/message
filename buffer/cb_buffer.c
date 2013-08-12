@@ -53,6 +53,9 @@
  - Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
    (Tama tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla, http:ssa ei tarvitse.)
  x CBSTATETOPOLOGY
+ - multibyte big endian
+ - character encoding tests, multibyte and utf-32
+ - utf-16
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -480,7 +483,8 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, int size){
 	if(*cbs!=NULL && buf!=NULL){
 	  if((**cbs).blk!=NULL){
 	    for(err=0; err<size; ++err){
-	      cb_put_ch(cbs,&buf[err]);
+	      //cb_put_ch(cbs,&buf[err]);
+	      cb_put_ch(cbs,buf[err]); // 12.8.2013
 	    }
 	    err = cb_flush(cbs);
 	    return err;
@@ -494,13 +498,15 @@ int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf){
 	return cb_write(cbs, &(*(*cbf).buf), (*cbf).contentlen);
 }
 
-int  cb_put_ch(CBFILE **cbs, unsigned char *ch){
+//int  cb_put_ch(CBFILE **cbs, unsigned char *ch){
+int  cb_put_ch(CBFILE **cbs, unsigned char ch){ // 12.8.2013
 	int err=CBSUCCESS;
 	if(*cbs!=NULL)
 	  if((**cbs).blk!=NULL){
 cb_put_ch_put:
 	    if((*(**cbs).blk).contentlen < (*(**cbs).blk).buflen ){
-	      (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = *ch;
+              // (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = *ch;
+              (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = ch; // 12.8.2013
 	      ++(*(**cbs).blk).contentlen;
 	    }else if((**cbs).onlybuffer==0){
 	      err = cb_flush(cbs); // new block
@@ -653,7 +659,7 @@ cb_set_cursor_alloc_name:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
-	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ // 9.4.2013
+	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ 
 
 	  //
 	  // Automatic encoding detection if it's set
