@@ -80,12 +80,11 @@ the names when reading again. </p>
 
 <p>The buffer does not move with the stream. When the end of the buffer is reached, name-value pairs must be in 
 the order they are used. It is best if name-value pairs are in the same order in the input as is the order of 
-using them. If buffer end is reached, CBSTREAM is returned. If this happens, the last names value may be at the 
+using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the last names value may be at the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
-not in the buffer anymore. You may have to do with it immediately what was needed to do because it's allready in stream
-and it's not automatically saved anymore. </p>
+not in the buffer anymore. It is allready in stream and is not automatically saved anymore. </p>
 
 <pre><code>int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
@@ -99,8 +98,8 @@ int  cb_flush(CBFILE **cbs);
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
 Allways when the block is full, it's written to output.</p>
 
-<p>Two or four byte transfer functionality, fixed, UTF-16 or UTF-32 is not yet added. Automatic encoding detection
-  based on first bytes BOM is not yet added.
+<p>Automatic encoding detection based on first bytes BOM is added. It is possible to use also UTF-16 and 
+UTF-32 transfer encodings or any two or four byte encoding. Adding an encoding is possible.
 </p>
 
 <h4>Data structures</h4>
@@ -140,7 +139,7 @@ Allways when the block is full, it's written to output.</p>
 int  cb_free_cbfile(CBFILE **cbs);
 </code></pre>
 
-<p>CBFILE:s memory should be freed after use.</p>
+<p>Remember to free CBFILE:s memory after use.</p>
 
 <h4>Data read</h4>
 
@@ -156,8 +155,8 @@ int  cb_free_cbfile(CBFILE **cbs);
 </code></pre>
 
 <p>
-  Characters can be set to another. Tabs, new lines and white spaces are removed between pairs. 
-  Tabs and white spaces in names are removed before comparing them.
+  Characters can be set to another. They can be any characters in 32-bit format. Tabs, new lines and white spaces 
+  are removed between pairs. Tabs and white spaces in names are removed before comparing them.
 </p>
 
 <p>For example:</p>
@@ -171,7 +170,10 @@ name of last pair =last_p\&amp;air\\s_data&amp;
   Last pairs value has control characters. cb_get_chr function reads 
   characters without flow control. It's in the programmers responsibility 
   to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary.
-  The cursor has to be left at the end of the value after reading, at character '&amp;'.  
+</p>
+<p>
+  The cursor should be left at the end of the value after reading, at character '&amp;' to search the 
+  names again correctly.  
 </p>
 
 <p>Example of nesting consecutive streams:</p>
@@ -184,9 +186,11 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <p>
   Library can be used for example in reading or writing configuration files, 
-  reading a POST responce from browser, parsing email header files 
+  reading a POST responce from browser, parsing internet message header files 
   or in interprocess messaging.
 </p>
+<p>Files cb_buffer.h and cb_encoding.h contain more specific notes on defines and some
+explanations on other functions.</p>
 
 <h5>Return values</h5>
 <p>Return values are listed in:</p>
@@ -206,10 +210,13 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p><strong>Page history</strong>
 <a href="http://jounijl.github.com/message">http://jounijl.github.com/message</a>
 17.3.2013</p>
-<p>Last update 2.8.2013</p>
+<p>Last update 12.8.2013</p>
 <p>Branch 'ucsflowcontrol' 6.4.2013</p>
 <p><strong>References</strong>
 <ul>
+<li>RFC-2822 "Internet Message Format"</li>
+<li>RFC-822 "Standard Format of the ARPA Internet Text Messages"</li>
+<li>RFC-2616 "Hypertext Transfer Protocol"</li>
 <li>RFC 5198 "Unicode Format for Network Interchange"</li>
 <li>RFC 3629 "UTF-8, a transformation format of ISO 10646"</li>
 <li>RFC 20 "ASCII format for Network Interchange"</li>
@@ -218,7 +225,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <h3>Authors and Contributors</h3>
 
-<p>Jouni L. email: jnl (cat) iki (dot) fi.</p>
+<p>Jouni Laakso email: jnl (cat) iki (dot) fi.</p>
       </section>
 
       <footer>
