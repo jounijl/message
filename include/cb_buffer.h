@@ -117,7 +117,8 @@
 #define CBSTOPAT822HEADEREND
 
 // CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
-#define LWS( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
+//#define LWS( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
+#define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x11 )
 
 #include "./cb_encoding.h"
 

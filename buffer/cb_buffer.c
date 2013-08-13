@@ -110,7 +110,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
         (*chrbuf)[*bufindx+2] = (unsigned char) (chr>>8);
         (*chrbuf)[*bufindx+3] = (unsigned char) chr;
         *bufindx+=4;
-	//fprintf(stderr, "chrbuf put: [%lx]", chr);
+        //fprintf(stderr, "chrbuf put: [%lx]", chr);
         return CBSUCCESS;
 }
 
@@ -122,7 +122,7 @@ int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *bufindx+=1;
-	//fprintf(stderr, "[%lx]", *chr);
+        //fprintf(stderr, "[%lx]", *chr);
         return CBSUCCESS;
 } 
 
