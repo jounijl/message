@@ -98,7 +98,7 @@ int  cb_flush(CBFILE **cbs);
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
 Allways when the block is full, it's written to output.</p>
 
-<p>Automatic encoding detection based on first bytes BOM is added. Now it is possible to use also UTF-16 and 
+<p>Automatic encoding detection based on first bytes BOM is added. It is possible to use also UTF-16 and 
 UTF-32 transfer encoding or any two or four byte encoding. 
 </p>
 
@@ -172,8 +172,8 @@ name of last pair =last_p\&amp;air\\s_data&amp;
   to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary.
 </p>
 <p>
-  The cursor should be left at the end of the value after reading, at character '&amp;' to search the 
-  names again correctly.  
+  The cursor should be left at the end of the value at character '&amp;' after reading to search the 
+  names again correctly.
 </p>
 
 <p>Example of nesting consecutive streams:</p>
