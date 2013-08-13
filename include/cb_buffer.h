@@ -20,6 +20,7 @@
 #define CBSTREAMEDGE         3
 #define CBUSEDASBUFFER       4
 #define CBUTFBOM             5
+#define CB822HEADEREND       6
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -107,6 +108,13 @@
  */
 //#undef CBSTATEFUL
 //#undef CBSTATETOPOLOGY
+
+/*
+ * With this define, cb_set_cursor stops searching the stream when it encounters
+ * a character sequence at header end, between header and message.
+ * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
+ */
+#define CBSTOPAT822HEADEREND
 
 // CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
 #define LWS( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )

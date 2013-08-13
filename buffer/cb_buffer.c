@@ -115,11 +115,12 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
 }
 
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize){
+        static unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
         if( chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
         if( *bufindx>(bufsize-4) ){              return CBNOTFOUND; }
-        *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & (unsigned int) 4294967040; *bufindx+=1; // 4294967295 - 255 = 4294967040
-        *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & 4294967040; *bufindx+=1;
-        *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & 4294967040; *bufindx+=1;
+        *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1; 
+        *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
+        *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *bufindx+=1;
 	//fprintf(stderr, "[%lx]", *chr);
         return CBSUCCESS;
@@ -616,8 +617,11 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int  charbuflen = 0;
 	cb_name *fname  = NULL;
 	char atvalue=0;
+#ifdef CBSTOPAT822HEADEREND
+        unsigned long int ch3prev=CBRESULTEND, ch2prev=CBRESULTEND;
+#endif
 #ifdef CBSTATETOPOLOGY
-	int openpairs=0; // starts from 0
+	int openpairs=0;
 #endif
 
 	if( cbs==NULL || *cbs==NULL )
@@ -690,9 +694,6 @@ cb_set_cursor_alloc_name:
 	      atvalue=1;
 	      (*fname).namelen = index; indx2=0;
               if(index<(*fname).buflen){ // Remove SP:s and tabs in name
-	        // 5.4.2013:
-		//fprintf(stderr,"\nset_cursor: aloitetaan nimen tallentaminen, index=%i, charbuflen=%i, nimi: [", index, CBNAMEBUFLEN );
-		//cb_print_ucs_chrbuf(&charbuf, index, CBNAMEBUFLEN); fprintf(stderr,"]");
 	        indx=0;
                 (*fname).namelen=0; // 6.4.2013
 	        while(indx<index && buferr==CBSUCCESS){ // 4 bytes (UCS word)
@@ -703,13 +704,11 @@ cb_set_cursor_alloc_name:
                         buferr = cb_get_ucs_chr( &cmp, &charbuf, &indx, CBNAMEBUFLEN);
                       }
                     }
-                    //if( cmp!=' ' && cmp!='\t' && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
                     if( ! LWS( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
                       buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
                 }
-	        // /5.4.2013
 	      }
 	      (*fname).offset= ( (**cbs).cb->contentlen - 1 );
 	      cb_put_name(cbs, &fname);
@@ -751,6 +750,13 @@ cb_set_cursor_alloc_name:
 	  }else{ // save character to buffer
 	      buferr = cb_put_ucs_chr(chr, &charbuf, &index, CBNAMEBUFLEN); // 5.4.2013
 	  }
+
+          /* Automatic stop at "Internet Message Format" header if it's set */
+#ifdef CBSTOPAT822HEADEREND
+          ch3prev=ch2prev; ch2prev=chprev;
+          if( ch3prev==0x0D && ch2prev==0x0A && ch3prev==chprev && ch2prev==chr ) // cr lf x 2
+            return CB822HEADEREND;
+#endif
 	  chprev = chr;
 	  err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes);
 	}
@@ -763,5 +769,3 @@ int  cb_remove_name_from_stream(CBFILE **cbs){
 	(*(*(**cbs).cb).current).length =  (*(**cbs).cb).buflen;
 	return CBSUCCESS;
 }
-
-
