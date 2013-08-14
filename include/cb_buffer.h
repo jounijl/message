@@ -21,6 +21,7 @@
 #define CBUSEDASBUFFER       4
 #define CBUTFBOM             5
 #define CB822HEADEREND       6
+#define CB822MESSAGE         7
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -116,9 +117,17 @@
  */
 #define CBSTOPAT822HEADEREND
 
-// CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
-//#define LWS( x )              ( x == 0x0d && x == 0x09 && x == 0x20 && x == 0x11 )
+/*
+ * This is not used. LWS was used in folding, this might not be exactly it. This was used
+ * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
+ */
 #define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 )
+
+/*
+ * Characters to remove from name: CR LF Space Tab and BOM. Comment is removed as othe flow 
+ * control characters.
+ */
+#define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
 
 #include "./cb_encoding.h"
 
@@ -140,6 +149,9 @@ typedef struct cbuf{
 	cb_name            *current;
 	cb_name            *last;
 	int                 namecount;
+#ifdef CBSTOPAT822HEADEREND
+        int                 offset2822; // offset of RFC-2822 header end 
+#endif
 } cbuf;
 
 typedef struct cbuf cblk;

@@ -704,7 +704,7 @@ cb_set_cursor_alloc_name:
                         buferr = cb_get_ucs_chr( &cmp, &charbuf, &indx, CBNAMEBUFLEN);
                       }
                     }
-                    if( ! LWS( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
+                    if( ! NAMEXCL( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
                       buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
@@ -754,8 +754,10 @@ cb_set_cursor_alloc_name:
           /* Automatic stop at "Internet Message Format" header if it's set */
 #ifdef CBSTOPAT822HEADEREND
           ch3prev=ch2prev; ch2prev=chprev;
-          if( ch3prev==0x0D && ch2prev==0x0A && ch3prev==chprev && ch2prev==chr ) // cr lf x 2
+          if( ch3prev==0x0D && ch2prev==0x0A && ch3prev==chprev && ch2prev==chr ){ // cr lf x 2
+            (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen;
             return CB822HEADEREND;
+          }
 #endif
 	  chprev = chr;
 	  err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes);
