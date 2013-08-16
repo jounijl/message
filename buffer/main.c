@@ -187,7 +187,8 @@ int main (int argc, char *argv[]) {
         		  return ERROR;
 		        }
                         // Byte order mark
-                        cb_write_bom(&out);
+                        if((*out).encoding!=CBENCUTF8)
+                          cb_write_bom(&out);
 
 			name_list_ptr = &(*(*in).cb);
 			(*in).cb = &(*name_list);

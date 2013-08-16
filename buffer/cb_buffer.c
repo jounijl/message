@@ -50,12 +50,11 @@
  x Ohjelma joka kirjoittaa UTF:aa luettuaan UCS:aa ja pain vastoin
  - cb_get_chr tunnistamaan useamman eri koodauksen virheellinen tavu, CBNOTUTF jne.
    erilaiset yhteen funktiossa cb_get_chr ja siita yleisemmin CBENOTINENCODING tms.
- - Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
+ x Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
    (Tama tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla, http:ssa ei tarvitse.)
  x CBSTATETOPOLOGY
- - multibyte big endian
- - character encoding tests, multibyte and utf-32
- - utf-16
+ x character encoding tests, multibyte and utf-32
+ - check boundary tests in arrays
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -344,6 +343,9 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	(**cbf).contentlen=0;
 	(**cbf).namecount=0;
 	(**cbf).index=0;
+#ifdef CBSTOPAT2822HEADEREND
+        (**cbf).offset2822=0;
+#endif
 	(**cbf).name=NULL;
 	(**cbf).current=NULL;
 	(**cbf).last=NULL;
@@ -617,8 +619,8 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int  charbuflen = 0;
 	cb_name *fname  = NULL;
 	char atvalue=0;
-#ifdef CBSTOPAT822HEADEREND
-        unsigned long int ch3prev=CBRESULTEND, ch2prev=CBRESULTEND;
+#ifdef CBSTOPAT2822HEADEREND
+        unsigned long int ch3prev=CBRESULTEND+1, ch2prev=CBRESULTEND+2;
 #endif
 #ifdef CBSTATETOPOLOGY
 	int openpairs=0;
@@ -752,11 +754,12 @@ cb_set_cursor_alloc_name:
 	  }
 
           /* Automatic stop at "Internet Message Format" header if it's set */
-#ifdef CBSTOPAT822HEADEREND
+#ifdef CBSTOPAT2822HEADEREND
           ch3prev=ch2prev; ch2prev=chprev;
-          if( ch3prev==0x0D && ch2prev==0x0A && ch3prev==chprev && ch2prev==chr ){ // cr lf x 2
-            (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen;
-            return CB822HEADEREND;
+          if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
+            if( (*(**cbs).cb).offset2822 == 0 )
+              (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen; // offset set at last new line character
+            return CB2822HEADEREND;
           }
 #endif
 	  chprev = chr;

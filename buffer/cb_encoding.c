@@ -481,8 +481,7 @@ int  cb_write_bom(CBFILE **cbs){
         int err=CBNOENCODING; int e=0, y=0;
         if(cbs==NULL || *cbs==NULL)
           return CBERRALLOC;
-        // (**cbs).encoding==CBENCUTF8
-        if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || \
+        if( (**cbs).encoding==CBENCUTF8 || (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || \
             (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE ){
           err = cb_put_chr(&(*cbs), (unsigned long int) 0xFEFF, &e, &y);
         }

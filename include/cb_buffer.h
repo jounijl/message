@@ -20,8 +20,8 @@
 #define CBSTREAMEDGE         3
 #define CBUSEDASBUFFER       4
 #define CBUTFBOM             5
-#define CB822HEADEREND       6
-#define CB822MESSAGE         7
+#define CB2822HEADEREND      6
+//#define CB2822MESSAGE        7
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -46,7 +46,7 @@
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
 #define CBBYPASS            '\\'
-#define CBCOMMENTSTART      '#'  // Allowed inside valuename from rstart to rend
+#define CBCOMMENTSTART      '#'  // Allowed inside valuename from rend to rstart
 #define CBCOMMENTEND        '\n'
 
 /*
@@ -115,17 +115,19 @@
  * a character sequence at header end, between header and message.
  * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
  */
-#define CBSTOPAT822HEADEREND
+#define CBSTOPAT2822HEADEREND
 
 /*
- * This is not used. LWS was used in folding, this might not be exactly it. This was used
- * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only followed by LF)
+ * This is not used. LWS was used in folding, this might not be exactly it. It was used
+ * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only 
+ * followed by LF)
  */
 #define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 )
 
 /*
- * Characters to remove from name: CR LF Space Tab and BOM. Comment is removed as othe flow 
- * control characters.
+ * Characters to remove from name: CR LF Space Tab and BOM. Comment string is removed 
+ * elsewhere. UTF-8: "Should be stripped ...", RFC-3629 page-6, UTF-16:
+ * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
 #define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
 
@@ -149,8 +151,8 @@ typedef struct cbuf{
 	cb_name            *current;
 	cb_name            *last;
 	int                 namecount;
-#ifdef CBSTOPAT822HEADEREND
-        int                 offset2822; // offset of RFC-2822 header end 
+#ifdef CBSTOPAT2822HEADEREND
+        int                 offset2822; // offset of RFC-2822 header end with end characters
 #endif
 } cbuf;
 
@@ -158,7 +160,7 @@ typedef struct cbuf cblk;
 
 typedef struct CBFILE{
 	int                 fd;	// Stream file descriptor
-	cbuf               *cb;	// Data in valuepairs (preferably in application order)
+	cbuf               *cb;	// Data in valuepairs (preferably in applications order)
 	cblk               *blk;	// Input read or output write -block 
 	int                 onlybuffer; // If fd is not in use
 	unsigned long int   rstart;	// Result start character
@@ -196,18 +198,18 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength);
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
- * If while reading character, is found, that cb_set_cursor found name
- * but one of get_ch functions returned CBSTREAM after it, removes the
- * erroneus name from memorybuffer after reading it from stream once.
+ * If while reading a character, is found, that cb_set_cursor found a name
+ * but one of the get_ch functions returned CBSTREAM after it, removes the
+ * erroneus name from memorybuffer after reading it from the stream once.
  *
- * Sets namelegth to indicate that names content is out of buffer.
+ * Sets namelegth to indicate that the names content is out of buffer.
  */
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
 /*
- * One character at a time. Output flushes when buffer is full.
- * Otherwice use write or flush when at the end of writing.
- * Input copies characters in a receivebuffer to read values
+ * One character at a time. Output flushes when the buffer is full.
+ * Otherwice use write or flush when at the end of writing. Input
+ * copies characters in a receivebuffer to read the values
  * afterwards if necessary. If name-value pairs are in use,
  * use cb_set_cursor instead to save the names in a structure
  * to search them fast.
@@ -268,11 +270,11 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 // Debug
 int  cb_print_names(CBFILE **str);
 
-// Returns byte order marks encoding from two to four first bytes (bom is allways at first)
+// Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013
 int  cb_write_bom(CBFILE **cbs); // 12.8.2013
 
-// New encodings 10.8.2013, not yet ready or tested, chr is in UCS-encoding
+// New encodings 10.8.2013, chr is in UCS-encoding
 int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
