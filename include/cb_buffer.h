@@ -137,9 +137,9 @@ typedef struct cb_name{
         unsigned char      *namebuf; // name 
 	int                 buflen;  // name+excess buffer space
         int                 namelen; // name length
-        int                 offset; // offset from the beginning of data
-        int                 length; // unknown (almost allways -1) (length of data), possibly set after it's known
-        void               *next; // Last is NULL
+        int                 offset;  // offset from the beginning of data
+        int                 length;  // unknown (almost allways -1) (length of data), possibly set after it's known
+        void               *next;    // Last is NULL
 } cb_name;
 
 typedef struct cbuf{
