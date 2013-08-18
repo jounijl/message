@@ -9,42 +9,28 @@ export LANG
 # wc -c ./tests/testi.txt
 
 #
+# Searches word 'unknown' in tests/testi.txt.
+#
+
+#
 # Any 1-byte to all encodings
 #
 ./test_cb 1 1024 4096 tests/testi.txt
 
 file tests/*.out
 
+#
+# Stress test
+# 
+#./tests/loop ./tests/testi.txt | ./test_cb 1 1024 4096 -
+# bash: return value 137 is signal 9.
+
 exit 0
-
-# Output
-echo
-echo "Output, original:"
-cat tests/testi.txt
-echo
-echo "Output, encoding 0:"
-cat tests/testi.txt.0.out
-echo
-echo "Output, encoding 1:"
-cat tests/testi.txt.1.out
-echo 
-
 
 #
 # UTF-8 to all encodings
 #
 ./test_cb 3 1024 4096 tests/testi_utf-8.txt
-# Output
-echo
-echo "Output, original:"
-cat tests/testi_utf-8.txt
-echo
-echo "Output, encoding 0:"
-cat tests/testi_utf-8.txt.0.out
-echo
-echo "Output, encoding 1:"
-cat tests/testi_utf-8.txt.1.out
-echo 
 
 exit 0
 
@@ -52,16 +38,3 @@ exit 0
 # Autodetection to all encodings
 #
 ./test_cb 0 1024 4096 tests/testi_utf-8.txt
-# Output
-echo
-echo "Output, original:"
-cat tests/testi.txt
-echo
-echo "Output, encoding 0:"
-cat tests/testi.txt.0.out
-echo
-echo "Output, encoding 1:"
-cat tests/testi.txt.1.out
-echo 
-
-

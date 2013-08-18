@@ -55,6 +55,16 @@
  x CBSTATETOPOLOGY
  x character encoding tests, multibyte and utf-32
  - check boundary tests in arrays
+ - stress test
+ - notes on defines -> notes of defines 
+ - Bugi1: Kun etsii nimea ja se ei jo loydy listasta,
+   hakee nimia ja lisaa niita listaan vaikka ne voivat jo olla listassa.
+   -> Tehdaan nyt siten etta ei talleta nimilistaan jos sijainti 
+      on puskurin ulkopuolella.
+ - Bugi2: Jos puskurin ulkopuolella, lisaa kuitenkin nimia listaan.)
+   Onko bugi?
+   -> Tehdaan nyt siten etta talletetaan nimi kuitenkin vaikka niita
+      olisikin useita.
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -62,6 +72,11 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen);
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 
 int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
+
+#ifdef TMP
+unsigned long long int mallocs_fname=0, mallocs_charbuf=0, mallocs_buffer=0, mallocs_cbfile=0;
+unsigned long long int frees_fname=0, frees_charbuf=0, frees_buffer=0, frees_cbfile=0;
+#endif
 
 /*
  * Debug
@@ -90,6 +105,13 @@ int  cb_print_names(CBFILE **str){
 	}
         return CBERRALLOC;
 }
+// Debug
+void cb_print_counters(CBFILE **cbf){
+        if(cbf!=NULL && *cbf!=NULL)
+          fprintf(stderr, "\nnamecount:%i \t index:%i \t contentlen:%i \t  buflen:%i", (*(**cbf).cb).namecount, \
+             (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
+}
+
 int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
 	int index=0, err=CBSUCCESS;
 	unsigned long int chr=0;
@@ -220,6 +242,14 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
 	if(cbn==NULL || *cbn==NULL || str==NULL || *str==NULL || (**str).cb==NULL )
 	  return CBERRALLOC;
 
+	/*
+ 	 * Do not save the name if it's out of buffer. cb_set_cursor finds
+	 * names from stream but can not use cb_names namelist if the names
+	 * are out of buffer.
+	 */
+        if( (**cbn).offset >= ( (*(**str).cb).buflen -1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen - 1 ) ) 
+	  return CBNAMEOUTOFBUF;
+
 	if((*(**str).cb).name!=NULL){
 	  (*(**str).cb).current = &(*(*(**str).cb).last);
 	  if( (*(**str).cb).namecount>=1 )
@@ -247,6 +277,9 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
 int  cb_allocate_name(cb_name **cbn){ 
 	int err=0;
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
+#ifdef TMP
+        mallocs_fname++; fprintf(stderr, "\nmallocs_fname=%lli ", mallocs_fname);
+#endif
 	if(*cbn==NULL)
 	  return CBERRALLOC;
 	(**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(CBNAMEBUFLEN+1));
@@ -297,10 +330,12 @@ int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err=CBSUCCESS;
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
+#ifdef TMP
+        mallocs_cbfile++; fprintf(stderr, "\nmallocs_cbfile=%lli ", mallocs_cbfile);
+#endif
 	if(*str==NULL)
 	  return CBERRALLOC;
 	(**str).cb = NULL; (**str).blk = NULL;
-
 	(**str).onlybuffer=0;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;
@@ -331,11 +366,15 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 int  cb_allocate_buffer(cbuf **cbf, int bufsize){ 
 	int err=0;
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
+#ifdef TMP
+        mallocs_buffer++; fprintf(stderr, "\nmallocs_buffer=%lli ", mallocs_buffer);
+#endif
 	if(cbf==NULL)
 	  return CBERRALLOC;
 	(**cbf).buf = (unsigned char *) malloc(sizeof(char)*(bufsize+1));
 	if( (**cbf).buf == NULL )
 	  return CBERRALLOC;
+
 	for(err=0;err<bufsize;++err)
 	  (**cbf).buf[err]=' ';
 	(**cbf).buf[bufsize]='\0';
@@ -366,14 +405,41 @@ int  cb_free_cbfile(CBFILE **buf){
 	if((*(**buf).cb).buf!=NULL)
 	  free((**buf).cb->buf); // free buffer data
 	free((**buf).cb); // free buffer
-        free((**buf).blk->buf); // free block data
+	if((*(**buf).blk).buf!=NULL)
+          free((**buf).blk->buf); // free block data
 	free((**buf).blk); // free block
 	if((**buf).onlybuffer==0){
 	  err = close((**buf).fd); // close stream
 	  if(err==-1){ err=CBERRFILEOP;}
 	}
 	free(*buf); // free buf
+#ifdef TMP
+        frees_cbfile++; fprintf(stderr, "\nfrees_cbfile=%lli ", frees_cbfile);
+        frees_buffer++; fprintf(stderr, "\nfrees_buffer=%lli ", frees_cbfile);
+#endif
 	return err;
+}
+int  cb_free_buffer(cbuf **buf){
+        int err=CBSUCCESS;
+        err = cb_reinit_buffer( &(*buf) );
+        free( (**buf).buf );
+        free( *buf );
+#ifdef TMP
+        frees_buffer++; fprintf(stderr, "\nfrees_buffer=%lli ", frees_buffer);
+#endif
+        return err;
+}
+int  cb_free_fname(cb_name **name){
+        int err=CBSUCCESS;
+        if(name!=NULL && *name!=NULL)
+          free((**name).namebuf);
+        else
+          err=CBERRALLOC; 
+        free(*name);
+#ifdef TMP
+        frees_fname++; fprintf(stderr,"\nfrees_fname=%lli ",frees_fname);
+#endif
+        return err;
 }
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	cb_name *name = NULL;
@@ -384,8 +450,7 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	  name = (**buf).name;
 	  while(name != NULL){
 	    nextname = &(* (cb_name*) (*name).next);
-            free((*name).namebuf);
-            free(name);
+            cb_free_fname(&name);
 	    name = &(* nextname);
 	  }
 	  (**buf).namecount=0;
@@ -616,7 +681,6 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int index=0, indx=0, indx2=0, bytecount=0, storedbytes=0, buferr=CBSUCCESS;
 	unsigned long int chr=0, cmp=0, chprev=CBRESULTEND;
 	unsigned char *charbuf   = NULL;
-	int  charbuflen = 0;
 	cb_name *fname  = NULL;
 	char atvalue=0;
 #ifdef CBSTOPAT2822HEADEREND
@@ -625,10 +689,14 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 #ifdef CBSTATETOPOLOGY
 	int openpairs=0;
 #endif
-
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
 	chprev=(**cbs).bypass+1; // 5.4.2013
+
+#ifdef TMP        
+        if(cbs!=NULL && *cbs!=NULL && (**cbs).cb !=NULL)
+          fprintf(stderr, "\nnamecount: %i", (*(**cbs).cb).namecount);
+#endif
 
 	// 1) Search table and set cbs.cb.index if name is found
 	err = cb_set_to_name(cbs,(unsigned char **)ucsname,*namelength);
@@ -652,14 +720,22 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 
 	// Allocate buffer for characters
 	charbuf = (unsigned char *)malloc(sizeof(unsigned char)*(CBNAMEBUFLEN+1));
+#ifdef TMP
+        mallocs_charbuf++; fprintf(stderr, "\nmallocs_charbuf=%lli ",mallocs_charbuf);
+#endif
 	if(charbuf==NULL){  return CBERRALLOC; }
 	charbuf[CBNAMEBUFLEN]='\0';
 
 	// Allocate new name
 cb_set_cursor_alloc_name:
-	index=0; charbuflen=0;
+	index=0; 
 	err = cb_allocate_name(&fname);
-	if(err!=CBSUCCESS){  return err; }
+	if(err!=CBSUCCESS){  free(charbuf); return err; }
+
+#ifdef TMP        
+        cb_print_counters(&(*cbs));
+        cb_print_names(&(*cbs));
+#endif
 
 	// Search for new name
 	// ...& - ignore and set to start
@@ -714,6 +790,7 @@ cb_set_cursor_alloc_name:
 	      }
 	      (*fname).offset= ( (**cbs).cb->contentlen - 1 );
 	      cb_put_name(cbs, &fname);
+//
 	      if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
 		cb_remove_name_from_stream(cbs);
 	        fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
@@ -721,10 +798,19 @@ cb_set_cursor_alloc_name:
 
   	      if(cb_compare((unsigned char **)ucsname, *namelength, &(*fname).namebuf, (*fname).namelen) == CBMATCH){ // 30.3.2013
 	        (**cbs).cb->index = (**cbs).cb->contentlen; // cursor
-	        if(err==CBSTREAM)
+	        if(err==CBSTREAM){
+                  free(charbuf); charbuf=NULL; cb_free_fname(&fname); // free everything and return
+#ifdef TMP
+                  frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
+#endif
 	          return CBSTREAM;  // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
-		else
+		}else{
+                  free(charbuf); charbuf=NULL; cb_free_fname(&fname); // free everything and return
+#ifdef TMP
+                  frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
+#endif
 		  return CBSUCCESS; // cursor set
+                }
 	      }
 #ifdef CBSTATETOPOLOGY
           }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
@@ -732,7 +818,7 @@ cb_set_cursor_alloc_name:
 #else
 	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
 #endif
-	      atvalue=0; free(fname); fname = NULL;
+	      atvalue=0; cb_free_fname(&fname); fname=NULL;
  	      goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
 	      chr=' '; // any char not '\'
@@ -759,12 +845,22 @@ cb_set_cursor_alloc_name:
           if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
             if( (*(**cbs).cb).offset2822 == 0 )
               (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen; // offset set at last new line character
+            free(charbuf); cb_free_fname(&fname);
+#ifdef TMP
+            frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
+#endif
             return CB2822HEADEREND;
           }
 #endif
 	  chprev = chr;
 	  err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes);
 	}
+        free(charbuf); cb_free_fname(&fname);
+#ifdef TMP        
+        frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
+        if(cbs!=NULL && *cbs!=NULL && (**cbs).cb !=NULL)
+          fprintf(stderr, "\nnamecount: %i", (*(**cbs).cb).namecount);
+#endif
         return CBNOTFOUND;
 }
 

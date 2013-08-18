@@ -245,6 +245,8 @@ int  cb_allocate_name(cb_name **cbn);
 int  cb_reinit_buffer(cbuf **buf); // empty names
 int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
+int  cb_free_buffer(cbuf **buf);
+int  cb_free_fname(cb_name **name);
 
 int  cb_use_as_buffer(CBFILE **buf);
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
@@ -269,6 +271,7 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
 
 // Debug
 int  cb_print_names(CBFILE **str);
+void cb_print_counters(CBFILE **str);
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013
