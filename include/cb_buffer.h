@@ -42,12 +42,28 @@
 #define CBERRFILEWRITE      34
 #define CBERRBYTECOUNT      35
 
+/*
+ * Default values
+ */
 #define CBNAMEBUFLEN        1024
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
 #define CBBYPASS            '\\'
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rend to rstart
 #define CBCOMMENTEND        '\n'
+
+/*
+ * Runtime configuration options
+ */
+/* Search methods */
+#define CBSEARCHFIRST        0   // Names are unique (returns allways the first name in list)
+#define CBSEARCHNEXT         1   // Multiple names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+
+/* File types */
+#define CBCFGSTREAM          0   // Use as stream (namelist is bound by buffer)
+#define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
+#define CBCFGFILE            2   // Use as file (namelist is bound by file),
+                                 // cb_reinit_buffer empties names but does not seek, use: lseek((**cbf).fd if needed
 
 /*
  * This setting enables multibyte, UTF-16 and UTF-32 support if
@@ -133,26 +149,32 @@
 
 #include "./cb_encoding.h"
 
+typedef struct cbconf{
+        char                type;         // stream (default), file or only buffer
+        char                searchmethod; // search next name (multiple names) or search allways first name (unique names)
+} cbconf; // 20.8.2013
+
 typedef struct cb_name{
-        unsigned char      *namebuf; // name 
-	int                 buflen;  // name+excess buffer space
-        int                 namelen; // name length
-        int                 offset;  // offset from the beginning of data
-        int                 length;  // unknown (almost allways -1) (length of data), possibly set after it's known
-        void               *next;    // Last is NULL
+        unsigned char      *namebuf;      // name 
+	int                 buflen;       // name+excess buffer space
+        int                 namelen;      // name length
+        long int            offset;       // offset from the beginning of data
+        int                 length;       // unknown (almost allways -1) (length of data), possibly set after it's known
+        long int            matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        void               *next;         // Last is NULL
 } cb_name;
 
 typedef struct cbuf{
         unsigned char      *buf; 
-        int                 buflen; // In bytes
-	int                 index;
-	int                 contentlen; // Count in numbers (first starts from 1), comment: 7.11.2009
+        long int            buflen;       // In bytes
+	long int            index;
+	long int            contentlen;   // Count in numbers (first starts from 1), comment: 7.11.2009
         cb_name            *name;
 	cb_name            *current;
 	cb_name            *last;
 	int                 namecount;
 #ifdef CBSTOPAT2822HEADEREND
-        int                 offset2822; // offset of RFC-2822 header end with end characters
+        int                 offset2822;   // offset of RFC-2822 header end with end characters
 #endif
 } cbuf;
 
@@ -162,7 +184,8 @@ typedef struct CBFILE{
 	int                 fd;	// Stream file descriptor
 	cbuf               *cb;	// Data in valuepairs (preferably in applications order)
 	cblk               *blk;	// Input read or output write -block 
-	int                 onlybuffer; // If fd is not in use
+	//int               onlybuffer; // If fd is not in use
+        cbconf              cf;         // All configurations, 20.8.2013
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
 	unsigned long int   bypass;	// Bypass character, bypasses next special characters function
@@ -248,7 +271,10 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_fname(cb_name **name);
 
-int  cb_use_as_buffer(CBFILE **buf);
+int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
+int  cb_use_as_file(CBFILE **buf);   // namelist is bounded by filesize
+int  cb_use_as_stream(CBFILE **buf); // namelist is buffer size
+int  cb_set_search_method(CBFILE **buf, char method); // defined in cb_buffer.h, names CBSEARCH*
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
