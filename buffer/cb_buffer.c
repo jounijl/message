@@ -76,6 +76,7 @@
  - Ehka, onko kayttoa: Funktio joka hakee seuraavan nimen, oli nimi sitten mika hyvansa.
  - Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
  - Testiohjelma joka etsii yhden nimen
+ - it's written to output -> it is written to output
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
