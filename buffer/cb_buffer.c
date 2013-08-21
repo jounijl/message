@@ -74,6 +74,8 @@
  - Kaikkien nimien on oltava erilaisia tai
  - Puskurin on oltava niin pieni etta usea nimi ei mahdu siihen kerralla. Nimien on oltava jarjestetty.
  - Ehka, onko kayttoa: Funktio joka hakee seuraavan nimen, oli nimi sitten mika hyvansa.
+ - Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
+ - Testiohjelma joka etsii yhden nimen
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -84,8 +86,8 @@ int  cb_set_type(CBFILE **buf, char type);
 int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
 #ifdef TMP
-unsigned long long int mallocs_fname=0, mallocs_charbuf=0, mallocs_buffer=0, mallocs_cbfile=0;
-unsigned long long int frees_fname=0, frees_charbuf=0, frees_buffer=0, frees_cbfile=0;
+//unsigned long long int mallocs_fname=0, mallocs_charbuf=0, mallocs_buffer=0, mallocs_cbfile=0;
+//unsigned long long int frees_fname=0, frees_charbuf=0, frees_buffer=0, frees_cbfile=0;
 #endif
 
 /*
@@ -100,11 +102,12 @@ int  cb_print_names(CBFILE **str){
             if(iter!=NULL){
               do{
 	        ++names;
-	        fprintf(stderr, " [%i/%i] name [", names, (*(**str).cb).namecount );
+	        fprintf(stderr, " [%i/%li] name [", names, (*(**str).cb).namecount );
                 if(iter!=NULL){
 	            cb_print_ucs_chrbuf(&(*iter).namebuf, (*iter).namelen, (*iter).buflen);
 	        }
-                fprintf(stderr, "] offset [%li] length [%i]\n", (*iter).offset, (*iter).length);
+                fprintf(stderr, "] offset [%li] length [%i]", (*iter).offset, (*iter).length);
+                fprintf(stderr, " matchcount [%li]\n", (*iter).matchcount);
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
               return CBSUCCESS;
@@ -118,7 +121,7 @@ int  cb_print_names(CBFILE **str){
 // Debug
 void cb_print_counters(CBFILE **cbf){
         if(cbf!=NULL && *cbf!=NULL)
-          fprintf(stderr, "\nnamecount:%i \t index:%li \t contentlen:%li \t  buflen:%li", (*(**cbf).cb).namecount, \
+          fprintf(stderr, "\nnamecount:%li \t index:%li \t contentlen:%li \t  buflen:%li", (*(**cbf).cb).namecount, \
              (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 }
 
@@ -216,12 +219,19 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen){
 	       * allready matched name. Instead, increase names matchcount (or set to 1 if it 
 	       * becomes 0) and search the next same name.
 	       */
-// 20.8.2013
+// 20.8.2013 |--> Nimihakua ei ole kokeiltu
+// 21.8.2013:
+// Loytaa kolmannen ensimmaisen saman nimen ensimmaisen jalkeen mutta ei toista nimea.
+// Loytaa toisen nimen vasta kolmannen jalkeen.
+#ifdef TMP
+              fprintf(stderr,"\nMATCH, matchcount was %li.", (*iter).matchcount );
+#endif
 	      if( (**str).cf.searchmethod==CBSEARCHNEXT && (*iter).matchcount!=0 ){ // 20.8.2013, CBSEARCHNEXT
 	        (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount++; }
 // /20.8.2013
 	      }else{
-	        if( (**str).cf.type!=CBCFGFILE ) // When used as buffer, this is not reached
+// |--> Tama ei voimi viela tai ainakin se on tarkastamatta
+	        if( (**str).cf.type!=CBCFGFILE ) // When used as buffer, the next is not reached
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
 	             * Do not return names in namechain if it's content is out of memorybuffer
@@ -231,8 +241,12 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen){
 	            (**str).cb->current=(cb_name*) iter;
 	            return CBNAMEOUTOFBUF;
 	          }
+	        if( (**str).cf.searchmethod==CBSEARCHNEXT ){ (*iter).matchcount++; }; // from 0 to 1
 	        (**str).cb->index=(*iter).offset;
 	        (**str).cb->current=(cb_name*) iter;
+#ifdef TMP
+                fprintf(stderr,"\nMATCH, new matchcount=%li", (*iter).matchcount );
+#endif
 	        return CBSUCCESS;
 	      }
 	    }
@@ -304,9 +318,6 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
 int  cb_allocate_name(cb_name **cbn){ 
 	int err=0;
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
-#ifdef TMP
-        mallocs_fname++; fprintf(stderr, "\nmallocs_fname=%lli ", mallocs_fname);
-#endif
 	if(*cbn==NULL)
 	  return CBERRALLOC;
 	(**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(CBNAMEBUFLEN+1));
@@ -358,16 +369,14 @@ int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err=CBSUCCESS;
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
-#ifdef TMP
-        mallocs_cbfile++; fprintf(stderr, "\nmallocs_cbfile=%lli ", mallocs_cbfile);
-#endif
 	if(*str==NULL)
 	  return CBERRALLOC;
 	(**str).cb = NULL; (**str).blk = NULL;
 	//(**str).onlybuffer=0;
-        (**str).cf.type=CBCFGSTREAM;
-        (**str).cf.searchmethod=CBSEARCHNEXT; // default
-        //(**str).cf.searchmethod=CBSEARCHFIRST;
+        (**str).cf.type=CBCFGSTREAM; // default
+        //(**str).cf.type=CBCFGFILE; // first test was ok
+        //(**str).cf.searchmethod=CBSEARCHNEXT; // default, finds first, third, second, .. not ready
+        (**str).cf.searchmethod=CBSEARCHFIRST;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;
 	(**str).bypass=CBBYPASS;
@@ -398,9 +407,6 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 int  cb_allocate_buffer(cbuf **cbf, int bufsize){ 
 	int err=0;
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
-#ifdef TMP
-        mallocs_buffer++; fprintf(stderr, "\nmallocs_buffer=%lli ", mallocs_buffer);
-#endif
 	if(cbf==NULL)
 	  return CBERRALLOC;
 	(**cbf).buf = (unsigned char *) malloc(sizeof(char)*(bufsize+1));
@@ -446,10 +452,6 @@ int  cb_free_cbfile(CBFILE **buf){
 	  if(err==-1){ err=CBERRFILEOP;}
 	}
 	free(*buf); // free buf
-#ifdef TMP
-        frees_cbfile++; fprintf(stderr, "\nfrees_cbfile=%lli ", frees_cbfile);
-        frees_buffer++; fprintf(stderr, "\nfrees_buffer=%lli ", frees_cbfile);
-#endif
 	return err;
 }
 int  cb_free_buffer(cbuf **buf){
@@ -457,9 +459,6 @@ int  cb_free_buffer(cbuf **buf){
         err = cb_reinit_buffer( &(*buf) );
         free( (**buf).buf );
         free( *buf );
-#ifdef TMP
-        frees_buffer++; fprintf(stderr, "\nfrees_buffer=%lli ", frees_buffer);
-#endif
         return err;
 }
 int  cb_free_fname(cb_name **name){
@@ -469,9 +468,6 @@ int  cb_free_fname(cb_name **name){
         else
           err=CBERRALLOC; 
         free(*name);
-#ifdef TMP
-        frees_fname++; fprintf(stderr,"\nfrees_fname=%lli ",frees_fname);
-#endif
         return err;
 }
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
@@ -748,7 +744,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 
 #ifdef TMP        
         if(cbs!=NULL && *cbs!=NULL && (**cbs).cb !=NULL)
-          fprintf(stderr, "\nnamecount: %i", (*(**cbs).cb).namecount);
+          fprintf(stderr, "\nnamecount: %li", (*(**cbs).cb).namecount);
 #endif
 
 	// 1) Search table and set cbs.cb.index if name is found
@@ -773,9 +769,6 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 
 	// Allocate buffer for characters
 	charbuf = (unsigned char *)malloc(sizeof(unsigned char)*(CBNAMEBUFLEN+1));
-#ifdef TMP
-        mallocs_charbuf++; fprintf(stderr, "\nmallocs_charbuf=%lli ",mallocs_charbuf);
-#endif
 	if(charbuf==NULL){  return CBERRALLOC; }
 	charbuf[CBNAMEBUFLEN]='\0';
 
@@ -853,15 +846,9 @@ cb_set_cursor_alloc_name:
 	        (**cbs).cb->index = (**cbs).cb->contentlen; // cursor
 	        if(err==CBSTREAM){
                   free(charbuf); charbuf=NULL; cb_free_fname(&fname); // free everything and return
-#ifdef TMP
-                  frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
-#endif
 	          return CBSTREAM;  // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 		}else{
                   free(charbuf); charbuf=NULL; cb_free_fname(&fname); // free everything and return
-#ifdef TMP
-                  frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
-#endif
 		  return CBSUCCESS; // cursor set
                 }
 	      }
@@ -899,9 +886,6 @@ cb_set_cursor_alloc_name:
             if( (*(**cbs).cb).offset2822 == 0 )
               (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen; // offset set at last new line character
             free(charbuf); cb_free_fname(&fname);
-#ifdef TMP
-            frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
-#endif
             return CB2822HEADEREND;
           }
 #endif
@@ -910,9 +894,8 @@ cb_set_cursor_alloc_name:
 	}
         free(charbuf); cb_free_fname(&fname);
 #ifdef TMP        
-        frees_charbuf++; fprintf(stderr, "\nfrees_charbuf=%lli ", frees_charbuf);
         if(cbs!=NULL && *cbs!=NULL && (**cbs).cb !=NULL)
-          fprintf(stderr, "\nnamecount: %i", (*(**cbs).cb).namecount);
+          fprintf(stderr, "\nnamecount: %li", (*(**cbs).cb).namecount);
 #endif
         return CBNOTFOUND;
 }

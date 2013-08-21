@@ -267,7 +267,7 @@ int main (int argc, char *argv[]) {
 				}
 
 				fromend++;
-				fprintf(stderr," [%i/%i] setting cursor to name [", ((*name_list).namecount-fromend+1), (*name_list).namecount );
+				fprintf(stderr," [%li/%li] setting cursor to name [", ((*name_list).namecount-fromend+1), (*name_list).namecount );
 				err = cb_print_ucs_chrbuf( &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
 				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %i.", err); }
 				fprintf(stderr,"], length %i.\n", (*nameptr).namelen);
@@ -366,7 +366,7 @@ int main (int argc, char *argv[]) {
 	                ++encodingstested;
 
 			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
-                        
+                
 		} // while (encodings)
 		cb_free_buffer(&name_list);
 	} // for (files)
@@ -386,8 +386,8 @@ int main (int argc, char *argv[]) {
 void usage (char *progname[]){
         printf("\nUsage:\n");
         printf("\t%s <encoding> <blocksize> <buffersize> <filename> [<filename> [<filename> ...] ]\n", progname[0]);
-        printf("\tProgram to test reading and writing. Reads filename in encoding <encoding>\n");
-        printf("\tand outputs its found valuenames and values to \n");
+        printf("\tProgram to test reading and writing. Reads filename in encoding\n");
+        printf("\t<encoding> and outputs its found valuenames and values to \n");
         printf("\tfilename.<encodingnumber>.out with every encoding. Stdin to EOF is '-' .\n");
 }
 
