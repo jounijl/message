@@ -1,7 +1,8 @@
 #!/bin/sh
 
 rm cb_buffer.o cb_encoding.o
-gcc -g -Wall -DTMP -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_buffer.c
+#gcc -g -Wall -DTMP -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_buffer.c
+gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_buffer.c
 gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_encoding.c 
 
 rm test_cb.o
