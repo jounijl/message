@@ -96,7 +96,7 @@ int  cb_flush(CBFILE **cbs);
 <p>Program sets bytecount and storedbytes both in reading and writing. Bytecount is the count of bytes in 'chr' and storedbytes is the stored size in stream.</p>
 
 <p>cb_flush empties data written to block to output stream. It can be done anytime and it must be done after last write. 
-Allways when the block is full, it's written to output.</p>
+Allways when the block is full, it is written to output.</p>
 
 <p>Automatic encoding detection based on first bytes BOM is added. It is possible to use also UTF-16 and 
 UTF-32 transfer encoding or any two or four byte encoding. 
