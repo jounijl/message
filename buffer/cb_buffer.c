@@ -352,8 +352,8 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).cb = NULL; (**str).blk = NULL;
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
-        //(**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default, finds first, third, second, .. not ready
-        (**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
+        (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
+        //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;
 	(**str).bypass=CBBYPASS;
