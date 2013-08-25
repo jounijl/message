@@ -25,6 +25,11 @@ file tests/*.out
 #./tests/loop ./tests/testi.txt | ./test_cb 1 1024 4096 -
 # bash: return value 137 is signal 9.
 
+#
+# Test sequential name search
+#
+#cat tests/testi.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown
+
 exit 0
 
 #

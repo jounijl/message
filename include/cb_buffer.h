@@ -55,9 +55,14 @@
 /*
  * Configuration options
  */
-#define CBSEARCHFIRST        0   // Names are unique (returns allways the first name in list)
-#define CBSEARCHNEXT         1   // Multiple names (returns name if matchcount is zero, otherwice searches next in list or in stream)
 
+/*
+ * Search options */
+#define CBSEARCHUNIQUENAMES       0   // Names are unique (returns allways the first name in list)
+#define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+
+/*
+ * Use options, changes functionality as below */
 #define CBCFGSTREAM          0   // Use as stream (namelist is bound by buffer)
 #define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
 #define CBCFGFILE            2   // Use as file (namelist is bound by file),
@@ -126,10 +131,10 @@
 
 /*
  * With this define, cb_set_cursor stops searching the stream when it encounters
- * a character sequence at header end, between header and message.
+ * a character sequence at header end, between header and message (1).
  * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
  */
-#define CBSTOPAT2822HEADEREND
+#define CB2822MESSAGE
 
 /*
  * This is not used. LWS was used in folding, this might not be exactly it. It was used
@@ -137,6 +142,11 @@
  * followed by LF)
  */
 #define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 )
+/* RFC 822 SP */
+#define SP( x )               ( x == 0x20 && x == 0x09 )
+/* RFC 822 control characters 3.3 */
+#define CTL( x )              ( ( x >= 0 && x <= 31 ) || x == 127 )
+
 
 /*
  * Characters to remove from name: CR LF Space Tab and BOM. Comment string is removed 
@@ -171,7 +181,7 @@ typedef struct cbuf{
 	cb_name            *current;
 	cb_name            *last;
 	long int            namecount;
-#ifdef CBSTOPAT2822HEADEREND
+#ifdef CB2822MESSAGE
         int                 offset2822;   // offset of RFC-2822 header end with end characters
 #endif
 } cbuf;
@@ -269,10 +279,6 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_fname(cb_name **name);
 
-int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
-int  cb_use_as_file(CBFILE **buf);   // namelist is bound by filesize
-int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size
-int  cb_set_search_method(CBFILE **buf, char method); // defined in cb_buffer.h, names CBSEARCH*
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
@@ -280,13 +286,20 @@ int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
 //int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
+int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
+int  cb_use_as_file(CBFILE **buf);   // namelist is bound by filesize
+int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size
+int  cb_set_to_unique_names(CBFILE **cbf);
+int  cb_set_to_multiple_same_names(CBFILE **cbf);
+//int  cb_set_search_method(CBFILE **cbf, char method); // CBSEARCH*
+
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start character inside valuename, '#'
 int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character, '\n'
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
-int  cb_set_encoding(CBFILE **str, int number); // 0 utf, 1 one byte
+int  cb_set_encoding(CBFILE **str, int number); 
 
 // 4-byte character array
 int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
