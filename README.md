@@ -22,10 +22,10 @@ minor changes in namelist size and in use of file descriptors.
 
 ###### Testing programs
  
-Testing program 'test_cb' converts between encodings and tests input files 
+Testing program test_cb converts between encodings and tests input files 
 value-name pairs.
 
-Testing program 'cbsearch' searches a name or names from input. It finds multiple 
+Testing program cbsearch searches a name or names from input. It finds multiple 
 same names from stream.
  
  

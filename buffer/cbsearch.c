@@ -223,6 +223,8 @@ int  print_current_name(CBFILE **cbf){
 #endif
 	  chrprev = chr;
 	  err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+	  if(err==CBSTREAM)
+	    cb_remove_name_from_stream(&(*cbf)); // used as stream and removing name whose value is across buffer boundary
 	  if( chr!=(**cbf).rend )
 	    fprintf(stderr,"%c", (int) chr);
 #ifdef CBSTATETOPOLOGY
