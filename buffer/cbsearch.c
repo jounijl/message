@@ -31,6 +31,7 @@
 #include "../include/cb_buffer.h"
 #include "../get_option/get_option.h"
 
+#define NAMEBUFLEN    128
 #define BUFSIZE       1024
 #define BLKSIZE       128
 #define ENDCHR        0x0A
@@ -46,12 +47,13 @@ int  print_current_name(CBFILE **cbf);
 void usage ( char *progname[] );
 
 int main (int argc, char **argv) {
-	int i=-1,u=0,atoms=0,fromend=0, err=CBSUCCESS;
+	int i=-1,u=0,y=0,namearraylen=0, atoms=0,fromend=0, err=CBSUCCESS;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1;
-	char *str_err, *value;
+	char list=0;
+	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
-	unsigned char chr = ' ';
+	unsigned char chr = ' ', chprev = ' ';
 	unsigned long int endchr = ENDCHR;
 
 /*	fprintf(stderr,"main: argc=%i", argc );
@@ -79,10 +81,10 @@ int main (int argc, char **argv) {
 	 * Name */
         if ( atoms >= 2 ){
 	  namelen = (int) strlen( argv[fromend] );
-	  namebuflen = 4 * namelen;
+	  namebuflen = NAMEBUFLEN; // 4 * namelen;
 	  name = (unsigned char *) malloc( sizeof(unsigned char)*( namebuflen + 1 ) );
 	  if(name==NULL){ fprintf(stderr,"\nerror in malloc, name was null"); exit(CBERRALLOC); }
-	  name[ namebuflen ]='\0';
+	  name[ namelen*4 ]='\0';
 	  u = 0;
 	  for(i=0; i<namelen && u<namebuflen; ++i){
 	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
@@ -145,6 +147,15 @@ int main (int argc, char **argv) {
 	    }
 	    continue;
 	  }
+	  u = get_option( argv[i], argv[i+1], 's', &namearray); // list of names
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+	    list=1;
+	    if(namearray!=NULL)
+	      err = CBSUCCESS;
+            else
+	      err = CBERRALLOC;
+	    continue;
+	  }
 	} 
 
 #ifdef DEBUG
@@ -162,10 +173,39 @@ int main (int argc, char **argv) {
 	// Program
 	for(i=0; i<count && err<=CBERROR; ++i){
 	  fprintf(stderr,"\n%i.", (i+1) );
-	  err = search_and_print_name(&in, &name, namebuflen );
+	  if( list==0 ) // one name
+	    err = search_and_print_name(&in, &name, namebuflen );
+	  else{ // list of names
+	    if(namearray!=NULL){
+	      memset( &(*name), (int) 0x20, namebuflen );
+	      namearraylen = strnlen( &(*namearray), namebuflen );
+	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
+	      for(y=0; y<namearraylen && y<10000; ++y ){
+	        chprev = chr;
+	        chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
+	        if( ! SP( chr ) ){
+	          err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
+	       	  namelen = u;
+	          //fprintf(stderr,"%C", chr );
+	        } 
+	        if( ( SP( chr ) && ! SP( chprev ) ) || y==(namearraylen-1) || chr=='\0' ){
+	          //fprintf(stderr," search, namelen: %i name:", namelen );
+	          //cb_print_ucs_chrbuf(&name, namelen, namebuflen);
+	          //fprintf(stderr,"\n");
+	          name[ namelen*4 ] = '\0';
+	          err = search_and_print_name(&in, &name, namelen );
+	          namelen = 0; u = 0;
+	          memset( &(*name), (int) 0x20, namebuflen );
+	        }
+	      }
+	    }
+	  }
 	}
 
-	free(name);
+	memset( &(*name), (int) 0x20, namebuflen );
+	name[namebuflen] = '\0';
+	cb_free_cbfile(&in);
+	free( name );
 
 	exit( err );
 }
@@ -173,10 +213,15 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size>] [-l <block size>] [-e <char in hex>] <name> \n", progname[0]);
-	fprintf(stderr,"\tSearches name from input once or <count> times. Buffer\n");
+	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] \\\n", progname[0]);
+	fprintf(stderr,"\t      [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
+	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [ -l <block size> ] \\\n", progname[0]);
+	fprintf(stderr,"\t	[ -e <char in hex> ] -s \"name1 name2 name3 ...\"\n");
+	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
-	fprintf(stderr,"\tfrom LF (0x0A). Use hexadesimal value.\n");
+	fprintf(stderr,"\tfrom LF (0x0A) with hexadesimal value. Many names can be\n");
+	fprintf(stderr,"\tdefined with flag -s. Names are searched in order. Search\n");
+	fprintf(stderr,"\tsearches next same names.\n\n");
 }
 
 /*

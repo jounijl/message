@@ -29,6 +29,7 @@ file tests/*.out
 # Test sequential name search
 #
 #cat tests/testi.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown
+#cat tests/testi.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 
 exit 0
 
