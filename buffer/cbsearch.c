@@ -219,7 +219,7 @@ void usage (char *progname[]){
 	fprintf(stderr,"\t	[ -e <char in hex> ] -s \"name1 name2 name3 ...\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
-	fprintf(stderr,"\tfrom LF (0x0A) with hexadesimal value. Many names can be\n");
+	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
 	fprintf(stderr,"\tdefined with flag -s. Names are searched in order. Search\n");
 	fprintf(stderr,"\tsearches next same names.\n\n");
 }
