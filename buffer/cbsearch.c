@@ -84,12 +84,18 @@ int main (int argc, char **argv) {
 	  namebuflen = NAMEBUFLEN; // 4 * namelen;
 	  name = (unsigned char *) malloc( sizeof(unsigned char)*( namebuflen + 1 ) );
 	  if(name==NULL){ fprintf(stderr,"\nerror in malloc, name was null"); exit(CBERRALLOC); }
-	  name[ namelen*4 ]='\0';
+	  // name[ namelen*4 ] = '\0';
 	  u = 0;
 	  for(i=0; i<namelen && u<namebuflen; ++i){
 	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
 	    err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	  }
+	  if( namebuflen>(i*4) )
+	    name[ i*4 ] = '\0';
+	  if(err!=CBSUCCESS){ fprintf(stderr,"\ncbsearch: cb_put_ucs_chr, err=%i.", err); }
+	  if( namebuflen>(namelen*4) )
+            name[ namelen*4 ] = '\0';
+
         }else{
           usage(&argv[0]); // not enough parameters
           exit(ERRUSAGE);
@@ -174,7 +180,7 @@ int main (int argc, char **argv) {
 	for(i=0; i<count && err<=CBERROR; ++i){
 	  fprintf(stderr,"\n%i.", (i+1) );
 	  if( list==0 ) // one name
-	    err = search_and_print_name(&in, &name, namebuflen );
+	    err = search_and_print_name(&in, &name, (namelen*4) );
 	  else{ // list of names
 	    if(namearray!=NULL){
 	      memset( &(*name), (int) 0x20, namebuflen );
@@ -235,14 +241,16 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	err = cb_set_cursor_ucs( &(*in), &(*name), &namelength );
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
 	if(name!=NULL && *name!=NULL){
-	  fprintf(stderr, "\n Name:       \t");
+	  fprintf(stderr, "\n Name:       \t[");
 	  cb_print_ucs_chrbuf(&(*name), namelength, namelength);
+	  fprintf(stderr, "]\n Name length: \t%i", namelength);
 	}
 	if(err==CBNOTFOUND){
 	  fprintf(stderr, "\n               \tName not found.\n");
 	  return err;
 	}else{
 	  err = print_current_name(&(*in));
+	  if(err!=CBSUCCESS){ fprintf(stderr, "\n               \tName not found.\n"); }
 	}
 	return err;
 }

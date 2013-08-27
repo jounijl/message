@@ -21,7 +21,6 @@
 #define CBUSEDASBUFFER       4
 #define CBUTFBOM             5
 #define CB2822HEADEREND      6
-//#define CB2822MESSAGE        7
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -134,16 +133,16 @@
  * a character sequence at header end, between header and message (1).
  * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
  */
-#define CB2822MESSAGE
+//#define CB2822MESSAGE
 
 /*
  * This is not used. LWS was used in folding, this might not be exactly it. It was used
  * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only 
  * followed by LF)
  */
-#define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 )
+#define LWS( x )              ( x == 0x0D || x == 0x0A || x == 0x20 || x == 0x09 )
 /* RFC 822 SP */
-#define SP( x )               ( x == 0x20 && x == 0x09 )
+#define SP( x )               ( x == 0x20 || x == 0x09 )
 /* RFC 822 control characters 3.3 */
 #define CTL( x )              ( ( x >= 0 && x <= 31 ) || x == 127 )
 
@@ -158,8 +157,10 @@
 #include "./cb_encoding.h"
 
 typedef struct cb_conf{
-        char                type;         // stream (default), file or only buffer
-        char                searchmethod; // search next name (multiple names) or search allways first name (unique names)
+        char                type;            // stream (default), file or only buffer
+        char                searchmethod;    // search next name (multiple names) or search allways first name (unique names)
+	char                unfold;          // Search names unfolding the text first, RFC 2822
+	char                caseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
@@ -284,6 +285,7 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, i
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
 //int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
