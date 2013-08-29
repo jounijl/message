@@ -57,7 +57,12 @@
  - stress test
  - cb_put_name cb_name malloc nimen koon perusteella ennen listaan tallettamista
  - Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
- - Nimimoodi ei toimi, listamoodi toimii: cat tests/testi.txt | ./cbsearch -c 1 -b 2048 -l 512 unknown
+ x Nimimoodi ei toimi, listamoodi toimii: cat tests/testi.txt | ./cbsearch -c 1 -b 2048 -l 512 unknown
+ - Jos lisaa loppuun esim. 2> /dev/null, listan loppuun tulostuu merkkeja ^@^@^@...
+ - VAKAVA VIRHE:
+   Haku nimi3 loytaa nimet nimi1 ja nimi2 mutta ei jos unfold on pois paalta.
+ - bypass ja RFC 2822 viestit eivat sovi yhteen. Jos bypassin korvaa erikoismerkilla,
+   sita ei saisi lukea ja ainoastaa viesti ei ole valid jos siina on erikoismerkkeja.
  */
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -179,11 +184,11 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  if( chr2 == chr1 ){
 	    ;
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
-	    if( chr2 >= 97 && chr2 <= 122 ) // small, delta is 32
+	    if( chr2 >= 97 && chr2 <= 122 ) // small, difference is 32
 	      if( chr2 == (chr1+32) ) // ASCII, 'A' + 32 = 'a'
 	        ;
 	  }else if( chr2 >= 65 && chr2 <= 90 ){ // large
-	    if( chr1 >= 97 && chr1 <= 122 ) // small, delta is 32
+	    if( chr1 >= 97 && chr1 <= 122 ) // small
 	      if( chr1 == (chr2+32) ) 
 	        ;
 	  }else{
@@ -192,6 +197,8 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 	}
+	if(err1>=CBNEGATION || err2>=CBNEGATION)
+	  return CBNOTFOUND;
 	if(len1==len2)
 	  return CBMATCH;
 	return CBMATCHPART;
@@ -394,6 +401,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 #ifdef CB2822MESSAGE
 	(**str).cf.caseinsensitive=1;
 	(**str).cf.unfold=1;
+	(**str).cf.rfc2822msgend=1;
 	//(**str).rstart=0x00003A; // ':'
 	//(**str).rend=0x00000A;   // LF
 	(**str).rstart=CBRESULTSTART; // tmp
@@ -401,6 +409,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 #else
 	(**str).cf.caseinsensitive=0;
 	(**str).cf.unfold=0;
+	(**str).cf.rfc2822msgend=0;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;
 #endif
@@ -444,9 +453,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	(**cbf).contentlen=0;
 	(**cbf).namecount=0;
 	(**cbf).index=0;
-#ifdef CB2822MESSAGE
-        (**cbf).offset2822=0;
-#endif
+        (**cbf).offsetrfc2822=0;
 	(**cbf).name=NULL;
 	(**cbf).current=NULL;
 	(**cbf).last=NULL;
@@ -751,14 +758,13 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
  */
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int  err=CBSUCCESS, enctest=CBDEFAULTENCODING, cis=CBSUCCESS;
-	int index=0, indx=0, indx2=0, bytecount=0, storedbytes=0, buferr=CBSUCCESS;
+	int index=0, indx=0, bytecount=0, storedbytes=0, buferr=CBSUCCESS; 
 	unsigned long int chr=0, cmp=0, chprev=CBRESULTEND;
-	unsigned char *charbuf   = NULL;
-	cb_name *fname  = NULL;
+	unsigned char *charbuf = NULL;
+	cb_name *fname = NULL;
 	char atvalue=0;
-#ifdef CB2822MESSAGE
         unsigned long int ch3prev=CBRESULTEND+2, ch2prev=CBRESULTEND+1;
-#endif
+
 #ifdef CBSTATETOPOLOGY
 	int openpairs=0;
 #endif
@@ -766,8 +772,8 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	  return CBERRALLOC;
 	chprev=(**cbs).bypass+1; // 5.4.2013
 
-#ifdef TMP        
-        if(cbs!=NULL && *cbs!=NULL && (**cbs).cb !=NULL)
+#ifdef TMP
+        if( cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL )
           fprintf(stderr, "\nnamecount: %li", (*(**cbs).cb).namecount);
 #endif
 
@@ -811,13 +817,14 @@ cb_set_cursor_alloc_name:
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
-	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes); // storedbytes uusi
-	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr == CBSUCCESS){ 
+	err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes);
+	//while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
+	while( err<CBERROR && err!=CBSTREAMEND && (index+3) < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ // 29.8.2013 four characters behind
 
 	  //
 	  // Automatic encoding detection if it's set
 	  if((**cbs).encoding==CBENCAUTO || ( (**cbs).encoding==CBENCPOSSIBLEUTF16LE && (*(**cbs).cb).contentlen == 4 ) ){
-	    fprintf(stderr,"\n at automatic encoding detection");
+	    //fprintf(stderr,"\n at automatic encoding detection");
 	    if( (*(**cbs).cb).contentlen == 4 || (*(**cbs).cb).contentlen == 2 || (*(**cbs).cb).contentlen == 3 ){ // UTF-32, 4; UTF-16, 2; UTF-8, 3;
 	      // 32 is multiple of 16. Testing it again results correct encoding without loss of bytes or errors.
 	      enctest = cb_bom_encoding(cbs);
@@ -832,9 +839,9 @@ cb_set_cursor_alloc_name:
 
 
 #ifdef CBSTATETOPOLOGY
-	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs!=0) // count of rstarts can be greater than the count of rends
+	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs!=0){ // count of rstarts can be greater than the count of rends
 	     ++openpairs; 
-	  else if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs==0){ // outermost pair
+	  }else if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs==0){ // outermost pair
              ++openpairs;
 #elif CBSTATEFUL
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && atvalue!=1){ // '=', save name, 13.4.2013, do not save when = is in value
@@ -842,8 +849,8 @@ cb_set_cursor_alloc_name:
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
 #endif
 	      atvalue=1;
-	      (*fname).namelen = index; indx2=0;
-              if(index<(*fname).buflen){ // Remove SP:s and tabs in name
+	      (*fname).namelen = index; 
+              if(index<(*fname).buflen){ 
 	        indx=0;
                 (*fname).namelen=0; // 6.4.2013
 	        while(indx<index && buferr==CBSUCCESS){ // 4 bytes (UCS word)
@@ -854,15 +861,16 @@ cb_set_cursor_alloc_name:
                         buferr = cb_get_ucs_chr( &cmp, &charbuf, &indx, CBNAMEBUFLEN);
                       }
                     }
-                    if( ! NAMEXCL( cmp ) && cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name
+                    /* Write name */
+                    if( cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name, 28.8.2013
                       buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
                 }
-	      }
-	      (*fname).offset= ( (**cbs).cb->contentlen - 1 );
-	      cb_put_name(cbs, &fname); // (last in list)
-//
+              }
+              (*fname).offset= ( (**cbs).cb->contentlen - 1 );
+              cb_put_name(cbs, &fname); // (last in list)
+
 	      if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
 		cb_remove_name_from_stream(cbs);
 	        fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
@@ -908,21 +916,45 @@ cb_set_cursor_alloc_name:
 	      ;
 #endif
 	  }else{ // save character to buffer
-	      buferr = cb_put_ucs_chr(chr, &charbuf, &index, CBNAMEBUFLEN); // 5.4.2013
+	      buferr = cb_put_ucs_chr(chr, &charbuf, &index, CBNAMEBUFLEN);
 	  }
 
-          /* Automatic stop at "Internet Message Format" header if it's set */
-#ifdef CB2822MESSAGE
-          ch3prev=ch2prev; ch2prev=chprev;
-          if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
-            if( (*(**cbs).cb).offset2822 == 0 )
-              (*(**cbs).cb).offset2822 = (*(**cbs).cb).contentlen; // offset set at last new line character
-            free(charbuf); cb_free_fname(&fname);
-            return CB2822HEADEREND;
-          }
-#endif
-	  chprev = chr;
+          /* Automatic stop at "Internet Message Format" header-end if it's set */
+          if((**cbs).cf.rfc2822msgend==1)
+            if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
+              if( (*(**cbs).cb).offsetrfc2822 == 0 )
+                (*(**cbs).cb).offsetrfc2822 = (*(**cbs).cb).contentlen; // offset set at last new line character
+              free(charbuf); cb_free_fname(&fname);
+              return CB2822HEADEREND;
+            }
+
+	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;
 	  err = cb_get_chr(cbs,&chr,&bytecount,&storedbytes);
+
+	  /*
+	   * Unfolding if configured
+	   */
+	  while( (**cbs).cf.unfold==1 && err<CBERROR && ( FWS( ch2prev, chprev, chr ) ) ){
+	    fprintf(stderr,"\nFWS( [%x], [%x], [%x] )", (int) ch2prev, (int) chprev, (int) chr);
+ 	    while( SP( chprev ) && SP( chr ) && err<CBERROR ){ //  any + LWS + LWS -> any + LWS + any
+	      chprev = chr;
+	      err = cb_get_chr(&(*cbs),&chr,&bytecount,&storedbytes); // middle LWS ignored before ch2prev
+	    }
+ 	    while( SP( ch2prev ) && SP( chprev ) && err<CBERROR ){ //  LWS + LWS + any -> LWS + any + any
+	      ch2prev = chprev; chprev = chr; // first LWS before ch3prev ignored
+	      err = cb_get_chr(&(*cbs),&chr,&bytecount,&storedbytes);
+	    }
+	    if( LWS( ch2prev, chprev, chr ) ){ // CR LF LWS
+	      ch2prev = chprev; chprev = chr;
+	      err = cb_get_chr(&(*cbs),&chr,&bytecount,&storedbytes); // CR LF LWS -> LF LWS any
+	      if(err<CBERROR){
+	        ch2prev = chprev; chprev = chr; // LF + LWS + any -> LWS + any + any
+	        err = cb_get_chr(&(*cbs),&chr,&bytecount,&storedbytes);	      
+	      }
+	    }
+	  }
+	  /* /Unfolding */
+	    
 	}
         free(charbuf); cb_free_fname(&fname);
 #ifdef TMP        

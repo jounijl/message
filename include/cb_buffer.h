@@ -133,18 +133,25 @@
  * a character sequence at header end, between header and message (1).
  * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
  */
-//#define CB2822MESSAGE
+#define CB2822MESSAGE
 
 /*
- * This is not used. LWS was used in folding, this might not be exactly it. It was used
- * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only 
- * followed by LF)
+ * LWS used in unfolding in RFC 2616 (HTTP) and RFC 822 LWS. 
+ * [CRLF] 1*( SP | HT ) (RFC 5198: CR can appear only followed by LF)
  */
-#define LWS( x )              ( x == 0x0D || x == 0x0A || x == 0x20 || x == 0x09 )
-/* RFC 822 SP */
-#define SP( x )               ( x == 0x20 || x == 0x09 )
+#define LWS( prev2, prev, chr )              ( (prev2) == 0x0D && (prev) == 0x0A && ( (chr) == 0x20 || (chr) == 0x09 ) )
+/*
+ * RFC 2822 unfolding
+ * ([*WSP CRLF] 1*WSP) = FWS (folding white space)
+ */
+#define FWS( prev2 , prev , chr )              ( (  ( (prev2) == 0x0D && (prev) == 0x0A ) || \
+                                                    ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
+                                                    ( (chr) == 0x20 || (chr) == 0x09 )       )
+
+/* RFC 822 LWSP */
+#define SP( x )               ( ( x ) == 0x20 || ( x ) == 0x09 )
 /* RFC 822 control characters 3.3 */
-#define CTL( x )              ( ( x >= 0 && x <= 31 ) || x == 127 )
+#define CTL( x )              ( ( ( x ) >= 0 && ( x ) <= 31 ) || ( x ) == 127 )
 
 
 /*
@@ -152,15 +159,16 @@
  * elsewhere. UTF-8: "Should be stripped ...", RFC-3629 page-6, UTF-16:
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
-#define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
+// #define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
 
 #include "./cb_encoding.h"
 
 typedef struct cb_conf{
         char                type;            // stream (default), file or only buffer
         char                searchmethod;    // search next name (multiple names) or search allways first name (unique names)
-	char                unfold;          // Search names unfolding the text first, RFC 2822
-	char                caseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                unfold;          // Search names unfolding the text first, RFC 2822
+        char                caseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822msgend;   // Stop after RFC 2822 header end characters
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
@@ -182,9 +190,7 @@ typedef struct cbuf{
 	cb_name            *current;
 	cb_name            *last;
 	long int            namecount;
-#ifdef CB2822MESSAGE
-        int                 offset2822;   // offset of RFC-2822 header end with end characters
-#endif
+        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters
 } cbuf;
 
 typedef struct cbuf cblk;
