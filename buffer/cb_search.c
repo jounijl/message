@@ -161,13 +161,14 @@ int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *c
 	  if(err==CBSTREAMEND){  return CBSTREAMEND; }
 
 	  // jos tulokseksi tulee esim. kaksi space/tab:ia, ei poista enaa toista kertaa
-
+cb_unfolding_try_another:
 	  if( SP( *chr ) && err<CBNEGATION ){
 	    cb_fifo_put_chr( &(*readahead), *chr, storedbytes);
 	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	    if(err==CBSTREAM){  cb_fifo_set_stream( &(*readahead) ); }
 	    if( SP( *chr) ){
 	      cb_fifo_revert_chr( &(*readahead), &empty, &tmp );
+	      goto cb_unfolding_try_another;
 	    }else{
       	      cb_fifo_put_chr( &(*readahead), *chr, storedbytes);
 	      cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes);
@@ -185,6 +186,7 @@ int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *c
 	      if( SP( *chr ) && err<CBNEGATION ){
 	        cb_fifo_revert_chr( &(*readahead), &empty, &tmp ); // CR
 	        cb_fifo_revert_chr( &(*readahead), &empty, &tmp ); // LF
+	        goto cb_unfolding_try_another;
 	      }else if( err<CBNEGATION ){ 
 	        cb_fifo_put_chr( &(*readahead), *chr, storedbytes ); // save 'any', 3:rd in store
 	        cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes); // return first in fifo (CR)
