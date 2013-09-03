@@ -59,9 +59,8 @@
  - cb_put_name cb_name malloc nimen koon perusteella ennen listaan tallettamista
  - Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
  x Nimimoodi ei toimi, listamoodi toimii: cat tests/testi.txt | ./cbsearch -c 1 -b 2048 -l 512 unknown
- - Jos lisaa loppuun esim. 2> /dev/null, listan loppuun tulostuu merkkeja ^@^@^@...
- - VAKAVA VIRHE:
-   Haku nimi3 loytaa nimet nimi1 ja nimi2 mutta ei jos unfold on pois paalta.
+ x Jos lisaa loppuun esim. 2> /dev/null, listan loppuun tulostuu merkkeja ^@^@^@...
+ x Haku nimi3 loytaa nimet nimi1 ja nimi2 mutta ei jos unfold on pois paalta.
  - bypass ja RFC 2822 viestit eivat sovi yhteen. Jos bypassin korvaa erikoismerkilla,
    sita ei saisi lukea ja ainoastaa viesti ei ole valid jos siina on erikoismerkkeja.
  - Ohjeeseen: rstart ei saa olla "unfolding" erikoismerkki
@@ -71,6 +70,9 @@
    (viimeiset muutokset ja kommentit ovat huonoja)
  - CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
    -> qualify name tms. johon kuuluvat muutkin maareet joita nimen tulee toteuttaa
+ x BOM poisto takaisin
+ - valkoista jaa viela nimen alkuun (2 kpl) vaikka unfolding on paalla
+ - cb_fifo_revert_chr testi
  */
 
 //int  cb_put_name(CBFILE **str, cb_name **cbn);

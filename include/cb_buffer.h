@@ -49,6 +49,7 @@
  */
 #define CBNAMEBUFLEN        1024
 #define CBREADAHEADSIZE     20
+
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
 #define CBBYPASS            '\\'
@@ -138,41 +139,33 @@
  */
 #define CB2822MESSAGE
 
-/*
- * LWS used in unfolding in RFC 2616 (HTTP) and RFC 822 LWS. 
- * [CRLF] 1*( SP | HT ) (RFC 5198: CR can appear only followed by LF)
- */
-//#define LWS( prev2, prev, chr )              ( (prev2) == 0x0D && (prev) == 0x0A && ( (chr) == 0x20 || (chr) == 0x09 ) )
-/*
- * RFC 2822 unfolding
- * ([*WSP CRLF] 1*WSP) = FWS (folding white space)
- */
-#define FWS( prev2 , prev , chr )              ( (  ( (prev2) == 0x0D && (prev) == 0x0A ) || \
-                                                    ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
-                                                    ( (chr) == 0x20 || (chr) == 0x09 )       )
+// RFC 2822 unfolding, (RFC 5198: CR can appear only followed by LF)
 
-/* RFC 822 LWSP */
-#define SP( x )               ( ( x ) == 0x20 || ( x ) == 0x09 )
+/* ABNF names RFC 2234 6.1 */
+#define WSP( x )              ( ( x ) == 0x20 || ( x ) == 0x09 )
 #define CR( x )               ( ( x ) == 0x0D )
 #define LF( x )               ( ( x ) == 0x0A )
-/* RFC 822 control characters 3.3 */
 #define CTL( x )              ( ( ( x ) >= 0 && ( x ) <= 31 ) || ( x ) == 127 )
+
+/* FWS (folding white space), linear white space */
+#define LWSP( prev2 , prev , chr )             ( (  ( (prev2) == 0x0D && (prev) == 0x0A ) || \
+                                                    ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
+                                                    ( (chr) == 0x20 || (chr)  == 0x09 )      )
 
 
 /*
  * Characters to remove from name: CR LF Space Tab and BOM. Comment string is removed 
- * elsewhere. UTF-8: "Should be stripped ...", RFC-3629 page-6, UTF-16:
+ * elsewhere. UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16:
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
 // #define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
+#define NAMEXCL( x )           ( ( x ) == 0xFEFF )
 
 #include "./cb_encoding.h"	// Encoding macros
 
 /*
  * Fifo ring structure */
 typedef struct cb_ring {
-        //unsigned char *buf;
-        //unsigned char *storedsizes;
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
         int buflen;
@@ -182,12 +175,13 @@ typedef struct cb_ring {
         int first;
         int last;
 	int streamstart; // id of first character from stream
+	int streamstop;  // id of stop character
 } cb_ring;
 
 /*
  * CBFILE */
 typedef struct cb_conf{
-        char                type;            // stream (default), file or only buffer
+        char                type;            // stream (default), file or only buffer (fd is not in use)
         char                searchmethod;    // search next name (multiple names) or search allways first name (unique names)
         char                unfold;          // Search names unfolding the text first, RFC 2822
         char                caseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
@@ -222,7 +216,6 @@ typedef struct CBFILE{
 	int                 fd;	// Stream file descriptor
 	cbuf               *cb;	// Data in valuepairs (preferably in applications order)
 	cblk               *blk;	// Input read or output write -block 
-	//int               onlybuffer; // If fd is not in use
         cb_conf             cf;         // All configurations, 20.8.2013
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -345,6 +338,7 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *size);
 int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int size);
 int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize); // remove last put character
 int  cb_fifo_set_stream(cb_ring *cfi); // all get operations return CBSTREAM after this
+int  cb_fifo_set_endchr(cb_ring *cfi); // all get operations return CBSTREAMEND after this
 
 // Debug
 int  cb_fifo_print_buffer(cb_ring *cfi);

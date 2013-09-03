@@ -42,6 +42,7 @@ int  cb_fifo_print_counters(cb_ring *cfi){
         fprintf(stderr,"\nfirst:        %i", (*cfi).first );
         fprintf(stderr,"\nlast:         %i", (*cfi).last );
         fprintf(stderr,"\nstreamstart:  %i", (*cfi).streamstart );
+        fprintf(stderr,"\nstreamstop:   %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
 int  cb_fifo_init_counters(cb_ring *cfi){
@@ -53,6 +54,7 @@ int  cb_fifo_init_counters(cb_ring *cfi){
         (*cfi).first=0;
         (*cfi).last=0;
         (*cfi).streamstart=-1;
+        (*cfi).streamstop=-1;
         if((*cfi).buf==NULL){
 	  (*cfi).buflen=0;
           err = CBERRALLOC;
@@ -78,7 +80,14 @@ int  cb_fifo_set_stream(cb_ring *cfi){
 	  (*cfi).streamstart=(*cfi).ahead;
 	return CBSUCCESS;	
 }
-int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
+int  cb_fifo_set_endchr(cb_ring *cfi){
+        if(cfi==NULL || (*cfi).buf==NULL)
+          return CBERRALLOC;
+        if((*cfi).streamstop==-1)
+	  (*cfi).streamstop=(*cfi).ahead;
+	return CBSUCCESS;	
+}
+int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){ // lisatty 2.9.2013, ei testattu viela erikseen
         int err=CBSUCCESS, tmp1=0, tmp2=0; unsigned long int chrs=0;
 	unsigned char *ptr = NULL;
         if(cfi==NULL || (*cfi).buf==NULL)
@@ -105,6 +114,8 @@ int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 	  }
 	  if(err==CBSUCCESS && (*cfi).streamstart==0)
 	    return CBSTREAM;
+	  if(err==CBSUCCESS && (*cfi).streamstop==0)
+	    return CBSTREAMEND;
           return err;
         }else
           return CBEMPTY;
@@ -122,6 +133,8 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
           (*cfi).ahead-=4;
 	  if((*cfi).streamstart!=-1 && (*cfi).streamstart!=0)
 	    (*cfi).streamstart-=4;
+	  if((*cfi).streamstop!=-1 && (*cfi).streamstop!=0)
+	    (*cfi).streamstop-=4;
 
 	  ptr = &((*cfi).storedsizes[0]);
           err = cb_get_ucs_chr( &chrs, &ptr, &tmp, (*cfi).sizeslen );
@@ -130,6 +143,8 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 
 	  if(err==CBSUCCESS && (*cfi).streamstart==0)
 	    return CBSTREAM;
+	  if(err==CBSUCCESS && (*cfi).streamstop==0)
+	    return CBSTREAMEND;
           return err;
         }else
           return CBEMPTY;

@@ -28,7 +28,6 @@ int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *c
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, unsigned char **charbuf, int index);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
-#define SPTABCR( x )        ( (x)==0x0D || (x)==0x20 || (x)==0x09 )
 
 int  cb_put_name(CBFILE **str, cb_name **cbn){ 
         int err=0;
@@ -158,15 +157,16 @@ int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *c
 	if((*readahead).ahead == 0){
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  if(err==CBSTREAM){  cb_fifo_set_stream( &(*readahead) ); }
-	  if(err==CBSTREAMEND){  return CBSTREAMEND; }
+	  if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(*readahead) ); return CBSTREAMEND; }
 
 	  // jos tulokseksi tulee esim. kaksi space/tab:ia, ei poista enaa toista kertaa
 cb_unfolding_try_another:
-	  if( SP( *chr ) && err<CBNEGATION ){
+	  if( WSP( *chr ) && err<CBNEGATION ){
 	    cb_fifo_put_chr( &(*readahead), *chr, storedbytes);
 	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	    if(err==CBSTREAM){  cb_fifo_set_stream( &(*readahead) ); }
-	    if( SP( *chr) ){
+	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(*readahead) ); }
+	    if( WSP( *chr ) && err<CBNEGATION ){
 	      cb_fifo_revert_chr( &(*readahead), &empty, &tmp );
 	      goto cb_unfolding_try_another;
 	    }else{
@@ -177,15 +177,16 @@ cb_unfolding_try_another:
 	    cb_fifo_put_chr( &(*readahead), *chr, storedbytes);
 	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	    if(err==CBSTREAM){  cb_fifo_set_stream( &(*readahead) ); }
+	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(*readahead) ); }
 
 	    if( LF( *chr ) && err<CBNEGATION ){ 
 	      cb_fifo_put_chr( &(*readahead), *chr, storedbytes);
 	      err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	      if(err==CBSTREAM){  cb_fifo_set_stream( &(*readahead) ); }
 
-	      if( SP( *chr ) && err<CBNEGATION ){
-	        cb_fifo_revert_chr( &(*readahead), &empty, &tmp ); // CR
+	      if( WSP( *chr ) && err<CBNEGATION ){
 	        cb_fifo_revert_chr( &(*readahead), &empty, &tmp ); // LF
+	        cb_fifo_revert_chr( &(*readahead), &empty, &tmp ); // CR
 	        goto cb_unfolding_try_another;
 	      }else if( err<CBNEGATION ){ 
 	        cb_fifo_put_chr( &(*readahead), *chr, storedbytes ); // save 'any', 3:rd in store
@@ -196,8 +197,8 @@ cb_unfolding_try_another:
 	      cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes); // return first in fifo (CR)
 	    }
 	  }else{
-	    cb_fifo_put_chr( &(*readahead), *chr, storedbytes ); // save 'any', 1:nd in store
-	    cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes); // return first in fifo (CR)
+	    cb_fifo_put_chr( &(*readahead), *chr, storedbytes ); // save 'any', 1:st in store
+	    cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes); // return first in fifo (WSP)
 	  }
 	  if(err>=CBNEGATION){
             fprintf(stderr,"\ncb_unfolding_get_chr: read error %i, chr:[%c].", err, (int) *chr); 
@@ -316,9 +317,7 @@ cb_set_cursor_alloc_name:
 	err = cb_search_get_chr( &(*cbs), &readahead, &chr, &chroffset); // 1.9.2013
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
 
-	  // Set encoding automatically if it's set
-	  if((**cbs).encoding==CBENCAUTO || ( (**cbs).encoding==CBENCPOSSIBLEUTF16LE && (*(**cbs).cb).contentlen == 4 ) )
-	    cb_automatic_encoding_detection( &(*cbs) );
+	  cb_automatic_encoding_detection( &(*cbs) ); // set encoding automatically if set
 
 #ifdef CBSTATETOPOLOGY
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart && openpairs!=0){ // count of rstarts can be greater than the count of rends
@@ -330,61 +329,59 @@ cb_set_cursor_alloc_name:
 #else
 	  if(chprev!=(**cbs).bypass && chr==(**cbs).rstart){ // '=', save name, 5.4.2013
 #endif
-	      atvalue=1;
+	    atvalue=1;
 
-	      // tuleeko seuraavan ehtona olla JOS(buferr==0)
-	      buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
-	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
-	        fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i.", buferr);
-	      }
+	    // tuleeko seuraavan ehtona olla JOS(buferr==0)
+	    buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
+	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
+	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i.", buferr);
+	    }
 
-	      if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
-		cb_remove_name_from_stream( &(*cbs) );
-	        fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
-	      }
+	    if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
+	      cb_remove_name_from_stream( &(*cbs) );
+	      fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
+	    }
 
-	      if((**cbs).cf.caseinsensitive==1) // 27.8.2013
-	        cis = cb_compare_rfc2822( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen );
+	    if((**cbs).cf.caseinsensitive==1) // 27.8.2013
+	      cis = cb_compare_rfc2822( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen );
+	    else
+	      cis = cb_compare( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen ); 
+  	    if( cis == CBMATCH ){ // 30.3.2013
+	      (**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013
+	      if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
+	        if( (*(**cbs).cb).last != NULL )
+	          (*(*(**cbs).cb).last).matchcount++; 
+              cb_free_fname(&fname); // free everything and return, 30.8.2013
+	      if(err==CBSTREAM)
+	        return CBSTREAM;  // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	      else
-	        cis = cb_compare( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen ); 
-  	      if( cis == CBMATCH ){ // 30.3.2013
-	        // (**cbs).cb->index = (**cbs).cb->contentlen; // cursor
-	        // (**cbs).cb->index = (**cbs).cb->contentlen - readahead.bytesahead; // cursor at rstart
-	        (**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013
-	        if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
-	          if( (*(**cbs).cb).last != NULL )
-	            (*(*(**cbs).cb).last).matchcount++; 
-                cb_free_fname(&fname); // free everything and return, 30.8.2013
-	        if(err==CBSTREAM)
-	          return CBSTREAM;  // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
-		else
-		  return CBSUCCESS; // cursor set
-	      }
+	        return CBSUCCESS; // cursor set
+	    }
 #ifdef CBSTATETOPOLOGY
           }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
-	      if(openpairs>=1) --openpairs; // (reader must read similarly, with openpairs count or otherwice)
+	    if(openpairs>=1) --openpairs; // (reader must read similarly, with openpairs count or otherwice)
 #else
 	  }else if( chprev!=(**cbs).bypass && chr==(**cbs).rend ){ // '&', start new name
 #endif
-	      atvalue=0; cb_free_fname(&fname); fname=NULL;
- 	      goto cb_set_cursor_alloc_name;
+	    atvalue=0; cb_free_fname(&fname); fname=NULL;
+ 	    goto cb_set_cursor_alloc_name;
 	  }else if(chprev==(**cbs).bypass && chr==(**cbs).bypass){ // change \\ to one '\'
-	      chr=' '; // any char not '\'
+	    chr=(**cbs).bypass+1; // any char not '\'
 #ifdef CBSTATEFUL
 	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
-	      /* This state is to use indefinite length values. Index does not increase and
-	       * unordered values length is not bound to length CBNAMEBUFLEN. 
-               * ( name1=name2=value& becomes name1 once, otherwice (was) name1name2. )
-	       */
-	      ;
+	    /* This state is to use indefinite length values. Index does not increase and
+	     * unordered values length is not bound to length CBNAMEBUFLEN. 
+             * ( name1=name2=value& becomes name1 once, otherwice (was) name1name2. )
+	     */
+	    ;
 #endif
 #ifdef CBSTATETOPOLOGY
 	  }else if(atvalue==1){ // Do not save data between '=' and '&' 
-	      /* The same as in CBSTATEFUL. Saves space. */
-	      ;
+	    /* The same as in CBSTATEFUL. Saves space. */
+	    ;
 #endif
 	  }else{ // save character to buffer
-	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
+	    buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }
 
           /* Automatic stop at header-end if it's set */
@@ -430,7 +427,7 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, uns
                     }
                     /* Write name */
                     if( cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name, 28.8.2013
-	              if( ! ( (**cbs).cf.rfc2822 && CTL( cmp ) ) )
+	              if( ! NAMEXCL( cmp ) ) // bom, (save everything, only comparing matters)
                         buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
