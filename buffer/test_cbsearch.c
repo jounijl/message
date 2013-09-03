@@ -189,15 +189,15 @@ int main (int argc, char **argv) {
 	      for(y=0; y<namearraylen && y<10000; ++y ){
 	        chprev = chr;
 	        chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
-	        if( ! SP( chr ) ){
+	        if( ! WSP( chr ) ){
 	          err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	       	  namelen = u;
 	          //fprintf(stderr,"%C", chr );
 	        } 
-	        if( ( SP( chr ) && ! SP( chprev ) ) || y==(namearraylen-1) || chr=='\0' ){
-	          //fprintf(stderr," search, namelen: %i name:", namelen );
-	          //cb_print_ucs_chrbuf(&name, namelen, namebuflen);
-	          //fprintf(stderr,"\n");
+	        if( ( WSP( chr ) && ! WSP( chprev ) ) || y==(namearraylen-1) || chr=='\0' ){
+	          fprintf(stderr,"\n Search name: ");
+	          cb_print_ucs_chrbuf(&name, namelen, namebuflen);
+	          fprintf(stderr,".\n");
 	          name[ namelen*4 ] = '\0';
 	          err = search_and_print_name(&in, &name, namelen );
 	          namelen = 0; u = 0;
@@ -240,17 +240,20 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	  return CBERRALLOC;
 	err = cb_set_cursor_ucs( &(*in), &(*name), &namelength );
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
-	if(name!=NULL && *name!=NULL){
-	  fprintf(stderr, "\n Name:       \t[");
-	  cb_print_ucs_chrbuf(&(*name), namelength, namelength);
-	  fprintf(stderr, "]\n Name length: \t%i", namelength);
+	if( err==CBSUCCESS || err==CBSTREAM ){
+	  err = print_current_name(&(*in));
+	  if(err!=CBSUCCESS){ fprintf(stderr, "\nName not found.\n"); }
 	}
 	if(err==CBNOTFOUND){
-	  fprintf(stderr, "\n               \tName not found.\n");
+	  fprintf(stderr, "\nName \"");
+	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
+	  fprintf(stderr, "\" not found.\n");
 	  return err;
-	}else{
-	  err = print_current_name(&(*in));
-	  if(err!=CBSUCCESS){ fprintf(stderr, "\n               \tName not found.\n"); }
+	}
+	if(err==CBSTREAM){
+	  fprintf(stderr, "\nStream start.\n");
+	}else if(err==CBSTREAMEND){
+	  fprintf(stderr, "\nStream end.\n");
 	}
 	return err;
 }
@@ -264,10 +267,13 @@ int  print_current_name(CBFILE **cbf){
 	if(cbf==NULL || *cbf==NULL || (**cbf).cb == NULL || (*(**cbf).cb).current == NULL)
 	  return CBERRALLOC;
 
+	fprintf(stderr, "\n Name:         \t[");
+	cb_print_ucs_chrbuf( &(*(*(**cbf).cb).current).namebuf, (*(*(**cbf).cb).current).namelen, (*(*(**cbf).cb).current).buflen);
+	fprintf(stderr, "]\n Name length:  \t%i", (*(*(**cbf).cb).current).namelen);
 	fprintf(stderr, "\n Offset:       \t%li", (*(*(**cbf).cb).current).offset);
 	fprintf(stderr, "\n Length set to:\t%i", (*(*(**cbf).cb).current).length);
 	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).current).matchcount);
-	fprintf(stderr, "\n Content:      \t");
+	fprintf(stderr, "\n Content:      \t\"");
 
 #ifdef CBSTATETOPOLOGY
 	while( ( chrprev!=(**cbf).bypass && chr!=(**cbf).rend && opennamepairs==0 ) && err<=CBNEGATION ){
@@ -290,7 +296,7 @@ int  print_current_name(CBFILE **cbf){
 #endif
 	}
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr: %i.", err); }
-	fprintf(stderr,"\n");
+	fprintf(stderr,"\"\n");
 	return err;
 }
 

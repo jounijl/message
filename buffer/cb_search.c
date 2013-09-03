@@ -24,7 +24,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn);
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen);
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset);
-int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset);
+//int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, unsigned char **charbuf, int index);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
@@ -139,7 +139,7 @@ int  cb_search_get_chr( CBFILE **cbs, cb_ring *readahead, unsigned long int *chr
 	if(cbs==NULL || *cbs==NULL || readahead==NULL || chroffset==NULL || chr==NULL)
 	  return CBERRALLOC;
 	if((**cbs).cf.unfold==1)
-	  return cb_unfolding_get_chr( &(*cbs), &(*readahead), &(*chr), &(*chroffset) );
+	  return cb_get_chr_unfold( &(*cbs), &(*readahead), &(*chr), &(*chroffset) );
 	else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  *chroffset = (**cbs).cb->index - 1;
@@ -148,7 +148,7 @@ int  cb_search_get_chr( CBFILE **cbs, cb_ring *readahead, unsigned long int *chr
 	return CBERROR;
 }
 
-int  cb_unfolding_get_chr(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset){
+int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset){
 	int bytecount=0, storedbytes=0, tmp=0; int err=CBSUCCESS;
 	unsigned long int empty=0x61;
 	if(cbs==NULL || *cbs==NULL || readahead==NULL || chroffset==NULL || chr==NULL)
@@ -201,18 +201,18 @@ cb_unfolding_try_another:
 	    cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes); // return first in fifo (WSP)
 	  }
 	  if(err>=CBNEGATION){
-            fprintf(stderr,"\ncb_unfolding_get_chr: read error %i, chr:[%c].", err, (int) *chr); 
+            fprintf(stderr,"\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
 	    cb_fifo_print_counters(&(*readahead));
 	  }
 	  *chroffset = (**cbs).cb->index - 1 - (*readahead).bytesahead; // Correct offset
-	  fprintf(stderr,"\nchr: [%c] offset:%i.", (int) *chr, (int) *chroffset);
+	  //fprintf(stderr,"\nchr: [%c] offset:%i.", (int) *chr, (int) *chroffset);
 	  return err;
 	}else if((*readahead).ahead > 0){ // return previously read character
 	  err = cb_fifo_get_chr( &(*readahead), &(*chr), &storedbytes );
 	  *chroffset = (**cbs).cb->index - 1 - (*readahead).bytesahead;
-	  fprintf(stderr,"\nchr: [%c], from ring, offset:%i.", (int) *chr, (int) *chroffset );
+	  //fprintf(stderr,"\nchr: [%c], from ring, offset:%i.", (int) *chr, (int) *chroffset );
 	  if(err>=CBNEGATION){
-	    fprintf(stderr,"\ncb_unfolding_get_chr: read error %i, ahead=%i, bytesahead:%i,\
+	    fprintf(stderr,"\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
 	       storedbytes=%i, chr=[%c].", err, (*readahead).ahead, (*readahead).bytesahead, storedbytes, (int) *chr); 
 	    cb_fifo_print_counters(&(*readahead));
 	  }
@@ -332,7 +332,8 @@ cb_set_cursor_alloc_name:
 	    atvalue=1;
 
 	    // tuleeko seuraavan ehtona olla JOS(buferr==0)
-	    buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
+	    if( buferr==CBSUCCESS )
+	      buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
 	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
 	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i.", buferr);
 	    }
@@ -410,9 +411,9 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, uns
 	      (*fname).namelen = index; // tuleeko olla vasta if:n jalkeen
 	      (*fname).offset = offset;
 
-	      fprintf(stderr,"\n name:[");
-	      cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);
-	      fprintf(stderr,"]");
+	      //fprintf(stderr,"\n name:[");
+	      //cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);
+	      //fprintf(stderr,"]");
 
               if(index<(*fname).buflen){ 
                 (*fname).namelen=0; // 6.4.2013

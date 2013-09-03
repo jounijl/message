@@ -284,6 +284,9 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 // Transfer encoding
 int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
 int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
+// Character unfolding, calls cb_get_chr
+int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset);
+
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_put_ch(CBFILE **cbs, unsigned char ch); // *ch -> ch 12.8.2013
