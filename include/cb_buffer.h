@@ -1,5 +1,5 @@
 /*
- * Library to read and write streams. Valuepair indexing with different character encodings.
+ * Library to read and write streams. Valuepair searchlist with different encodings.
  * 
  * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
  * 
@@ -48,7 +48,7 @@
  * Default values
  */
 #define CBNAMEBUFLEN        1024
-#define CBREADAHEADSIZE     20
+#define CBREADAHEADSIZE     28
 
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
@@ -178,8 +178,6 @@ typedef struct cb_ring {
 	int streamstop;  // id of stop character
 } cb_ring;
 
-/*
- * CBFILE */
 typedef struct cb_conf{
         char                type;            // stream (default), file or only buffer (fd is not in use)
         char                searchmethod;    // search next name (multiple names) or search allways first name (unique names)
@@ -189,20 +187,20 @@ typedef struct cb_conf{
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
-        unsigned char      *namebuf;      // name 
-	int                 buflen;       // name+excess buffer space
-        int                 namelen;      // name length
-        long int            offset;       // offset from the beginning of data
-        int                 length;       // unknown (almost allways -1) (length of data), possibly set after it's known
-        long int            matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
-        void               *next;         // Last is NULL
+        unsigned char        *namebuf;      // name
+	int                   buflen;       // name+excess buffer space
+        int                   namelen;      // name length
+        signed long long int  offset;       // offset from the beginning of data
+        int                   length;       // unknown (almost allways -1) (length of data), possibly empty, set after it's known
+        long int              matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        void                  *next;        // Last is NULL
 } cb_name;
 
 typedef struct cbuf{
         unsigned char      *buf; 
         long int            buflen;       // In bytes
-	long int            index;
-	long int            contentlen;   // Count in numbers (first starts from 1), comment: 7.11.2009
+	long int            index;        // Cursors offset in bytes
+	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
         cb_name            *name;
 	cb_name            *current;
 	cb_name            *last;
@@ -213,9 +211,10 @@ typedef struct cbuf{
 typedef struct cbuf cblk;
 
 typedef struct CBFILE{
-	int                 fd;	// Stream file descriptor
-	cbuf               *cb;	// Data in valuepairs (preferably in applications order)
+	int                 fd;		// Stream file descriptor
+	cbuf               *cb;		// Data in valuepairs (preferably in applications order)
 	cblk               *blk;	// Input read or output write -block 
+	cb_ring             ahd;	// Ring buffer to save data read ahead
         cb_conf             cf;         // All configurations, 20.8.2013
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -284,8 +283,19 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 // Transfer encoding
 int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
 int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
-// Character unfolding, calls cb_get_chr
-int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *readahead, unsigned long int *chr, long int *chroffset);
+/*
+ * Unfolds read characters. Characters are read by cb_get_chr.
+ * cb_ring contains readahead buffer used in folding. The same
+ * readahead buffer has to be moved across function calls. At
+ * the end, the fifo has to be emptied of characters by 
+ * decreasing counters in buffer.
+ */
+int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset);
+/*
+ * Decreases readahead from CBFILE:s length information and zeros
+ * readahead counters.
+ */
+int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead); 
 
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);

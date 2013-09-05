@@ -71,22 +71,19 @@
  - CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
    -> qualify name tms. johon kuuluvat muutkin maareet joita nimen tulee toteuttaa
  x BOM poisto takaisin
- - valkoista jaa viela nimen alkuun (2 kpl) vaikka unfolding on paalla
- - cb_fifo_revert_chr testi
+ x valkoista jaa viela nimen alkuun (2 kpl) vaikka unfolding on paalla
+ x cb_fifo_revert_chr testi
+ x #define CB2822MESSAGE siirtaa tekstin eteenpain ja laittaa valilyonnin eteen,
+   myos vertaus palauttaa oikein vaikka viimeinen kirjain olisi eri.  
+ - Ohjeeseen: arvon pituus ei paivity heti, vasta toisen nimen lisayksen yhteydessa
+   Se ei ole heti kaytettavissa.
+ - cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
  */
 
-//int  cb_put_name(CBFILE **str, cb_name **cbn);
-//int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen);
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 int  cb_set_type(CBFILE **buf, char type);
-//int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 
-int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
-
-#ifdef TMP
-//unsigned long long int mallocs_fname=0, mallocs_charbuf=0, mallocs_buffer=0, mallocs_cbfile=0;
-//unsigned long long int frees_fname=0, frees_charbuf=0, frees_buffer=0, frees_cbfile=0;
-#endif
+//int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
 /*
  * Debug
@@ -104,7 +101,7 @@ int  cb_print_names(CBFILE **str){
                 if(iter!=NULL){
 	            cb_print_ucs_chrbuf(&(*iter).namebuf, (*iter).namelen, (*iter).buflen);
 	        }
-                fprintf(stderr, "] offset [%li] length [%i]", (*iter).offset, (*iter).length);
+                fprintf(stderr, "] offset [%lli] length [%i]", (*iter).offset, (*iter).length);
                 fprintf(stderr, " matchcount [%li]\n", (*iter).matchcount);
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
@@ -123,26 +120,28 @@ void cb_print_counters(CBFILE **cbf){
              (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 }
 
-int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr){ // Never used or tested
-	int indx=0, indx2=0;
-	unsigned long int tmp=0;
-	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
-	// From left to right, lsb first
-	// Get: msb first, Put: msb first, From left to right, lsb first
-	tmp = chr;
-	for(indx=0; indx<(**cbs).encodingbytes && indx<32; ++index){
-	  for(indx2=((**cbs).encodingbytes-indx); indx2>1; --indx2){
-	    tmp = tmp>>8;
-	  }
-	  if( (index+indx)<(*(**cbs).cb).buflen && (index+indx)<(*(**cbs).cb).contentlen ){ // index count: [LSB][MSB 0][LSB][MSB 1][][2]...
-	    if( (*(**cbs).cb).buf[(index+indx)] != (unsigned char) tmp )
-	      return CBNOTFOUND;
-	  }else
-	    return CBNOTFOUND;
-	  tmp = chr;
-	}
-	return CBMATCH;
-}
+/* int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr){ // Never used or tested
+ *	int indx=0, indx2=0;
+ *	unsigned long int tmp=0;
+ *	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
+ *	// From left to right, lsb first
+ *	// Get: msb first, Put: msb first, From left to right, lsb first
+ *	tmp = chr;
+ *	for(indx=0; indx<(**cbs).encodingbytes && indx<32; ++index){
+ *	  for(indx2=((**cbs).encodingbytes-indx); indx2>1; --indx2){
+ *	    tmp = tmp>>8;
+ *	  }
+ *	  if( (index+indx)<(*(**cbs).cb).buflen && (index+indx)<(*(**cbs).cb).contentlen ){ // index count: [LSB][MSB 0][LSB][MSB 1][][2]...
+ *	    if( (*(**cbs).cb).buf[(index+indx)] != (unsigned char) tmp )
+ *	      return CBNOTFOUND;
+ *	  }else
+ *	    return CBNOTFOUND;
+ *	  tmp = chr;
+ *	}
+ *	return CBMATCH;
+ *}
+ */
+
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2){
 	unsigned long int chr1=0x65, chr2=0x65;
 	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
@@ -151,9 +150,9 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
-//	fprintf(stderr,"cb_compare_rfc2822: [");
-//	cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
-//	cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"]\n");
+	//fprintf(stderr,"\ncb_compare_rfc2822: [");
+	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
+	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.\n", len1, len2);
 
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){
 	  if( chr2 == chr1 ){
@@ -304,6 +303,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).fd = dup(fd);
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
+	cb_fifo_init_counters( &(**str).ahd );
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
 	if(err==-1){ return CBERRALLOC;}
 	if(*blk==NULL){

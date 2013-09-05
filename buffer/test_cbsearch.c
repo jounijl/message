@@ -195,9 +195,9 @@ int main (int argc, char **argv) {
 	          //fprintf(stderr,"%C", chr );
 	        } 
 	        if( ( WSP( chr ) && ! WSP( chprev ) ) || y==(namearraylen-1) || chr=='\0' ){
-	          fprintf(stderr,"\n Search name: ");
-	          cb_print_ucs_chrbuf(&name, namelen, namebuflen);
-	          fprintf(stderr,".\n");
+	          //fprintf(stderr,"\n Search name: ");
+	          //cb_print_ucs_chrbuf(&name, namelen, namebuflen);
+	          //fprintf(stderr,".\n");
 	          name[ namelen*4 ] = '\0';
 	          err = search_and_print_name(&in, &name, namelen );
 	          namelen = 0; u = 0;
@@ -220,9 +220,9 @@ int main (int argc, char **argv) {
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
 	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t      [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
+	fprintf(stderr,"\t    [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
 	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [ -l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t	[ -e <char in hex> ] -s \"name1 name2 name3 ...\"\n");
+	fprintf(stderr,"\t    [ -e <char in hex> ] -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
@@ -242,18 +242,18 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
 	if( err==CBSUCCESS || err==CBSTREAM ){
 	  err = print_current_name(&(*in));
-	  if(err!=CBSUCCESS){ fprintf(stderr, "\nName not found.\n"); }
+	  if(err!=CBSUCCESS){ fprintf(stderr, "\n Name not found.\n"); }
 	}
 	if(err==CBNOTFOUND){
-	  fprintf(stderr, "\nName \"");
+	  fprintf(stderr, "\n Name \"");
 	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
 	  return err;
 	}
 	if(err==CBSTREAM){
-	  fprintf(stderr, "\nStream start.\n");
+	  fprintf(stderr, "\n Stream start.\n");
 	}else if(err==CBSTREAMEND){
-	  fprintf(stderr, "\nStream end.\n");
+	  fprintf(stderr, "\n Stream end.\n");
 	}
 	return err;
 }
@@ -270,7 +270,7 @@ int  print_current_name(CBFILE **cbf){
 	fprintf(stderr, "\n Name:         \t[");
 	cb_print_ucs_chrbuf( &(*(*(**cbf).cb).current).namebuf, (*(*(**cbf).cb).current).namelen, (*(*(**cbf).cb).current).buflen);
 	fprintf(stderr, "]\n Name length:  \t%i", (*(*(**cbf).cb).current).namelen);
-	fprintf(stderr, "\n Offset:       \t%li", (*(*(**cbf).cb).current).offset);
+	fprintf(stderr, "\n Offset:       \t%lli", (*(*(**cbf).cb).current).offset);
 	fprintf(stderr, "\n Length set to:\t%i", (*(*(**cbf).cb).current).length);
 	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).current).matchcount);
 	fprintf(stderr, "\n Content:      \t\"");

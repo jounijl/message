@@ -45,6 +45,7 @@ int  cb_fifo_print_counters(cb_ring *cfi){
         fprintf(stderr,"\nstreamstop:   %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
+
 int  cb_fifo_init_counters(cb_ring *cfi){
 	int err = CBSUCCESS;
         if( cfi==NULL )
