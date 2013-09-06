@@ -77,7 +77,7 @@
    myos vertaus palauttaa oikein vaikka viimeinen kirjain olisi eri.  
  - Ohjeeseen: arvon pituus ei paivity heti, vasta toisen nimen lisayksen yhteydessa
    Se ei ole heti kaytettavissa.
- - cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
+ x cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);

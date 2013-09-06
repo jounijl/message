@@ -31,15 +31,14 @@
 #include "../include/cb_buffer.h"
 #include "../get_option/get_option.h"
 
-#define NAMEBUFLEN    128
+#define NAMEBUFLEN    2048
 #define BUFSIZE       1024
 #define BLKSIZE       128
 #define ENDCHR        0x0A
 
 #define ERRUSAGE      -1
 
-#define DEBUG
-#undef  TMP
+//#define DEBUG
 
 int  main (int argc, char **argv);
 int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength);
@@ -267,6 +266,8 @@ int  print_current_name(CBFILE **cbf){
 	if(cbf==NULL || *cbf==NULL || (**cbf).cb == NULL || (*(**cbf).cb).current == NULL)
 	  return CBERRALLOC;
 
+	chrprev=(**cbf).bypass+4; chr=(**cbf).rend+4;
+
 	fprintf(stderr, "\n Name:         \t[");
 	cb_print_ucs_chrbuf( &(*(*(**cbf).cb).current).namebuf, (*(*(**cbf).cb).current).namelen, (*(*(**cbf).cb).current).buflen);
 	fprintf(stderr, "]\n Name length:  \t%i", (*(*(**cbf).cb).current).namelen);
@@ -275,17 +276,17 @@ int  print_current_name(CBFILE **cbf){
 	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).current).matchcount);
 	fprintf(stderr, "\n Content:      \t\"");
 
+	chrprev = chr;
+	err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+
 #ifdef CBSTATETOPOLOGY
-	while( ( chrprev!=(**cbf).bypass && chr!=(**cbf).rend && opennamepairs==0 ) && err<=CBNEGATION ){
+	while( ( ( chr!=(**cbf).rend || ( chrprev==(**cbf).bypass && chr==(**cbf).rend ) ) && opennamepairs!=0 ) && err<=CBNEGATION ){
 #else
-	while( ( chr!=(**cbf).rend && chrprev!=(**cbf).bypass ) && err<=CBNEGATION ){
+	while( ( ( chr!=(**cbf).rend || ( chrprev==(**cbf).bypass && chr==(**cbf).rend ) ) ) && err<=CBNEGATION ){
 #endif
-	  chrprev = chr;
-	  err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
 	  if(err==CBSTREAM)
-	    cb_remove_name_from_stream(&(*cbf)); // used as stream and removing name whose value is across buffer boundary
-	  if( chr!=(**cbf).rend )
-	    fprintf(stderr,"%c", (int) chr);
+	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary
+	  fprintf(stderr,"%c", (int) chr);
 #ifdef CBSTATETOPOLOGY
 	  if( chr==(**cbf).rend )
 	    --opennamepairs;
@@ -294,6 +295,8 @@ int  print_current_name(CBFILE **cbf){
 	  if( opennamepairs<0 )
 	    opennamepairs = 0;
 #endif
+	  chrprev = chr;
+	  err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
 	}
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr: %i.", err); }
 	fprintf(stderr,"\"\n");

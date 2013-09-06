@@ -604,7 +604,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
  */
 unsigned int  cb_reverse_int32_bits(unsigned int from){
 	unsigned int upper=0, lower=0, new=0;
-        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_int16_bits(lower);
@@ -647,7 +647,7 @@ unsigned char  cb_reverse_char8_bits(unsigned char from){
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
-        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_two_bytes(lower);

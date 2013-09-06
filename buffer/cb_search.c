@@ -26,6 +26,7 @@ int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, unsigned char **charbuf, int index);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
+//int  cb_remove_ahead_offset(CBFILE **cbf);
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn){ 
@@ -53,7 +54,8 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
           (*(*(**str).cb).current).next = &(*(*(**str).cb).last); // previous
           (*(**str).cb).current = &(*(*(**str).cb).last);
           ++(*(**str).cb).namecount;
-          if( (*(**str).cb).contentlen >= (*(**str).cb).buflen )
+          //if( (*(**str).cb).contentlen >= (*(**str).cb).buflen )
+          if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
             (*(*(**str).cb).current).length = (*(**str).cb).buflen; // Largest 'known' value
         }else{
           err = cb_allocate_name( &(*(**str).cb).name ); if(err!=CBSUCCESS){ return err; }
@@ -133,6 +135,9 @@ int  cb_set_search_method(CBFILE **cbf, char method){
 	return CBERRALLOC;
 }
 
+//int  cb_remove_ahead_offset(CBFILE **cbf){ 
+//	return cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+//}
 int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){ 
         if(cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || cfi==NULL)
           return CBERRALLOC;
@@ -140,14 +145,19 @@ int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){
         (*(**cbf).cb).index -= (*cfi).bytesahead;
         (*(**cbf).cb).contentlen -= (*cfi).bytesahead;
 
+        if( (*(**cbf).cb).index < 0 )
+          (*(**cbf).cb).index=0;
+        if( (*(**cbf).cb).contentlen < 0 )
+          (*(**cbf).cb).contentlen=0;
+
         (*cfi).ahead=0;
         (*cfi).bytesahead=0;
         (*cfi).first=0;
         (*cfi).last=0;
-        if((*cfi).streamstart>0)
-          (*cfi).streamstart=0;
-        if((*cfi).streamstop>0)
-          (*cfi).streamstop=0;
+        if((*cfi).streamstart!=0)
+          (*cfi).streamstart=-1;
+        if((*cfi).streamstop!=0)
+          (*cfi).streamstop=-1;
         return CBSUCCESS;
 }
 
@@ -321,11 +331,6 @@ cb_set_cursor_alloc_name:
 	err = cb_allocate_name(&fname);
 	if(err!=CBSUCCESS){  return err; } // 30.8.2013
 
-#ifdef TMP        
-        cb_print_counters(&(*cbs));
-        cb_print_names(&(*cbs));
-#endif
-
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
@@ -363,15 +368,16 @@ cb_set_cursor_alloc_name:
 	    else
 	      cis = cb_compare( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen ); 
   	    if( cis == CBMATCH ){ // 30.3.2013
-	      (**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013
+	      //(**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013 (pois: 6.9.2013 tai *chroffset+1)
+	      (**cbs).cb->index = (**cbs).cb->contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	      if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
 	        if( (*(**cbs).cb).last != NULL )
 	          (*(*(**cbs).cb).last).matchcount++; 
 	      if(err==CBSTREAM){
-	        err = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
+	        ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	        goto cb_set_cursor_ucs_return;
 	      }else{
-	        err = CBSUCCESS; // cursor set
+	        ret = CBSUCCESS; // cursor set
 	        goto cb_set_cursor_ucs_return;
 	      }
 	    }
@@ -399,7 +405,7 @@ cb_set_cursor_alloc_name:
 	    ;
 #endif
 //	  }else if( NAMEXCL( chr ) ){
-	    /* for example BOM is stripped. It should be replaced, not stripped. */
+	    /* for example BOM is stripped. It should be replaced, not stripped if it's not first. */
 //	    ;
 	  }else{ // save character to buffer
 	    buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
@@ -420,7 +426,7 @@ cb_set_cursor_alloc_name:
 	}
 
 cb_set_cursor_ucs_return:
-	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd );
+	//cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
         cb_free_fname(&fname);
 	return ret;
 
@@ -469,7 +475,7 @@ int  cb_automatic_encoding_detection(CBFILE **cbs){
 	if((**cbs).encoding==CBENCAUTO || ( (**cbs).encoding==CBENCPOSSIBLEUTF16LE && (*(**cbs).cb).contentlen == 4 ) ){
 	  if( (*(**cbs).cb).contentlen == 4 || (*(**cbs).cb).contentlen == 2 || (*(**cbs).cb).contentlen == 3 ){ // UTF-32, 4; UTF-16, 2; UTF-8, 3;
 	    // 32 is multiple of 16. Testing it again results correct encoding without loss of bytes or errors.
-	    enctest = cb_bom_encoding(cbs);
+	    enctest = cb_bom_encoding( &(*cbs) );
 	    if( enctest==CBENCUTF8 || enctest==CBENCUTF16BE || enctest==CBENCUTF16LE || enctest==CBENCPOSSIBLEUTF16LE || enctest==CBENCUTF32LE || enctest==CBENCUTF32BE ){
 	      cb_set_encoding( &(*cbs), enctest);
 	      return CBSUCCESS;
