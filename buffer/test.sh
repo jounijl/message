@@ -21,7 +21,7 @@ export LANG
 # cat -e tests/testi2.txt # display non printing characters
 ./test_cb 1 512 1024 tests/testi2.txt
 
-file tests/*.out
+echo; file tests/*.out
 
 #
 # Stress test
@@ -36,6 +36,11 @@ file tests/*.out
 # cat tests/testi.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 # <CR><LF> (echo_CR.sh echo_LF.sh add_cr_to_file.sh)
 # cat tests/testi2.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+
+#
+# Convert between encodings
+#
+# cat tests/testi.txt | ./cbconv -i 1 > test_output.txt
 
 #
 # Test cb_ring.c
