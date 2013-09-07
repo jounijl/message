@@ -179,12 +179,13 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        char                type;             // stream (default), file or only buffer (fd is not in use)
+        char                type;             // stream (default), file (large namelist) or only buffer (fd is not in use)
         char                searchmethod;     // search next name (multiple names) or search allways first name (unique names)
         char                unfold;           // Search names unfolding the text first, RFC 2822
         char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
-        char                removewsp;        // Remove linear white space characters (space and htab) between value and name
+        char                removewsp;        // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                removecrlf;       // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
@@ -200,7 +201,7 @@ typedef struct cb_name{
 typedef struct cbuf{
         unsigned char      *buf; 
         long int            buflen;       // In bytes
-	long int            index;        // Cursors offset in bytes
+	long int            index;        // Cursor offset in bytes
 	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
         cb_name            *name;
 	cb_name            *current;

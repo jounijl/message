@@ -279,9 +279,10 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).cf.caseinsensitive=1;
 	(**str).cf.unfold=1;
 	(**str).cf.removewsp=0; // default
+	(**str).cf.removecrlf=0; // default
 	//(**str).cf.removewsp=1; // tmp
-	(**str).cf.rfc2822headerend=0; // tmp , oli aiemmin: rfc2822headerend, laitettava takaisin kuten bugilistassa?
-	//(**str).cf.rfc2822headerend=1; // default, stop at headerend
+	//(**str).cf.rfc2822headerend=0; // tmp 
+	(**str).cf.rfc2822headerend=1; // default, stop at headerend
 	//(**str).rstart=0x00003A; // ':', default
 	//(**str).rend=0x00000A;   // LF, default
 	(**str).rstart=CBRESULTSTART; // tmp
@@ -290,6 +291,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).cf.caseinsensitive=0;
 	(**str).cf.unfold=0;
 	(**str).cf.removewsp=1;
+	(**str).cf.removecrlf=1;
 	(**str).cf.rfc2822headerend=0;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;

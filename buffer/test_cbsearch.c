@@ -113,6 +113,7 @@ int main (int argc, char **argv) {
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
 	cb_set_encoding(&in, CBENC1BYTE);
+	(*in).cf.rfc2822headerend=0;
 
 	/*
 	 * Rest of the fields in between start ( ./progname ) and end ( <name> )
@@ -237,7 +238,9 @@ void usage (char *progname[]){
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
 	fprintf(stderr,"\tdefined with flag -s. Names are searched in order. Search\n");
-	fprintf(stderr,"\tsearches next same names.\n\n");
+	fprintf(stderr,"\tsearches next same names. %s only unfolds the text. It does\n", progname[0]);
+	fprintf(stderr,"\tnot remove cr, lf or wsp characters between values and\n");
+	fprintf(stderr,"\tnames.\n\n");
 }
 
 /*
@@ -254,7 +257,10 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	  err = print_current_name(&(*in));
 	  if(err!=CBSUCCESS){ fprintf(stderr, "\n Name not found.\n"); }
 	}
-	if(err==CBNOTFOUND){
+	if(err==CB2822HEADEREND ){
+	  fprintf(stderr, "\n Header end. \n");
+	}
+	if(err==CBNOTFOUND || err==CB2822HEADEREND ){
 	  fprintf(stderr, "\n Name \"");
 	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
@@ -269,6 +275,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 }
 int  print_current_name(CBFILE **cbf){
 	int err = 0, bcount=0, strbcount=0;
+	signed long int tmp=0;
 #ifdef CBSTATETOPOLOGY
 	int opennamepairs=1;
 #endif
@@ -290,7 +297,8 @@ int  print_current_name(CBFILE **cbf){
 	fprintf(stderr, "\n Content:      \t\"");
 
 	chrprev = chr;
-	err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+	//err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+	err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
 
 #ifdef CBSTATETOPOLOGY
 	while( ( ( chr!=(**cbf).rend || ( chrprev==(**cbf).bypass && chr==(**cbf).rend ) ) && opennamepairs!=0 ) && err<=CBNEGATION ){
@@ -309,9 +317,10 @@ int  print_current_name(CBFILE **cbf){
 	    opennamepairs = 0;
 #endif
 	  chrprev = chr;
-	  err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+	  //err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
+	  err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
 	}
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr: %i.", err); }
+	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr_unfold: %i.", err); }
 	fprintf(stderr,"\"\n");
 	return err;
 }

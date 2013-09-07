@@ -186,6 +186,8 @@ int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset
 	if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL)
 	  return CBERRALLOC;
 
+        //fprintf(stderr, "\ncb_get_chr_unfold: ahead=%i, bytesahead=%i. ", (int) (**cbs).ahd.ahead, (int) (**cbs).ahd.bytesahead );
+
 	if( (**cbs).ahd.ahead == 0){
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
@@ -224,6 +226,7 @@ cb_get_chr_unfold_try_another:
 	      }else if( err<CBNEGATION ){ 
 	        cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 3:rd in store
 	        cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
+	        //fprintf(stderr, "\ncb_get_chr_unfold: returning after CRLF'any' chr=0x%.6lX.", *chr);
 	      }
 	    }else{
 	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 2:nd in store
@@ -246,6 +249,7 @@ cb_get_chr_unfold_try_another:
 	       storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, storedbytes, (int) *chr); 
 	    cb_fifo_print_counters( &(**cbs).ahd );
 	  }
+	  //fprintf(stderr, "\ncb_get_chr_unfold: return [0x%.6lX]. ", *chr );
 	  return err; // returns CBSTREAM
 	}else
 	  return CBARRAYOUTOFBOUNDS;
@@ -303,7 +307,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	// 1) Search table and set cbs.cb.index if name is found
 	err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength ); // 27.8.2013
 	if(err==CBSUCCESS){
-	  fprintf(stderr,"\nName found from list.");
+	  //fprintf(stderr,"\nName found from list.");
 	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).current).length+(*(*(**cbs).cb).current).offset ) ){
 	    ret = CBSUCCESS;
 	    goto cb_set_cursor_ucs_return;
@@ -359,6 +363,9 @@ cb_set_cursor_alloc_name:
 #endif
 	    atvalue=1;
 
+	    //fprintf(stderr, "\ncb_set_cursor_ucs: '=', index=%i, contentlen=%i", (int) (*(**cbs).cb).index, (int) (*(**cbs).cb).contentlen );
+	    //fprintf(stderr, ", ahead=%i, bytesahead=%i. \n", (int) (**cbs).ahd.ahead, (int) (**cbs).ahd.bytesahead );
+
 	    if( buferr==CBSUCCESS )
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
 	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
@@ -381,11 +388,11 @@ cb_set_cursor_alloc_name:
 	        if( (*(**cbs).cb).last != NULL )
 	          (*(*(**cbs).cb).last).matchcount++; 
 	      if(err==CBSTREAM){
-	        fprintf(stderr,"\nName found from stream.");
+	        //fprintf(stderr,"\nName found from stream.");
 	        ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	        goto cb_set_cursor_ucs_return;
 	      }else{
-	        fprintf(stderr,"\nName found from buffer.");
+	        //fprintf(stderr,"\nName found from buffer.");
 	        ret = CBSUCCESS; // cursor set
 	        goto cb_set_cursor_ucs_return;
 	      }
@@ -460,11 +467,19 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, uns
                         buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
                       }
                     }
+cb_set_cursor_ucs_removals:
                     if( (**cbs).cf.removewsp==1 && WSP( cmp ) ){ // WSP:s between value and name
                       while( indx<index && WSP( cmp ) && buferr==CBSUCCESS ){
                         buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 7.9.2013
                       }
 	            }
+	            if( (**cbs).cf.removecrlf==1 ){ // Removes every CR and LF characters between value and name
+                      while( indx<index && ( CR( cmp ) || LF( cmp ) ) && buferr==CBSUCCESS ){
+                        buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 7.9.2013
+                      }
+	              if( (**cbs).cf.removewsp==1 && WSP( cmp ) )
+	                goto cb_set_cursor_ucs_removals;
+		    }
 
                     /* Write name */
                     if( cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name, 28.8.2013
