@@ -101,7 +101,7 @@ int main (int argc, char **argv) {
 	    cb_set_encoding(&out, outputenc);
 	    continue;
 	  }
-	  u = get_option( argv[i], argv[i+1], 'h', &value); // output encoding number ( from cb_encoding.h )
+	  u = get_option( argv[i], argv[i+1], 'h', &value); // -h , usage message
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
             usage(&argv[0]);
             exit(ERRUSAGE);

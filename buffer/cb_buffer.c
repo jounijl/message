@@ -22,13 +22,11 @@
 
 /*
  Todo:
- x Add comment from # to '\n' . # may be first character of file or 
-   in name or immediately after &[<sp>] but -> not in value <-
  x Not into this: 
    - Nesting =<text>& => <value1>=<text><value1.1>=<text2>&<text3>&
      ( cb_buffer only shows the start of <text> and has nothing to do with the
      rest of the <text>.)
-     - Make nesting to a reader funktion and writer function.
+     - Make nesting to a reader function and writer function.
        - Number showing nesting level and subfiles for example
          for subnests.
    x As in stanza or http, two '\n'-characters ends value (now default is '&')
@@ -38,15 +36,10 @@
      - Fixed length blocks:
        - put_next_pair
        - get_next_pair
- x Get and set = and & signs
  x Document on using the library in www
    - html meta tags
  - Testing plan 
  - Bug tracking
- x Change control characters to 32-bit size integer to allow different encodings
- x Change valuename and its comparing buffer to 32-bit
-   x in set_cursor
- x Ohjelma joka kirjoittaa UTF:aa luettuaan UCS:aa ja pain vastoin
  - cb_get_chr tunnistamaan useamman eri koodauksen virheellinen tavu, CBNOTUTF jne.
    erilaiset yhteen funktiossa cb_get_chr ja siita yleisemmin CBENOTINENCODING tms.
  x Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
@@ -57,7 +50,8 @@
  - boundary tests
  - stress test
  - cb_put_name cb_name malloc nimen koon perusteella ennen listaan tallettamista
- - Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
+ x Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
+   -> nimiin ei kosketa, nimen ja arvon valista voi ottaa nyt valilyonnit ja tabit pois
  x Nimimoodi ei toimi, listamoodi toimii: cat tests/testi.txt | ./cbsearch -c 1 -b 2048 -l 512 unknown
  x Jos lisaa loppuun esim. 2> /dev/null, listan loppuun tulostuu merkkeja ^@^@^@...
  x Haku nimi3 loytaa nimet nimi1 ja nimi2 mutta ei jos unfold on pois paalta.
@@ -68,7 +62,7 @@
  - Jokainen taulukko on vain taulukko ilman pointeria ensimmaiseen?
  - space/tab ei saa esiintya rfc2822:n nimissa, arvon lopetusmerkiksi?
    (viimeiset muutokset ja kommentit ovat huonoja)
- - CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
+ x CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
    -> qualify name tms. johon kuuluvat muutkin maareet joita nimen tulee toteuttaa
  x BOM poisto takaisin
  x valkoista jaa viela nimen alkuun (2 kpl) vaikka unfolding on paalla
@@ -78,6 +72,7 @@
  - Ohjeeseen: arvon pituus ei paivity heti, vasta toisen nimen lisayksen yhteydessa
    Se ei ole heti kaytettavissa.
  x cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
+ - Testausohjelmiin kuvaavat virheilmoitukset.
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
@@ -147,14 +142,19 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
 	  return CBERRALLOC;
-	err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
-	err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
-	//fprintf(stderr,"\ncb_compare_rfc2822: [");
+	//fprintf(stderr,"\n\ncb_compare_rfc2822: [");
 	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
-	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.\n", len1, len2);
+	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){
+
+	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
+	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
+
+	  if(err1>=CBNEGATION || err2>=CBNEGATION)
+	    return CBNOTFOUND;
+	
 	  if( chr2 == chr1 ){
 	    ;
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
@@ -168,11 +168,7 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  }else{
 	    return CBNOTFOUND;
 	  }
-	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
-	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 	}
-	if(err1>=CBNEGATION || err2>=CBNEGATION)
-	  return CBNOTFOUND;
 	if(len1==len2)
 	  return CBMATCH;
 	return CBMATCHPART;
@@ -282,16 +278,19 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 #ifdef CB2822MESSAGE
 	(**str).cf.caseinsensitive=1;
 	(**str).cf.unfold=1;
-	(**str).cf.rfc2822=0; // tmp , oli aiemmin: rfc2822headerend, laitettava takaisin kuten bugilistassa?
-	//(**str).cf.rfc2822=1; // default, stop at headerend and remove CTL-characters from name
-	//(**str).rstart=0x00003A; // ':'
-	//(**str).rend=0x00000A;   // LF
+	(**str).cf.removewsp=0; // default
+	//(**str).cf.removewsp=1; // tmp
+	(**str).cf.rfc2822headerend=0; // tmp , oli aiemmin: rfc2822headerend, laitettava takaisin kuten bugilistassa?
+	//(**str).cf.rfc2822headerend=1; // default, stop at headerend
+	//(**str).rstart=0x00003A; // ':', default
+	//(**str).rend=0x00000A;   // LF, default
 	(**str).rstart=CBRESULTSTART; // tmp
 	(**str).rend=CBRESULTEND; // tmp
 #else
 	(**str).cf.caseinsensitive=0;
 	(**str).cf.unfold=0;
-	(**str).cf.rfc2822=0;
+	(**str).cf.removewsp=1;
+	(**str).cf.rfc2822headerend=0;
 	(**str).rstart=CBRESULTSTART;
 	(**str).rend=CBRESULTEND;
 #endif
