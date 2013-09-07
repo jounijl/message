@@ -38,7 +38,7 @@
 
 #define ERRUSAGE      -1
 
-//#define DEBUG
+#define DEBUG
 
 int  main (int argc, char **argv);
 int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength);
@@ -48,7 +48,7 @@ void usage ( char *progname[] );
 int main (int argc, char **argv) {
 	int i=-1,u=0,y=0,namearraylen=0, atoms=0,fromend=0, err=CBSUCCESS;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1;
-	char list=0;
+	char list=0, inputenc=CBENC1BYTE;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
@@ -89,8 +89,10 @@ int main (int argc, char **argv) {
 	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
 	    err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	  }
-	  if( namebuflen>(i*4) )
-	    name[ i*4 ] = '\0';
+	  //if( namebuflen>(i*4) )
+	  //  name[ i*4 ] = '\0';
+	  if( namebuflen > u )
+	    name[ u ] = '\0';
 	  if(err!=CBSUCCESS){ fprintf(stderr,"\ncbsearch: cb_put_ucs_chr, err=%i.", err); }
 	  if( namebuflen>(namelen*4) )
             name[ namelen*4 ] = '\0';
@@ -137,6 +139,14 @@ int main (int argc, char **argv) {
               blksize = BLKSIZE;
 	    continue;
 	  }
+          u = get_option( argv[i], argv[i+1], 'i', &value); // input encoding number ( from cb_encoding.h )
+          if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+            inputenc = (int) strtol(value,&str_err,10); 
+            if(inputenc==0 && errno==EINVAL)
+              inputenc = CBENC1BYTE;
+            cb_set_encoding(&in, inputenc);
+            continue;
+          }
 	  u = get_option( argv[i], argv[i+1], 'e', &value); // end character
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    if(value!=NULL){
@@ -169,7 +179,7 @@ int main (int argc, char **argv) {
 	  fprintf(stderr,"\nDebug: Searching [");
 	cb_print_ucs_chrbuf(&name, (namelen*4), namebuflen);
 	if(in!=NULL)
-	fprintf(stderr,"] count [%i] buffer size [%i] block size [%i]", count, bufsize, blksize );
+	fprintf(stderr,"] count [%i] buffer size [%i] block size [%i] encoding [%i]", count, bufsize, blksize, inputenc );
 	if(in!=NULL)
 	  fprintf(stderr," value end [0x%.6lX]", (*in).rend);
 	fprintf(stderr,"\n");
@@ -218,10 +228,11 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t    [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
-	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [ -l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t    [ -e <char in hex> ] -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n");
+	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [-i <encoding number> ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
+	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [-i <encoding number> ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [ -l <block size> ] [ -e <char in hex> ] \\\n");
+	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
@@ -273,7 +284,9 @@ int  print_current_name(CBFILE **cbf){
 	fprintf(stderr, "]\n Name length:  \t%i", (*(*(**cbf).cb).current).namelen);
 	fprintf(stderr, "\n Offset:       \t%lli", (*(*(**cbf).cb).current).offset);
 	fprintf(stderr, "\n Length set to:\t%i", (*(*(**cbf).cb).current).length);
-	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).current).matchcount);
+	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
+	fprintf(stderr, "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );
+	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).current).matchcount );
 	fprintf(stderr, "\n Content:      \t\"");
 
 	chrprev = chr;

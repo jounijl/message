@@ -42,7 +42,7 @@
 #define CBERRFILEOP         33
 #define CBERRFILEWRITE      34
 #define CBERRBYTECOUNT      35
-#define CBARRAYOUTOFBOUND   36
+#define CBARRAYOUTOFBOUNDS  36
 
 /*
  * Default values
@@ -179,11 +179,12 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        char                type;            // stream (default), file or only buffer (fd is not in use)
-        char                searchmethod;    // search next name (multiple names) or search allways first name (unique names)
-        char                unfold;          // Search names unfolding the text first, RFC 2822
-        char                caseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822;         // Stop after RFC 2822 header end characters and remove CTL-characters from name
+        char                type;             // stream (default), file or only buffer (fd is not in use)
+        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names)
+        char                unfold;           // Search names unfolding the text first, RFC 2822
+        char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
+        char                removewsp;        // Remove linear white space characters (space and htab) between value and name
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{

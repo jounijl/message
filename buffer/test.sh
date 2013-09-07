@@ -36,11 +36,14 @@ echo; file tests/*.out
 # cat tests/testi.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 # <CR><LF> (echo_CR.sh echo_LF.sh add_cr_to_file.sh)
 # cat tests/testi2.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+# cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 
 #
 # Convert between encodings
 #
-# cat tests/testi.txt | ./cbconv -i 1 > test_output.txt
+# cat tests/testi.txt | ./cbconv -i 1 -o 3 > test_output.txt
+#
+# Encoding numbers: cat ../include/cb_encoding.h | grep CBENC
 
 #
 # Test cb_ring.c

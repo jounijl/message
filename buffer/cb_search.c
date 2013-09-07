@@ -142,8 +142,13 @@ int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){
         if(cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || cfi==NULL)
           return CBERRALLOC;
  
-        (*(**cbf).cb).index -= (*cfi).bytesahead;
         (*(**cbf).cb).contentlen -= (*cfi).bytesahead;
+
+	if( (*(**cbf).cb).index >= (*(**cbf).cb).contentlen )
+	  (*(**cbf).cb).index = (*(**cbf).cb).contentlen;
+	//else
+        //  (*(**cbf).cb).index -= (*cfi).bytesahead;
+
 
         if( (*(**cbf).cb).index < 0 )
           (*(**cbf).cb).index=0;
@@ -243,7 +248,7 @@ cb_get_chr_unfold_try_another:
 	  }
 	  return err; // returns CBSTREAM
 	}else
-	  return CBARRAYOUTOFBOUND;
+	  return CBARRAYOUTOFBOUNDS;
         return CBERROR;
 }
 
@@ -298,17 +303,17 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	// 1) Search table and set cbs.cb.index if name is found
 	err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength ); // 27.8.2013
 	if(err==CBSUCCESS){
-	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).current).length+(*(*(**cbs).cb).current).offset ) )
-	    return CBSUCCESS;
-	  else
+	  fprintf(stderr,"\nName found from list.");
+	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).current).length+(*(*(**cbs).cb).current).offset ) ){
+	    ret = CBSUCCESS;
+	    goto cb_set_cursor_ucs_return;
+	  }else
 	    fprintf(stderr,"\ncb_set_cursor: Found name but it's length is over the buffer length.\n");
 	}else if(err==CBNAMEOUTOFBUF){
 	  fprintf(stderr,"\ncb_set_cursor: Found old name out of cache and stream is allready passed by,\n");
 	  fprintf(stderr,"\n               set cursor as stream and beginning to search the same name again.\n");
 	  // but search again the same name; return CBNAMEOUTOFBUF;
 	}
-	// Set cursor to the end to search next names
-	(*(**cbs).cb).index = (*(**cbs).cb).contentlen;
 
 	// 2) Search stream, save name to buffer,
 	//    write name, '=', data and '&' to buffer and update cb_name chain
@@ -324,6 +329,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	// Initialize readahead counters and memory before use and before return 
 	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd );
 	cb_fifo_init_counters( &(**cbs).ahd );
+
+	// Set cursor to the end to search next names
+	(*(**cbs).cb).index = (*(**cbs).cb).contentlen; // -bytesahead ?
 
 	// Allocate new name
 cb_set_cursor_alloc_name:
@@ -351,7 +359,6 @@ cb_set_cursor_alloc_name:
 #endif
 	    atvalue=1;
 
-	    // tuleeko seuraavan ehtona olla JOS(buferr==0)
 	    if( buferr==CBSUCCESS )
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
 	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
@@ -374,9 +381,11 @@ cb_set_cursor_alloc_name:
 	        if( (*(**cbs).cb).last != NULL )
 	          (*(*(**cbs).cb).last).matchcount++; 
 	      if(err==CBSTREAM){
+	        fprintf(stderr,"\nName found from stream.");
 	        ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	        goto cb_set_cursor_ucs_return;
 	      }else{
+	        fprintf(stderr,"\nName found from buffer.");
 	        ret = CBSUCCESS; // cursor set
 	        goto cb_set_cursor_ucs_return;
 	      }
@@ -404,15 +413,12 @@ cb_set_cursor_alloc_name:
 	    /* The same as in CBSTATEFUL. Saves space. */
 	    ;
 #endif
-//	  }else if( NAMEXCL( chr ) ){
-	    /* for example BOM is stripped. It should be replaced, not stripped if it's not first. */
-//	    ;
 	  }else{ // save character to buffer
 	    buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }
 
           /* Automatic stop at header-end if it's set */
-          if((**cbs).cf.rfc2822==1)
+          if((**cbs).cf.rfc2822headerend==1)
             if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
               if( (*(**cbs).cb).offsetrfc2822 == 0 )
                 (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
@@ -426,7 +432,7 @@ cb_set_cursor_alloc_name:
 	}
 
 cb_set_cursor_ucs_return:
-	//cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
+	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
         cb_free_fname(&fname);
 	return ret;
 
@@ -454,9 +460,16 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, uns
                         buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
                       }
                     }
+                    if( (**cbs).cf.removewsp==1 && WSP( cmp ) ){ // WSP:s between value and name
+                      while( indx<index && WSP( cmp ) && buferr==CBSUCCESS ){
+                        buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 7.9.2013
+                      }
+	            }
+
                     /* Write name */
                     if( cmp!=(**cbs).cend && buferr==CBSUCCESS){ // Name, 28.8.2013
-                      buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
+                      if( ! NAMEXCL( cmp ) ) // bom should be replaced if it's not first in stream
+                        buferr = cb_put_ucs_chr( cmp, &(*fname).namebuf, &(*fname).namelen, (*fname).buflen );
                     }
                   }
                 }
