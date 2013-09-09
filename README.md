@@ -26,15 +26,15 @@ minor changes in namelist size and in use of file descriptors.
 
 CBFILE can be set to use RFC 2822 unfolding and case insensitive names. 
 It's possible to stop at RFC 2822 header. Other possibilities are listed in
-cb_conf, for example to remove spaces, tabs and crlf characters between 
-values and names. 
+cb_conf. It is possible for example to remove spaces, tabs and crlf characters 
+between values and names. 
 
 ###### Testing programs
  
 Testing program test_cb converts between encodings and tests input files 
 value-name pairs.
 
-Utility programs to make tests cases are found in directory _buffer/tests_, for 
+Utility programs to make tests cases are found in directory buffer/tests. For 
 example loop outputs file endlessly to output.
 
 Testing program **cbsearch** searches a name or names from input. It finds multiple 
@@ -43,7 +43,7 @@ same names from stream.
 Testing program **cbconv** converts between all encodings ( usage: flag -h )
 including four byte UCS representation.
 
-###### Introduction:
+###### Introduction
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
