@@ -12,16 +12,22 @@
     <!-- <META HTTP-EQUIV="Copyright" CONTENT="Jouni Laakso" /> -->
     <META NAME="robots" CONTENT="index,follow" />
     
-    <META NAME="keywords" CONTENT="Unicode stream, Stream programming, Unicode stream reader, Unicode dataflow reader, Dataflow programming, 
-    Stream processor, Parallel processing, Stream Programming Library, Data stream mining, 
-    Streaming algorithm, Message passing, Event stream processing, Computer programming, Streaming algorithm, 
-    Inter-process communication, IPC, Unicode, Unicode stream, Stream indexing, RFC 5198, RFC 3629, RFC 20" />
+    <META NAME="keywords" CONTENT="Unicode stream, Unicode stream reader, List, 
+    Stream processor, Parallel processing, Data stream mining, Stream library, 
+    Unicode dataflow, Stream programming library, Event stream processing, 
+    Streaming algorithm, Message passing, Inter-process communication, IPC, Unicode,
+    Message, Internet Message, Internet Message Format,
+    UTF-8, UTF-16, UTF-32, RFC 5198, RFC 3629, RFC 20, RFC 2822, RFC 822" />
 
-    <META NAME="keywords" LANG="fi" CONTENT="Ohjelmointi, Tietovirta, Stream, Unicode tietovirta, UTF-8 tietovirrassa, 
-    Unicode, UTF-8, arvoparit, indeksointi, tietovirtakirjasto, IPC, viestinvälitys, RFC 5198, RFC 3629, RFC 20" />
+    <META NAME="keywords" LANG="fi" CONTENT="Tietovirta, Stream, Unicode tietovirta, 
+    Unicode, Lista, Arvoparit, Tietovirtakirjasto, IPC, Viestinvälitys, 
+    Unicode stream, Unicode stream reader, Data stream mining, Message, Internet Message,
+    Internet Message Format,
+    UTF-8, UTF-16, UTF-32, RFC 5198, RFC 3629, RFC 20, RFC 2822, RFC 822" />
 
-    <META NAME="keywords" LANG="fr" CONTENT="Programmation, Flot de données, IPC, la communication entre des processus, Unicode, UTF-8, RFC 5198, 
-    RFC 3629, RFC 20" />
+    <META NAME="keywords" LANG="fr" CONTENT="Flot de données, Unicode, 
+    UTF-8, UTF-16, UTF-32, IPC, la communication entre des processus, 
+    RFC 5198, RFC 3629, RFC 20, RFC 2822, RFC 822" />
 
     <link rel="stylesheet" href="stylesheets/core.css" media="screen"/>
     <link rel="stylesheet" href="stylesheets/mobile.css" media="handheld, only screen and (max-device-width:640px)"/>
@@ -156,7 +162,8 @@ int  cb_free_cbfile(CBFILE **cbs);
 
 <p>
   Characters can be set to another. They can be any characters in 32-bit format. Unfolding can be used
-  to remove linear white spaces before space or horizontal tabs before reading.
+  to remove linear white spaces before space or horizontal tabs before reading. It is possible to set to
+  remove spaces, tabs and newline -characters between values and names. 
 </p>
 
 <p>For example:</p>
