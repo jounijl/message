@@ -19,7 +19,7 @@ polysemantic names in stream (default).
 
 ###### File types
 
-CBFILE can be used as a stream (primary use), a file or a buffer. These are
+CBFILE can be used as a stream (primary use), a file or as a buffer. These are
 minor changes in namelist size and in use of file descriptors.
 
 ###### Data
@@ -43,6 +43,8 @@ same names from stream.
  
 Testing program **cbconv** converts between all encodings ( usage: flag -h )
 including four byte UCS representation.
+
+###### Short introduction
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
