@@ -164,10 +164,12 @@ int  cb_free_cbfile(CBFILE **cbs);
   Characters can be set to another. They can be any characters in 32-bit format. 
 </p>
 <p>
-  It is possible to set unfolding ('unfold' in cb_conf) to remove linear white space characters before 
-  space or horizontal tabs when reading the names as in RFC 2822. It is also possible to remove whitespaces, tabs and 
-  newline -characters between values and names ('removewsp' and 'removecrlf' in cb_conf). 
+  It is possible to use unfolding ('unfold' in cb_conf). Unfolding removes linear white space characters before 
+  space or horizontal tabs when reading the names as in RFC 2822. It is also possible to remove whitespaces, tabs, 
+  CR and LF -characters between values and names ('removewsp' and 'removecrlf' in cb_conf). This is useful in
+  many applications and is not RFC 2822 compliant.
 </p>
+<p>Fixed length blocks can be written padding with white space and newline characters.</p>
 
 <p>For example:</p>
 
