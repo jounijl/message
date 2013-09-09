@@ -42,8 +42,7 @@ Testing program **cbsearch** searches a name or names from input. It finds multi
 same names from stream.
  
 Testing program **cbconv** converts between all encodings ( usage: flag -h )
-including four byte UCS representation (as UTF-32, without endianness
-conversions).
+including four byte UCS representation.
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
