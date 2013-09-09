@@ -38,11 +38,11 @@ value-name pairs.
 Utility programs to make tests cases are found in directory _buffer/tests_, for 
 example **loop** outputs file endlessly to output.
 
-Testing program **_cbsearch_** searches a name or names from input. It finds multiple 
+Testing program **cbsearch** searches a name or names from input. It finds multiple 
 same names from stream.
  
-Testing program **_cbconv_** converts between all encodings ( usage: flag -h )
-including the four byte UCS representation (as UTF-32, without endianness
+Testing program **cbconv** converts between all encodings ( usage: flag -h )
+including four byte UCS representation (as UTF-32, without endianness
 conversions).
 
  
