@@ -10,12 +10,12 @@ UCS encoding is used (4 bytes) both in flow control characters and in the value
 names. Possible transfer encodings are: UTF-8, UTF-16 and UTF-32. 
 
 1-byte, 2-byte and 4-byte transfer encodings can be used. Adding an encoding is 
-possible.
+possible or just use the correct byte count.
 
 ###### Search methods
  
-At least two search methods can be used. Either unique names in stream (2) or 
-multiple same names in stream (1).  
+At least two search methods can be used. Either unique names in stream or 
+polysemantic names in stream (default).
 
 ###### File types
 
@@ -35,13 +35,15 @@ for example to unused ASCII characters.
 Testing program **test_cb** converts between encodings and tests input files 
 value-name pairs.
 
-Testing program **cbsearch** searches a name or names from input. It finds multiple 
+Utility programs to make tests cases are found in directory _buffer/tests_, for 
+example **loop** outputs file endlessly to output.
+
+Testing program **_cbsearch_** searches a name or names from input. It finds multiple 
 same names from stream.
  
-Testing program **cbconv** converts between encodings ( usage, flag -h ).
-
-Utility programs to make tests cases are found in directory buffer/tests, for 
-example *loop* outputs file endlessly to output.
+Testing program **_cbconv_** converts between all encodings ( usage: flag -h )
+including the four byte UCS representation (as UTF-32, without endianness
+conversions).
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
