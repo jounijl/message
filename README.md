@@ -17,17 +17,32 @@ possible.
 At least two search methods can be used. Either unique names in stream (2) or 
 multiple same names in stream (1).  
 
+###### File types
+
 CBFILE can be used as a stream (primary use), a file or a buffer. These are
 minor changes in namelist size and in use of file descriptors.
 
+###### Data
+
+CBFILE can be set to use RFC 2822 unfolding and case insensitive names. 
+It's possible to stop at RFC 2822 header. Other possibilities are listed in
+cb_conf, for example to remove spaces, tabs and crlf in names in configuration
+files. Flow control characters can be set to another. In RFC 2822 messages 
+for example to unused ASCII characters.
+
 ###### Testing programs
  
-Testing program test_cb converts between encodings and tests input files 
+Testing program **test_cb** converts between encodings and tests input files 
 value-name pairs.
 
-Testing program cbsearch searches a name or names from input. It finds multiple 
+Testing program **cbsearch** searches a name or names from input. It finds multiple 
 same names from stream.
  
+Testing program **cbconv** converts between encodings ( usage, flag -h ).
+
+Utility programs to make tests cases are found in directory buffer/tests, for 
+example *loop* outputs file endlessly to output.
+
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
 

@@ -274,8 +274,9 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	return err;
 }
 int  print_current_name(CBFILE **cbf){
-	int err = 0, bcount=0, strbcount=0;
+	int err = 0;
 	signed long int tmp=0;
+
 #ifdef CBSTATETOPOLOGY
 	int opennamepairs=1;
 #endif
