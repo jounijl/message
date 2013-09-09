@@ -40,10 +40,10 @@ example loop outputs file endlessly to output.
 Testing program **cbsearch** searches a name or names from input. It finds multiple 
 same names from stream.
  
-Testing program **cbconv** converts between all encodings ( usage: flag -h )
+Testing program **cbconv** converts between encodings ( usage: flag -h )
 including four byte UCS representation.
 
-###### Introduction
+###### Instructions
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
