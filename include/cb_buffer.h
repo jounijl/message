@@ -154,11 +154,10 @@
 
 
 /*
- * Characters to remove from name: CR LF Space Tab and BOM. Comment string is removed 
- * elsewhere. UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16:
+ * Characters to remove from name: BOM. Comment string is removed elsewhere.
+ * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
-// #define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
 #define NAMEXCL( x )           ( ( x ) == 0xFEFF )
 
 #include "./cb_encoding.h"	// Encoding macros
@@ -180,7 +179,7 @@ typedef struct cb_ring {
 
 typedef struct cb_conf{
         char                type;             // stream (default), file (large namelist) or only buffer (fd is not in use)
-        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names)
+        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
         char                unfold;           // Search names unfolding the text first, RFC 2822
         char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
@@ -228,7 +227,7 @@ typedef struct CBFILE{
 } CBFILE;
 
 /*
- * name is a namelength size pointer to unsigned char array to
+ * name is a pointer to a namelength size unsigned char array to
  * search and set cursor to.
  *
  * Set cursor to position name or return CBNOTFOUND or CBSTREAM.
@@ -236,12 +235,13 @@ typedef struct CBFILE{
  * lost. Cursor is allways at the end of read buffer and characters
  * are read from cursor. Names are read from cb_set_cursor.
  *
- * Bypasses sp:s and tags before name:s so cb_buffer can be used in
- * writing the name-value pairs in fixed length blocks in any memory
- * fd points to. For example &  <name>=<value>& and &<name>=<value>&
+ * CBFILE can be set to bypass sp:s and tabs before name:s to use
+ * the buffer in writing the name-value pairs in fixed length blocks
+ * in any memory fd points to. Settings are 'removewsp' and 'removecrlf'. 
+ * In these cases, for example &   <name>=<value>& and &<name>=<value>&
  * are similar.
  *
- * Names are kept internally in character array where four bytes 
+ * Names are kept internally in a character array where four bytes
  * represent one character (UCS, 31-bits). 
  */
 
@@ -323,7 +323,6 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, i
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
-//int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
