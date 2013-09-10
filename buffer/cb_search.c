@@ -139,31 +139,40 @@ int  cb_set_search_method(CBFILE **cbf, char method){
 //	return cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
 //}
 int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){ 
+	int err=CBSUCCESS;
         if(cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || cfi==NULL)
           return CBERRALLOC;
+
+	/*
+ 	 * Index is allways in the right place. Contentlen is adjusted
+	 * by bytes left in readahead to read it again. 
+	 */
  
-        (*(**cbf).cb).contentlen -= (*cfi).bytesahead;
+	if( (*(**cbf).cb).index <= ( (*(**cbf).cb).contentlen - (*cfi).bytesahead ) ){
+	  (*(**cbf).cb).contentlen -= (*cfi).bytesahead;  // Do not read again except bytes ahead 
+	}else if( (*(**cbf).cb).index < (*(**cbf).cb).contentlen ){
+	  (*(**cbf).cb).contentlen = (*(**cbf).cb).index; // This is the right choice allmost every time
+	}else{
+	  (*(**cbf).cb).index = (*(**cbf).cb).contentlen; // Error
+	  err = CBINDEXOUTOFBOUNDS; // Index was ahead of contentlen
+	}
 
-	if( (*(**cbf).cb).index >= (*(**cbf).cb).contentlen )
-	  (*(**cbf).cb).index = (*(**cbf).cb).contentlen;
-	//else
-        //  (*(**cbf).cb).index -= (*cfi).bytesahead;
-
-
-        if( (*(**cbf).cb).index < 0 )
+        if( (*(**cbf).cb).index < 0 ) // Just in case
           (*(**cbf).cb).index=0;
         if( (*(**cbf).cb).contentlen < 0 )
           (*(**cbf).cb).contentlen=0;
 
+	if( (*(**cbf).cb).contentlen>=(*(**cbf).cb).buflen || (*(**cbf).cb).index>=(*(**cbf).cb).buflen )
+	  err = CBSTREAM;
+
+	// Empty readahead
         (*cfi).ahead=0;
         (*cfi).bytesahead=0;
         (*cfi).first=0;
         (*cfi).last=0;
-        if((*cfi).streamstart!=0)
-          (*cfi).streamstart=-1;
-        if((*cfi).streamstop!=0)
-          (*cfi).streamstop=-1;
-        return CBSUCCESS;
+        (*cfi).streamstart=-1; // readaheadbuffer is empty, cb_get_chr returns the right values
+        (*cfi).streamstop=-1;
+        return err;
 }
 
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset ){
@@ -225,12 +234,12 @@ cb_get_chr_unfold_try_another:
 	        goto cb_get_chr_unfold_try_another;
 	      }else if( err<CBNEGATION ){ 
 	        cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 3:rd in store
-	        cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
+	        err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
 	        //fprintf(stderr, "\ncb_get_chr_unfold: returning after CRLF'any' chr=0x%.6lX.", *chr);
 	      }
 	    }else{
 	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 2:nd in store
-	      cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
+	      err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
 	    }
 	  }
 	  if(err>=CBNEGATION){

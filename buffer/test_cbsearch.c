@@ -229,10 +229,10 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [-i <encoding number> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -l <block size> ] [-e <char in hex> ] <name> \n\n");
-	fprintf(stderr,"\t%s [-c <count> ] [ -b <buffer size> ] [-i <encoding number> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -l <block size> ] [ -e <char in hex> ] \\\n");
+	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] <name> \n\n");
+	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] \\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");

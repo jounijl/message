@@ -8,6 +8,8 @@ LIBSRCS=" cb_buffer.c cb_encoding.c cb_search.c cb_fifo.c "
 LIBOBJS=" cb_buffer.o cb_encoding.o cb_search.o cb_fifo.o "
 LIBARCH="libcb.a"
 
+rm $LIBARCH
+
 for I in $LIBSRCS
  do
    gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c $I
@@ -20,6 +22,11 @@ done
 #gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_fifo.c
 
 ar -rcs $LIBARCH $LIBOBJS
+
+if [ ! -f "./$LIBARCH" ]
+ then
+   echo "Could not make libraryfile."; exit 1;
+fi
 
 #
 # Test programs

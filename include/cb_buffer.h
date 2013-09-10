@@ -43,6 +43,7 @@
 #define CBERRFILEWRITE      34
 #define CBERRBYTECOUNT      35
 #define CBARRAYOUTOFBOUNDS  36
+#define CBINDEXOUTOFBOUNDS  37
 
 /*
  * Default values
