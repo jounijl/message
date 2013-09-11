@@ -6,8 +6,8 @@ neljås=4&
 neljös=4&
 neljÄs=4&
 nimi3=oikea nimi3&
-unknown=unknown here&
-unknown=second unknown here&
+un_known=unknown here&
+un_known=second unknown here&
 nimi 3= 2. nimi3&
 nimi 3  = 3. nimi3&
 
@@ -18,10 +18,10 @@ nimi 3
 = 5. nimi3&
 neljÅs=4&
 neljÖs=4&
-viides=ensimmainen viides&
+un_known=un_known after second.&viides=ensimmainen viides&
 vIIdes=ensimmainen vIIdes&
 viiDes=ensimmainen viiDes&
-unknown=third unknown here&
+un_known=third unknown here&
 viides=toinen viides&
 viides=kuudes<rstart here>viimeisen v&o, vd ja kdes&
 seitsemäs=stsemännen arvo&a&b&c&

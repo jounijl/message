@@ -1,4 +1,6 @@
-nimi1=teksti1&nimi2=teksti2& 	nimi 3= teksti3& # neljäs
+nimi1=teksti1&
+ 
+ nimi2=teksti2& 	nimi 3= teksti3& # neljas nimi
 neljäs nimi 4 =neljäs teksti&
 neljås=4&
 neljös=4&
