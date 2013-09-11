@@ -1,5 +1,5 @@
-/* 
- * Library to read and write streams. Valuepair indexing with different character encodings.
+/*
+ * Library to read and write streams. Valuepair searchlist with different encodings.
  * 
  * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
  * 
@@ -17,11 +17,10 @@
 #define CBSUCCESS            0
 #define CBSTREAM             1
 #define CBMATCH              2
-#define CBSTREAMEDGE         3
+//#define CBSTREAMEDGE       3
 #define CBUSEDASBUFFER       4
 #define CBUTFBOM             5
 #define CB2822HEADEREND      6
-//#define CB2822MESSAGE        7
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -32,8 +31,10 @@
 #define CBNOENCODING        16
 #define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
 #define CBEMPTY             18
-#define CBWRONGENCODINGCALL 19
-#define CBUCSCHAROUTOFRANGE 20
+#define CBNOTSET            19
+#define CBAUTOENCFAIL       20    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL 21
+#define CBUCSCHAROUTOFRANGE 22
 
 #define CBERROR	            30
 #define CBERRALLOC          31
@@ -41,11 +42,15 @@
 #define CBERRFILEOP         33
 #define CBERRFILEWRITE      34
 #define CBERRBYTECOUNT      35
+#define CBARRAYOUTOFBOUNDS  36
+#define CBINDEXOUTOFBOUNDS  37
 
 /*
  * Default values
  */
 #define CBNAMEBUFLEN        1024
+#define CBREADAHEADSIZE     28
+
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
 #define CBBYPASS            '\\'
@@ -55,9 +60,14 @@
 /*
  * Configuration options
  */
-#define CBSEARCHFIRST        0   // Names are unique (returns allways the first name in list)
-#define CBSEARCHNEXT         1   // Multiple names (returns name if matchcount is zero, otherwice searches next in list or in stream)
 
+/*
+ * Search options */
+#define CBSEARCHUNIQUENAMES       0   // Names are unique (returns allways the first name in list)
+#define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+
+/*
+ * Use options, changes functionality as below */
 #define CBCFGSTREAM          0   // Use as stream (namelist is bound by buffer)
 #define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
 #define CBCFGFILE            2   // Use as file (namelist is bound by file),
@@ -66,8 +76,7 @@
 /*
  * This setting enables multibyte, UTF-16 and UTF-32 support if
  * the machine processor has big endian words (for example PowerPC, ARM, 
- * Sparc and some Motorola processors). Multibyte does not yet function
- * properly 11.8.2013.
+ * Sparc and some Motorola processors). Not yet tested 31.8.2013.
  */
 //#undef BIGENDIAN
 
@@ -126,63 +135,88 @@
 
 /*
  * With this define, cb_set_cursor stops searching the stream when it encounters
- * a character sequence at header end, between header and message.
+ * a character sequence at header end, between header and message (1).
  * In RFC-822 and RFC-2822 this is two sequential <cr><lf> characters.
  */
-#define CBSTOPAT2822HEADEREND
+#define CB2822MESSAGE
+
+// RFC 2822 unfolding, (RFC 5198: CR can appear only followed by LF)
+
+/* ABNF names RFC 2234 6.1 */
+#define WSP( x )              ( ( x ) == 0x20 || ( x ) == 0x09 )
+#define CR( x )               ( ( x ) == 0x0D )
+#define LF( x )               ( ( x ) == 0x0A )
+#define CTL( x )              ( ( ( x ) >= 0 && ( x ) <= 31 ) || ( x ) == 127 )
+
+/* FWS (folding white space), linear white space */
+#define LWSP( prev2 , prev , chr )             ( (  ( (prev2) == 0x0D && (prev) == 0x0A ) || \
+                                                    ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
+                                                    ( (chr) == 0x20 || (chr)  == 0x09 )      )
+
 
 /*
- * This is not used. LWS was used in folding, this might not be exactly it. It was used
- * in removing characters from name. CR LF Space Tab (RFC 5198: CR can appear only 
- * followed by LF)
- */
-#define LWS( x )              ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 )
-
-/*
- * Characters to remove from name: CR LF Space Tab and BOM. Comment string is removed 
- * elsewhere. UTF-8: "Should be stripped ...", RFC-3629 page-6, UTF-16:
+ * Characters to remove from name: BOM. Comment string is removed elsewhere.
+ * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
-#define NAMEXCL( x )        ( x == 0x0D && x == 0x0A && x == 0x20 && x == 0x09 && x == 0xFEFF )
+#define NAMEXCL( x )           ( ( x ) == 0xFEFF )
 
-#include "./cb_encoding.h"
+#include "./cb_encoding.h"	// Encoding macros
+
+/*
+ * Fifo ring structure */
+typedef struct cb_ring {
+        unsigned char buf[CBREADAHEADSIZE+1];
+        unsigned char storedsizes[CBREADAHEADSIZE+1];
+        int buflen;
+        int sizeslen;
+        int ahead;
+        int bytesahead;
+        int first;
+        int last;
+	int streamstart; // id of first character from stream
+	int streamstop;  // id of stop character
+} cb_ring;
 
 typedef struct cb_conf{
-        char                type;         // stream (default), file or only buffer
-        char                searchmethod; // search next name (multiple names) or search allways first name (unique names)
+        char                type;             // stream (default), file (large namelist) or only buffer (fd is not in use)
+        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        char                unfold;           // Search names unfolding the text first, RFC 2822
+        char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
+        char                removewsp;        // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                removecrlf;       // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
-        unsigned char      *namebuf;      // name 
-	int                 buflen;       // name+excess buffer space
-        int                 namelen;      // name length
-        long int            offset;       // offset from the beginning of data
-        int                 length;       // unknown (almost allways -1) (length of data), possibly set after it's known
-        long int            matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
-        void               *next;         // Last is NULL
+        unsigned char        *namebuf;      // name
+	int                   buflen;       // name+excess buffer space
+        int                   namelen;      // name length
+        signed long long int  offset;       // offset from the beginning of data
+        int                   length;       // unknown (almost allways -1) (length of data), possibly empty, set after it's known
+        long int              matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        void                  *next;        // Last is NULL
 } cb_name;
 
 typedef struct cbuf{
         unsigned char      *buf; 
         long int            buflen;       // In bytes
-	long int            index;
-	long int            contentlen;   // Count in numbers (first starts from 1), comment: 7.11.2009
+	long int            index;        // Cursor offset in bytes
+	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
         cb_name            *name;
 	cb_name            *current;
 	cb_name            *last;
 	long int            namecount;
-#ifdef CBSTOPAT2822HEADEREND
-        int                 offset2822;   // offset of RFC-2822 header end with end characters
-#endif
+        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters
 } cbuf;
 
 typedef struct cbuf cblk;
 
 typedef struct CBFILE{
-	int                 fd;	// Stream file descriptor
-	cbuf               *cb;	// Data in valuepairs (preferably in applications order)
+	int                 fd;		// Stream file descriptor
+	cbuf               *cb;		// Data in valuepairs (preferably in applications order)
 	cblk               *blk;	// Input read or output write -block 
-	//int               onlybuffer; // If fd is not in use
+	cb_ring             ahd;	// Ring buffer to save data read ahead
         cb_conf             cf;         // All configurations, 20.8.2013
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -194,7 +228,7 @@ typedef struct CBFILE{
 } CBFILE;
 
 /*
- * name is a namelength size pointer to unsigned char array to
+ * name is a pointer to a namelength size unsigned char array to
  * search and set cursor to.
  *
  * Set cursor to position name or return CBNOTFOUND or CBSTREAM.
@@ -202,18 +236,20 @@ typedef struct CBFILE{
  * lost. Cursor is allways at the end of read buffer and characters
  * are read from cursor. Names are read from cb_set_cursor.
  *
- * Bypasses sp:s and tags before name:s so cb_buffer can be used in
- * writing the name-value pairs in fixed length blocks in any memory
- * fd points to. For example &  <name>=<value>& and &<name>=<value>&
+ * CBFILE can be set to bypass sp:s and tabs before name:s to use
+ * the buffer in writing the name-value pairs in fixed length blocks
+ * in any memory fd points to. Settings are 'removewsp' and 'removecrlf'. 
+ * In these cases, for example &   <name>=<value>& and &<name>=<value>&
  * are similar.
  *
- * Names are kept internally in character array where four bytes 
+ * Names are kept internally in a character array where four bytes
  * represent one character (UCS, 31-bits). 
  */
 
 /* 
  * One byte represents a character */
 int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength); 
+
 /*
  * Four bytes represents one character */
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
@@ -243,14 +279,27 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 
 // Characters according to bytecount and encoding.
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
-//int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
-int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes); // 12.8.2013
+int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes);
 // From unicode to and from utf-8
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 // Transfer encoding
 int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
 int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
+/*
+ * Unfolds read characters. Characters are read by cb_get_chr.
+ * cb_ring contains readahead buffer used in folding. The same
+ * readahead buffer has to be moved across function calls. At
+ * the end, the fifo has to be emptied of characters by 
+ * decreasing counters in buffer.
+ */
+int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset);
+/*
+ * Decreases readahead from CBFILE:s length information and zeros
+ * readahead counters.
+ */
+int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead); 
+
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_put_ch(CBFILE **cbs, unsigned char ch); // *ch -> ch 12.8.2013
@@ -269,16 +318,12 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_fname(cb_name **name);
 
-int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
-int  cb_use_as_file(CBFILE **buf);   // namelist is bound by filesize
-int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size
-int  cb_set_search_method(CBFILE **buf, char method); // defined in cb_buffer.h, names CBSEARCH*
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
-//int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
@@ -286,12 +331,33 @@ int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start cha
 int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character, '\n'
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
-int  cb_set_encoding(CBFILE **str, int number); // 0 utf, 1 one byte
+int  cb_set_encoding(CBFILE **str, int number); 
 
+int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
+int  cb_use_as_file(CBFILE **buf);   // namelist is bound by filesize
+int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size
+int  cb_set_to_unique_names(CBFILE **cbf);
+int  cb_set_to_polysemantic_names(CBFILE **cbf); // multiple same names, default
+
+/*
+ * Helper queues and queue structures 
+ */
 // 4-byte character array
 int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
 int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
 int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
+
+// 4-byte fifo, without buffer or it's size
+int  cb_fifo_init_counters(cb_ring *cfi);
+int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *size);
+int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int size);
+int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize); // remove last put character
+int  cb_fifo_set_stream(cb_ring *cfi); // all get operations return CBSTREAM after this
+int  cb_fifo_set_endchr(cb_ring *cfi); // all get operations return CBSTREAMEND after this
+
+// Debug
+int  cb_fifo_print_buffer(cb_ring *cfi);
+int  cb_fifo_print_counters(cb_ring *cfi);
 
 // Debug
 int  cb_print_names(CBFILE **str);

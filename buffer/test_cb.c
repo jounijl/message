@@ -84,7 +84,7 @@ int main (int argc, char *argv[]) {
 	cb_name *nameptr = NULL;
 	cb_name *nameptrtmp = NULL;
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
-	int fromend=0,	encodingstested=0, atoms=0, outindx=0, outbcount=0, outstoredsize=0;
+	int fromend=0, encodingstested=0, atoms=0, outindx=0, outbcount=0, outstoredsize=0;
         char inputstream=0;
 	static unsigned long int nl = 0x0A; // lf
 #ifdef WINDOWSOS
@@ -205,7 +205,7 @@ int main (int argc, char *argv[]) {
 
 		//
 		// Output files in every encoding
-		while(encodingstested<=ENCODINGS){ // && inputstream==0){ 
+		while(encodingstested < ENCODINGS){ // && inputstream==0){ 
 
 	  	        cb_reinit_cbfile(&in); // free unused name_list_ptr and zero buffer counters
 
@@ -227,7 +227,7 @@ int main (int argc, char *argv[]) {
 			}else{
 			  (*in).fd  = open( &(*infile), ( O_RDONLY ) ); 
 			}
-                        fprintf(stderr,"\noutfile: [%s] encoding: %i.", outfile, encoding);
+                        fprintf(stderr,"\noutfile: [%s] encoding: %i.\n", outfile, encoding);
 			(*out).fd = open( &(*outfile), ( O_RDWR | O_CREAT | O_TRUNC ), (mode_t)( S_IRWXU | S_IRWXG ) );
 			if((*in).fd<=-1 || (*out).fd<=-1 ){
 			  fprintf(stderr,"\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
@@ -247,7 +247,7 @@ int main (int argc, char *argv[]) {
 			  err = lseek( (*in).fd, (off_t) 0 , (int) SEEK_SET); // off_t on tyyppia long long, 64 bit
 			  if(err<0){fprintf(stderr,"\ttest: fseek returned %i, errno set is %i.", err, errno ); }
                         }
-			fprintf(stderr,"\nSecond run, names are backwards:\n"); 
+			fprintf(stderr,"\nSecond run, names are backwards:\n\n"); 
 		        if( in!=NULL ){
 			   nameptr = &(* (cb_name *) (*name_list).name );
 			   fromend=0;
@@ -354,14 +354,15 @@ int main (int argc, char *argv[]) {
 			   fprintf(stderr,"\ttest: Error, in was null.\n"); 
         		}
 			cb_flush(&out);
-                        cb_print_counters(&in);
+                        //cb_print_counters(&in);
+			//fprintf(stderr,"\n"); 
 
 			//
 			// Return
 			cb_reinit_cbfile(&out);
-		        if(encoding>=(ENCODINGS-1))
-	                  encoding=0;
-	                else
+		        //if(encoding>=(ENCODINGS-1))
+	                //  encoding=0;
+	                //else
 	                  ++encoding;
 	                ++encodingstested;
 

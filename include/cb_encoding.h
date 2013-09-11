@@ -56,5 +56,5 @@
 #define CBENCUTF32LE		8
 #define CBENCUTF32BE		9
 
-#define CBDEFAULTENCODING           0
+#define CBDEFAULTENCODING           1
 #define CBDEFAULTENCODINGBYTES      1   // Default maximum count of bytes, set as 0 for any count number of bytes, 1 if auto

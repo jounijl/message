@@ -15,15 +15,41 @@ export LANG
 #
 # Any 1-byte to all encodings
 #
-./test_cb 1 1024 4096 tests/testi.txt
+#./test_cb 1 1024 4096 tests/testi.txt
+# CR:s
+#./test_cb 1 1024 4096 tests/testi2.txt
+# cat -e tests/testi2.txt # display non printing characters
+./test_cb 1 512 1024 tests/testi2.txt
 
-file tests/*.out
+echo; file tests/*.out
 
 #
 # Stress test
 # 
-#./tests/loop ./tests/testi.txt | ./test_cb 1 1024 4096 -
+# ./tests/loop ./tests/testi.txt | ./test_cb 1 1024 4096 -
 # bash: return value 137 is signal 9.
+
+#
+# Test sequential name search
+#
+# cat tests/testi.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown
+# cat tests/testi.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+# <CR><LF> (echo_CR.sh echo_LF.sh add_cr_to_file.sh)
+# cat tests/testi2.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+# cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+
+#
+# Convert between encodings
+#
+# cat tests/testi.txt | ./cbconv -i 1 -o 3 > test_output.txt
+#
+# Encoding numbers: cat ../include/cb_encoding.h | grep CBENC
+
+#
+# Test cb_ring.c
+#
+# cat tests/testi.txt | ./cbfifo 2>>/dev/null
+# cat tests/testi.txt | ./cbfifo | wc -c
 
 exit 0
 

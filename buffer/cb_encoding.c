@@ -482,7 +482,7 @@ int  cb_write_bom(CBFILE **cbs){
         if(cbs==NULL || *cbs==NULL)
           return CBERRALLOC;
         if( (**cbs).encoding==CBENCUTF8 || (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || \
-            (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE ){
+            (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE){
           err = cb_put_chr(&(*cbs), (unsigned long int) 0xFEFF, &e, &y);
         }
         return err;
@@ -503,7 +503,7 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         if(*chr<=0xFFFF){
           if( (**cbs).encoding==CBENCUTF16BE )
             return cb_put_multibyte_ch(&(*cbs), *chr);
-          if( (**cbs).encoding==CBENCUTF16LE )
+          if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // 1.9.2013
             return cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(*chr) );            
         }else if(*chr<=0xFFFFF){
           lower = lower | ( *chr & 0x3FF ) ; // last ten bits
@@ -604,7 +604,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
  */
 unsigned int  cb_reverse_int32_bits(unsigned int from){
 	unsigned int upper=0, lower=0, new=0;
-        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_int16_bits(lower);
@@ -647,7 +647,7 @@ unsigned char  cb_reverse_char8_bits(unsigned char from){
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
-        fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
+        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_two_bytes(lower);
