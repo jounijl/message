@@ -43,7 +43,7 @@ same names from stream.
 Testing program **cbconv** converts between encodings ( usage: flag -h )
 including four byte UCS representation.
 
-###### Instructions
+###### Introduction
 
  
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
