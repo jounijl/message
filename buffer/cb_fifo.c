@@ -1,5 +1,5 @@
 /* 
- * Library to read and write streams. Valuepair indexing with different character encodings.
+ * Library to read and write streams. 
  * 
  * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
  * 

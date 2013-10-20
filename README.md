@@ -26,8 +26,8 @@ minor changes in namelist size and in use of file descriptors.
 
 CBFILE can be set to use RFC 2822 unfolding and case insensitive names. 
 It's possible to stop at RFC 2822 header. Other possibilities are listed in
-cb_conf. It is possible for example to remove spaces, tabs and crlf characters 
-between values and names. 
+cb_conf. It is possible for example to remove spaces, tabs and CR and LF
+characters between values and names. 
 
 ###### Testing programs
  

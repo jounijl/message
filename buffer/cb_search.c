@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h> // memset
+#include <time.h>   // time (timestamp in cb_set_cursor)
 #include "../include/cb_buffer.h"
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
@@ -348,7 +349,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 
 	// Allocate new name
 cb_set_cursor_alloc_name:
-	index=0; 
+	index=0;
 	err = cb_allocate_name(&fname);
 	if(err!=CBSUCCESS){  return err; } // 30.8.2013
 
@@ -450,6 +451,9 @@ cb_set_cursor_alloc_name:
 cb_set_cursor_ucs_return:
 	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
         cb_free_fname(&fname);
+	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH )
+	  if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL )
+	    (*(*(**cbs).cb).current).lasttimeused = (signed long int) time(NULL); // last time used in seconds
 	return ret;
 
         return CBNOTFOUND;

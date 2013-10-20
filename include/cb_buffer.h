@@ -196,6 +196,7 @@ typedef struct cb_name{
         int                   length;       // unknown (almost allways -1) (length of data), possibly empty, set after it's known
         long int              matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
         void                  *next;        // Last is NULL
+	signed long int       lasttimeused; // Time in seconds the name was last searched or used (set by set_cursor)
 } cb_name;
 
 typedef struct cbuf{

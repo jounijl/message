@@ -1,5 +1,5 @@
 /* 
- * Library to read and write streams. Valuepair indexing with different character encodings.
+ * Library to read and write streams. Valuepair list and search. Different character encodings.
  * 
  * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
  * 
@@ -73,6 +73,9 @@
    Se ei ole heti kaytettavissa.
  x cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
  - Testausohjelmiin kuvaavat virheilmoitukset.
+ ===
+ - cb_conf:iin myos eri hakutavat
+ - listaan lisaksi aikaleima milloin viimeksi haettu
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
@@ -97,7 +100,8 @@ int  cb_print_names(CBFILE **str){
 	            cb_print_ucs_chrbuf(&(*iter).namebuf, (*iter).namelen, (*iter).buflen);
 	        }
                 fprintf(stderr, "] offset [%lli] length [%i]", (*iter).offset, (*iter).length);
-                fprintf(stderr, " matchcount [%li]\n", (*iter).matchcount);
+                fprintf(stderr, " matchcount [%li]", (*iter).matchcount);
+                fprintf(stderr, " last time used [%li]\n", (*iter).lasttimeused);
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
               return CBSUCCESS;
