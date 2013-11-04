@@ -92,7 +92,7 @@ the order they are used. It is best if name-value pairs are in the same order in
 using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the last names value may be at the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
-<p>The next function reads the next name to allocated 'ucsname' and sets cursor to it's value.</p>
+<p>The next function allocates 'ucsname', copies the next name to it and sets the cursor to it's value.</p>
 
 <pre><code>int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
 </code></pre>
