@@ -94,7 +94,7 @@ border of the buffer. In these cases the name must be removed from data structur
 
 <p>The next function allocates 'ucsname', copies the next name to it and sets the cursor to it's value.</p>
 
-<pre><code>int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
+<pre><code>int  cb_set_cursor_allocate_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
 </code></pre>
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
