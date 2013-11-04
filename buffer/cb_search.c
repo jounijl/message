@@ -309,7 +309,7 @@ int  cb_find_every_name(CBFILE **cbs){
 /*
  * 4-byte functions.
  */
-int  cb_set_cursor_allocate_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
+int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	return cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), 0 );
 }
 
@@ -336,7 +336,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL;
-	char atvalue=0;
+	char atvalue=0; // unsigned char pad = '\0';
         unsigned long int ch3prev=CBRESULTEND+2, ch2prev=CBRESULTEND+1;
 
 #ifdef CBSTATETOPOLOGY
@@ -366,6 +366,9 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	//    write name, '=', data and '&' to buffer and update cb_name chain
 	if(*ucsname==NULL)
 	  return CBERRALLOC;
+	//*ucsname=&pad; // 4.11.2013
+	//*namelength=0;
+	
 
 	// Initialize memory characterbuffer and its counters
 	memset( &(charbuf[0]), (int) 0x20, (size_t) CBNAMEBUFLEN);
