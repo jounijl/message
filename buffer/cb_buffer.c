@@ -60,6 +60,7 @@
  - Ohjeeseen: rstart ei saa olla "unfolding" erikoismerkki
  - Unfolding erikoismerkit pitaa verrata ohjausmerkkeihin ja tarkastaa 
  - Jokainen taulukko on vain taulukko ilman pointeria ensimmaiseen?
+   x jokainen malloc tarkistettu
  - space/tab ei saa esiintya rfc2822:n nimissa, arvon lopetusmerkiksi?
    (viimeiset muutokset ja kommentit ovat huonoja)
  x CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
@@ -81,7 +82,6 @@
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 int  cb_set_type(CBFILE **buf, char type);
 
-//int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr); // not tested
 
 /*
  * Debug
@@ -101,6 +101,7 @@ int  cb_print_names(CBFILE **str){
 	        }
                 fprintf(stderr, "] offset [%lli] length [%i]", (*iter).offset, (*iter).length);
                 fprintf(stderr, " matchcount [%li]", (*iter).matchcount);
+                fprintf(stderr, " first found [%li]", (*iter).firsttimefound);
                 fprintf(stderr, " last time used [%li]\n", (*iter).lasttimeused);
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
@@ -119,29 +120,7 @@ void cb_print_counters(CBFILE **cbf){
              (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 }
 
-/* int  cb_compare_chr(CBFILE **cbs, int index, unsigned long int chr){ // Never used or tested
- *	int indx=0, indx2=0;
- *	unsigned long int tmp=0;
- *	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
- *	// From left to right, lsb first
- *	// Get: msb first, Put: msb first, From left to right, lsb first
- *	tmp = chr;
- *	for(indx=0; indx<(**cbs).encodingbytes && indx<32; ++index){
- *	  for(indx2=((**cbs).encodingbytes-indx); indx2>1; --indx2){
- *	    tmp = tmp>>8;
- *	  }
- *	  if( (index+indx)<(*(**cbs).cb).buflen && (index+indx)<(*(**cbs).cb).contentlen ){ // index count: [LSB][MSB 0][LSB][MSB 1][][2]...
- *	    if( (*(**cbs).cb).buf[(index+indx)] != (unsigned char) tmp )
- *	      return CBNOTFOUND;
- *	  }else
- *	    return CBNOTFOUND;
- *	  tmp = chr;
- *	}
- *	return CBMATCH;
- *}
- */
-
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2){
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen){
 	unsigned long int chr1=0x65, chr2=0x65;
 	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
@@ -151,7 +130,10 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
 	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
-	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){
+	if(matchlen==-1)
+	  return CBNOTFOUND;
+
+	while( indx1<len1 && indx2<len2 && indx1<matchlen && indx2<matchlen && err1==CBSUCCESS && err2==CBSUCCESS ){
 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
@@ -173,12 +155,14 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	    return CBNOTFOUND;
 	  }
 	}
-	if(len1==len2)
+	if( matchlen==len1 && matchlen==len2 )
 	  return CBMATCH;
+	if( indx1==matchlen && indx2==matchlen )
+	  return CBMATCHLENGTH;
 	return CBMATCHPART;
 }
-int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2){
-	int index=0, err=0, num=0;
+int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen){
+	int index=0, err=CBMATCHLENGTH, num=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
  	if( len1==0 || len2==0 )
@@ -188,10 +172,13 @@ int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2
 //	cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] name2=[");
 //	cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"]\n");
 
+	if(matchlen==-1)
+	  return CBNOTFOUND; // no match (-1)
+
 	num=len1;
 	if(len1>len2)
 	  num=len2;
-	for(index=0;index<num;++index)
+	for(index=0;index<num && index<matchlen;++index)
 	  if((*name1)[index]!=(*name2)[index]){
 	    index=num+7; err=CBNOTFOUND;
 	  }else{
@@ -200,7 +187,12 @@ int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2
 	    else
 	      err=CBMATCHPART; // 30.3.2013, was: match, not notfound
 	  }
-	return err;
+	if( matchlen==index && ( len1==len2 ) )
+	  err=CBMATCH; // it matchlen>len1 or matchlen>len2, return CBMATCH
+	else if( index==matchlen ) // 4.11.2013
+	  err=CBMATCHLENGTH;
+
+	return err; // every name (0) or err (any positive number)
 }
 
 int  cb_copy_name( cb_name **from, cb_name **to ){
@@ -234,6 +226,8 @@ int  cb_allocate_name(cb_name **cbn){
 	(**cbn).offset=0; 
 	(**cbn).length=0;
 	(**cbn).matchcount=0;
+	(**cbn).firsttimefound=-1;
+	(**cbn).lasttimeused=-1;
 	(**cbn).next=NULL;
 	return CBSUCCESS;
 }

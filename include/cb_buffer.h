@@ -16,11 +16,11 @@
 
 #define CBSUCCESS            0
 #define CBSTREAM             1
-#define CBMATCH              2
-//#define CBSTREAMEDGE       3
-#define CBUSEDASBUFFER       4
-#define CBUTFBOM             5
-#define CB2822HEADEREND      6
+#define CBMATCH              2    // Matched and the lengths are the same
+#define CBUSEDASBUFFER       3
+#define CBUTFBOM             4
+#define CB2822HEADEREND      5
+#define CBMATCHLENGTH        6    // Matched the given length
 
 #define CBNEGATION          10
 #define CBSTREAMEND         11
@@ -189,14 +189,15 @@ typedef struct cb_conf{
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
-        unsigned char        *namebuf;      // name
-	int                   buflen;       // name+excess buffer space
-        int                   namelen;      // name length
-        signed long long int  offset;       // offset from the beginning of data
-        int                   length;       // unknown (almost allways -1) (length of data), possibly empty, set after it's known
-        long int              matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
-        void                  *next;        // Last is NULL
-	signed long int       lasttimeused; // Time in seconds the name was last searched or used (set by set_cursor)
+        unsigned char        *namebuf;        // name
+	int                   buflen;         // name+excess buffer space
+        int                   namelen;        // name length
+        signed long long int  offset;         // offset from the beginning of data
+        int                   length;         // unknown (almost allways -1) (length of data), possibly empty, set after it's known
+        long int              matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        void                  *next;          // Last is NULL
+	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
+	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
 } cb_name;
 
 typedef struct cbuf{
@@ -264,6 +265,26 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  */
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
+
+
+/*
+ * 4.11.2013
+ * Finds the next name from stream what ever it is and it's put to variable
+ * 'ucsname' and it's length is set. */
+int  cb_set_cursor_to_next_name(CBFILE **cbs, unsigned char **name, int *namelength); 
+int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+
+
+
+/*
+ * 4.11.2013
+ * To find every name to a file or stream to a list. Search reaches the end of the 
+ * stream and every name is put to the list. Buffer has to be larger than data. */
+int  cb_find_every_name(CBFILE **cbs, unsigned char **name, int *namelength); 
+int  cb_find_every_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+
+
+
 /*
  * One character at a time. Output flushes when the buffer is full.
  * Otherwice use write or flush when at the end of writing. Input
@@ -323,8 +344,12 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new t
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
 int  cb_copy_name(cb_name **from, cb_name **to);
-int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
+/* Matchlen: -1 = none (lists every name to the list and returns), 0 = every name (returns the next name)
+ * length = length of the match (matches length or cut length as in % or * in searches) */
+int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
+//int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
+//int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
