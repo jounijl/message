@@ -271,7 +271,7 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
  * 4.11.2013
  * Finds the next name from stream what ever it is and it's put to 4-byte variable
  * 'ucsname'. It's length is set as bytelength (one character is 4 bytes). */
-int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+int  cb_set_cursor_allocate_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 
 

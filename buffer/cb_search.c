@@ -1,5 +1,5 @@
 /* 
- * Library to read and write streams. Searches valuepairs locations to list. Uses different character encodings.
+ * Library to read and write streams. Searches valuepairs locations to a list. Uses different character encodings.
  * 
  * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
  * 
@@ -309,7 +309,7 @@ int  cb_find_every_name(CBFILE **cbs){
 /*
  * 4-byte functions.
  */
-int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
+int  cb_set_cursor_allocate_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	return cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), 0 );
 }
 
