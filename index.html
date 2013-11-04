@@ -3,7 +3,7 @@
   <head>
     <meta charset='utf-8'/>
     <meta http-equiv="X-UA-Compatible" content="chrome=1"/>
-    <meta name="viewport" content="width=640" />
+    <meta name="viewport" content="wgetidth=640" />
     
     <META NAME="description" CONTENT="Unicode stream messaging library." />
     <META NAME="author" CONTENT="Jouni Laakso" /> 
@@ -92,9 +92,9 @@ the order they are used. It is best if name-value pairs are in the same order in
 using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the last names value may be at the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
-<p>The next function allocates 'ucsname', copies the next name to it and sets the cursor to it's value.</p>
+<p>The next function allocates 'ucsname' and copies the next name to it. Cursor is left at it's value.</p>
 
-<pre><code>int  cb_set_cursor_allocate_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
+<pre><code>int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
 </code></pre>
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
