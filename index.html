@@ -76,7 +76,7 @@
       <section id="main_content">
         <h3>Stream reader and writer</h3>
 
-<p>Librarys main purpose are seven functions: </p>
+<p>Librarys main purpose are eight functions: </p>
 
 <pre><code>int  cb_set_cursor_ucs(CBFILE **cbs, char **ucsname, int *namelength);
 int  cb_remove_name_from_stream(CBFILE **cbs);
@@ -91,6 +91,11 @@ the names when reading again. </p>
 the order they are used. It is best if name-value pairs are in the same order in the input as is the order of 
 using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the last names value may be at the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
+
+<p>Useful might also be the next function. It reads the next name from stream and leaves the cursor at the start of value.</p>
+
+<pre><code>int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
+</code></pre>
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
 not automatically saved in the buffer anymore.</p>
@@ -246,7 +251,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 <p><strong>Page history</strong>
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
 17.3.2013</p>
-<p><strong>Page last update</strong> 20.10.2013</p>
+<p><strong>Page last update</strong> 4.11.2013</p>
 
 
 <h3>Authors and Contributors</h3>
