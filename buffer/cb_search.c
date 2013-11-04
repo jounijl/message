@@ -287,39 +287,30 @@ int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelen
 int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
 	return cb_set_cursor_match_length( &(*cbs), &(*name), &(*namelength), *namelength );
 }
-int  cb_set_cursor_to_next_name(CBFILE **cbs, unsigned char **name, int *namelength){
-	return cb_set_cursor_match_length( &(*cbs), &(*name), &(*namelength), 0 );
-}
-int  cb_find_every_name(CBFILE **cbs, unsigned char **name, int *namelength){
+
+/*
+ * 1 or 4 -byte functions.
+ */
+int  cb_find_every_name(CBFILE **cbs){
 	int err = CBSUCCESS; 
+	unsigned char *name = NULL;
+	unsigned char  chr  = { '\0' };
+	int namelength = 0;
 	char searchmethod=0;
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
+	name = &chr;
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length( &(*cbs), &(*name), &(*namelength), -1 );
+	err = cb_set_cursor_match_length( &(*cbs), &name, &namelength, -1 );
 	(**cbs).cf.searchmethod = searchmethod;
-	// return value inspection here (missing)
 	return err;
 }
-
 /*
  * 4-byte functions.
  */
 int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	return cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), 0 );
-}
-int  cb_find_every_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
-	int err = CBSUCCESS;
-	char searchmethod = 0;
-	if( cbs==NULL || *cbs==NULL )
-	  return CBERRALLOC;
-	searchmethod = (**cbs).cf.searchmethod;
-	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), -1 );
-	(**cbs).cf.searchmethod = searchmethod;
-	// return value inspection here (missing)
-	return err;
 }
 
 /*
@@ -339,7 +330,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 }
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen){
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
-	int index=0, buferr=CBSUCCESS; 
+	int  index=0, buferr=CBSUCCESS; 
 	unsigned long int chr=0, chprev=CBRESULTEND;
 	long int chroffset=0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
@@ -493,12 +484,24 @@ cb_set_cursor_alloc_name:
 
 cb_set_cursor_ucs_return:
 	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
+	if( ( ucsname==NULL || namelength==NULL || matchlen==0 ) && fname!=NULL ){ // 4.11.2013
+	  /*
+	   * Copy 'next name' if the next name was wanted (matchlen=0). */
+	  free(*ucsname);
+	  *ucsname = (unsigned char*) malloc( sizeof(char)*( (*fname).namelen+1 ) );
+          if( ucsname==NULL ){ return CBERRALLOC; }
+          ucsname[(*fname).namelen]='\0';
+          for( cis=0; cis<(*fname).namelen; ++cis ){
+            (*ucsname)[cis] = (*fname).namebuf[cis]; 
+          } 
+	  *namelength=cis;
+	}
         cb_free_fname(&fname);
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH) // match* on turha, aina stream tai success
 	  if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL ){
 	    (*(*(**cbs).cb).current).lasttimeused = (signed long int) time(NULL); // last time used in seconds
 	    if( (*(*(**cbs).cb).current).firsttimefound == -1 )
-	      (*(*(**cbs).cb).current).firsttimefound = (*(*(**cbs).cb).current).lasttimeused; // time found
+	      (*(*(**cbs).cb).current).firsttimefound = (*(*(**cbs).cb).current).lasttimeused; // first time found
 	  }
 	return ret;
 

@@ -5,7 +5,7 @@
 #
 
 LIBSRCS=" cb_buffer.c cb_encoding.c cb_search.c cb_fifo.c "
-LIBOBJS=" cb_buffer.o cb_encoding.o cb_search.o cb_fifo.o "
+LIBOBJS=" cb_buffer.o cb_encoding.o cb_search.o cb_search_topo.o cb_search_state.o cb_fifo.o "
 LIBARCH="libcb.a"
 
 rm $LIBARCH
@@ -15,11 +15,8 @@ for I in $LIBSRCS
    gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c $I
 done
 
-#gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_buffer.c
-##gcc -g -Wall -DTMP -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_buffer.c
-#gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_encoding.c 
-#gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_search.c
-#gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/cb_fifo.c
+gcc -g -Wall -DCBSTATETOPOLOGY -I.:/usr/include:../include -L/usr/lib -c cb_search.c -o cb_search_topo.o
+gcc -g -Wall -DCBSTATEFUL      -I.:/usr/include:../include -L/usr/lib -c cb_search.c -o cb_search_state.o
 
 ar -rcs $LIBARCH $LIBOBJS
 

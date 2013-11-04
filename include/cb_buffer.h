@@ -269,9 +269,8 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 
 /*
  * 4.11.2013
- * Finds the next name from stream what ever it is and it's put to variable
- * 'ucsname' and it's length is set. */
-int  cb_set_cursor_to_next_name(CBFILE **cbs, unsigned char **name, int *namelength); 
+ * Finds the next name from stream what ever it is and it's put to 4-byte variable
+ * 'ucsname'. It's length is set as bytelength (one character is 4 bytes). */
 int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 
@@ -280,8 +279,7 @@ int  cb_set_cursor_to_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *
  * 4.11.2013
  * To find every name to a file or stream to a list. Search reaches the end of the 
  * stream and every name is put to the list. Buffer has to be larger than data. */
-int  cb_find_every_name(CBFILE **cbs, unsigned char **name, int *namelength); 
-int  cb_find_every_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+int  cb_find_every_name(CBFILE **cbs); 
 
 
 
