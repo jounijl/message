@@ -92,10 +92,12 @@ the order they are used. It is best if name-value pairs are in the same order in
 using them. If buffer end is reached, CBSTREAM is returned. If this occurs, the last names value may be at the 
 border of the buffer. In these cases the name must be removed from data structure with cb_remove_name_from_stream. </p>
 
-<p>The next function allocates 'ucsname' and copies the next name to it. Cursor is left at it's value.</p>
+<!--
+<p>The next function allocates new 'ucsname' and copies next name to it. *ucsname should be NULL.
+Cursor is left at value.</p>
 
 <pre><code>int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
-</code></pre>
+</code></pre> -->
 
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
 not automatically saved in the buffer anymore.</p>
