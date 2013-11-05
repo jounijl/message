@@ -331,20 +331,20 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH){ // returns only CBSUCCESS or CBSTREAM
 	  /*
 	   * Copy current name to new ucsname */
-	   if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL ){
-	     if(ucsname==NULL)
-	       ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
-	     *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (*(*(**cbs).cb).current).namelen+1 ) );
-	     (*ucsname)[(*(*(**cbs).cb).current).namelen] = '\0';
-	     for( indx=0; indx<(*(*(**cbs).cb).current).namelen ; ++indx)
-	       (*ucsname)[indx] = (*(*(**cbs).cb).current).namebuf[indx];
-	     if( namelength==NULL )
-	     if(namelength==NULL)
-	       namelength = (int*) malloc( sizeof( int ) ); // int 
- 	     *namelength = (*(*(**cbs).cb).current).namelen;
-	   }
+	  if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL ){
+	    if(ucsname==NULL)
+	      ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
+	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (*(*(**cbs).cb).current).namelen+1 ) );
+	    (*ucsname)[(*(*(**cbs).cb).current).namelen] = '\0';
+	    for( indx=0; indx<(*(*(**cbs).cb).current).namelen ; ++indx)
+	      (*ucsname)[indx] = (*(*(**cbs).cb).current).namebuf[indx];
+	    if( namelength==NULL )
+	    if(namelength==NULL)
+	      namelength = (int*) malloc( sizeof( int ) ); // int 
+ 	      *namelength = (*(*(**cbs).cb).current).namelen;
+	  }
+          if( ucsname==NULL || *ucsname==NULL ){ ret = CBERRALLOC; }
 	}
-        if( ucsname==NULL ){ return CBERRALLOC; }
 
 	return ret;
 }

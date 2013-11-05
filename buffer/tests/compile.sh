@@ -16,9 +16,13 @@
 #gcc test_byte_reversion.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o test_byte_reversion
 #rm test_byte_reversion.o
 
-gcc -c loop.c &&
-gcc loop.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o loop
-rm loop.o
+#gcc -c loop.c &&
+#gcc loop.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o loop
+#rm loop.o
+
+gcc -c test_cbprint.c  &&
+gcc test_cbprint.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o cbprint
+rm test_cbprint.o
 
 #gcc -c test_cb_fifo.c &&
 #gcc test_cb_fifo.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o test_cbfifo

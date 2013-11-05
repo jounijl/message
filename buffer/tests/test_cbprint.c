@@ -28,22 +28,25 @@ int main(int argc, char **argv) {
 	cb_set_encoding(&in, 1);
 
 	do{
-          putchar( (int) 0x000A );
 	  err = cb_get_next_name_ucs(&in, &name, &namelen);
-	  fprintf(stderr,"err=%i.", err);
+	  //fprintf(stderr,"err=%i.", err);
 	  if( err==CBSTREAM || err==CBSUCCESS ){
+            fprintf( stderr, "\n" );
 	    cb_print_ucs_chrbuf(&name, namelen, namelen);	
-            fprintf( stderr, "=" );
+            fprintf( stderr, "%lc", (*in).rstart );
 	    err2==CBSUCCESS;
 	    while( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).rend && chprev!=(*in).bypass ) ){
 	      chprev = chr;
 	      err2 = cb_search_get_chr(&in, &chr, &offset );
 	      if( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).rend && chprev!=(*in).bypass ) )
                 fprintf( stderr, "%lc", chr );
+	      else if( chr==(*in).rend && chprev!=(*in).bypass )
+	        fprintf( stderr, "%lc", (*in).rend );
+	      chr=(*in).rend-1;
 	    }
 	  }
-	  free(name);
-	}while( err!=CBNOTFOUND && err!=CBSTREAMEND && err<CBERROR );
+	  free(name); name=NULL; // name=NULL pois, virheviesti
+	}while( err!=CBNOTFOUND && err!=CBSTREAMEND && err<CBERROR ); // notfound pois -> ylivuoto, HYVA TARKISTAA
 
 	cb_free_cbfile(&in);
 

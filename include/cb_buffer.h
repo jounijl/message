@@ -271,7 +271,7 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
  * 4.11.2013
  * Finds next unused name, first from the list and then after the cursors 
  * position. New 'ucsname' is allocated and the name is copied as 4-byte 
- * per character array. It's length is bytelength. */
+ * per character array. Length is bytelength. */
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 
