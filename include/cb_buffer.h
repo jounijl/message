@@ -270,8 +270,8 @@ int  cb_remove_name_from_stream(CBFILE **cbs);
 /*
  * 4.11.2013
  * Finds next unused name, first from the list and then after the cursors 
- * position. New 'ucsname' is allocated and the name is copied as 4-byte 
- * per character array. Length is bytelength. */
+ * position. New 'ucsname' is allocated and the name is copied 4-bytes
+ * per character. Length is bytelength. */
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 
@@ -279,7 +279,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 /*
  * 4.11.2013
  * To find every name to a file or stream to a list. Search reaches the end of the 
- * stream and every name is put to the list. Buffer has to be larger than data. */
+ * stream and every name is put to the list. Buffer has to be larger than the data. */
 int  cb_find_every_name(CBFILE **cbs); 
 
 

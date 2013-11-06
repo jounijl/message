@@ -76,7 +76,7 @@
  - Testausohjelmiin kuvaavat virheilmoitukset.
  ===
  - cb_conf:iin myos eri hakutavat
- - listaan lisaksi aikaleima milloin viimeksi haettu
+ x listaan lisaksi aikaleima milloin viimeksi haettu
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);

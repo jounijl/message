@@ -88,9 +88,9 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchle
 	       * allready matched name. Instead, increase names matchcount (or set to 1 if it 
 	       * becomes 0) and search the next same name.
 	       */
-	      if( (**str).cf.searchmethod==CBSEARCHNEXTNAMES ){
-	        (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
-	      }
+	      //if( (**str).cf.searchmethod==CBSEARCHNEXTNAMES ){ // 6.11.2013, matchcount kasvaa mutta ei merkitse jos CBSEARCHUNIQUENAMES
+	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
+	      //} // pois 6.11.2013.  Muutoin vaihdettaessa CBSEARCHNEXTNAMES:iin, matchcount tulee tayttaa ja haetaan aina uudelleen jo haettuun nimeen
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
 	        if( (**str).cf.type!=CBCFGFILE ) // When used as only buffer, stream case does not apply
@@ -294,15 +294,15 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
 int  cb_find_every_name(CBFILE **cbs){
 	int err = CBSUCCESS; 
 	unsigned char *name = NULL;
-	unsigned char  chr  = { '\0' };
+	unsigned char  chrs[2]  = { 0x20, '\0' };
 	int namelength = 0;
 	char searchmethod=0;
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
-	name = &chr;
+	name = &chrs[0];
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length( &(*cbs), &name, &namelength, -1 );
+	err = cb_set_cursor_match_length( &(*cbs), &name, &namelength, -1 ); // no match
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
 }
@@ -312,10 +312,10 @@ int  cb_find_every_name(CBFILE **cbs){
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int ret = CBSUCCESS, indx = 0;
 	unsigned char *name = NULL;
-	unsigned char  chr  = { '\0' };
+	unsigned char  chrs[2] = { 0x20, '\0' };
 	int namelen = 0;
 	char searchmethod=0;
-	name = &chr;
+	name = &chrs[0];
 
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
@@ -324,10 +324,10 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0 );
+	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0 ); // matches first (any)
 	(**cbs).cf.searchmethod = searchmethod;
 
-	//free(*ucsname);
+	free(*ucsname);
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH){ // returns only CBSUCCESS or CBSTREAM
 	  /*
 	   * Copy current name to new ucsname */
@@ -342,9 +342,18 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	    if(namelength==NULL)
 	      namelength = (int*) malloc( sizeof( int ) ); // int 
  	      *namelength = (*(*(**cbs).cb).current).namelen;
-	  }
+	  }else
+	    ret = CBERRALLOC; 
           if( ucsname==NULL || *ucsname==NULL ){ ret = CBERRALLOC; }
 	}
+
+/*
+ * TMP
+ * Palauttaa:
+ * joko CBSUCCESS tai CBSTREAM tai virhe:
+ * CBERRALLOC,
+ * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM
+ */
 
 	return ret;
 }
@@ -464,9 +473,9 @@ cb_set_cursor_alloc_name:
 	    if( cis == CBMATCH || cis == CBMATCHLENGTH ){ // 4.11.2013
 	      //(**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013 (pois: 6.9.2013 tai *chroffset+1)
 	      (**cbs).cb->index = (**cbs).cb->contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
-	      if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
-	        if( (*(**cbs).cb).last != NULL )
-	          (*(*(**cbs).cb).last).matchcount++; 
+	      //if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // pois 6.11.2013, sama kuin cb_set_name:ssa 
+	      if( (*(**cbs).cb).last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
+	        (*(*(**cbs).cb).last).matchcount++; 
 	      if(err==CBSTREAM){
 	        //fprintf(stderr,"\nName found from stream.");
 	        ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
