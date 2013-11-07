@@ -27,7 +27,7 @@ int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, unsigned char **charbuf, int index);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
-int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen);
+//int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen);
 
 int  cb_put_name(CBFILE **str, cb_name **cbn){ 
         int err=0;
@@ -289,74 +289,8 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
 }
 
 /*
- * 1 or 4 -byte functions.
- */
-int  cb_find_every_name(CBFILE **cbs){
-	int err = CBSUCCESS; 
-	unsigned char *name = NULL;
-	unsigned char  chrs[2]  = { 0x20, '\0' };
-	int namelength = 0;
-	char searchmethod=0;
-	if( cbs==NULL || *cbs==NULL )
-	  return CBERRALLOC;
-	name = &chrs[0];
-	searchmethod = (**cbs).cf.searchmethod;
-	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length( &(*cbs), &name, &namelength, -1 ); // no match
-	(**cbs).cf.searchmethod = searchmethod;
-	return err;
-}
-/*
  * 4-byte functions.
  */
-int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
-	int ret = CBSUCCESS, indx = 0;
-	unsigned char *name = NULL;
-	unsigned char  chrs[2] = { 0x20, '\0' };
-	int namelen = 0;
-	char searchmethod=0;
-	name = &chrs[0];
-
-	if( cbs==NULL || *cbs==NULL )
-	  return CBERRALLOC;
-	if( *ucsname!=NULL )
-	  fprintf(stderr,"\ndebug, cb_get_next_name_ucs: *ucsname was not NULL.");
-
-	searchmethod = (**cbs).cf.searchmethod;
-	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0 ); // matches first (any)
-	(**cbs).cf.searchmethod = searchmethod;
-
-	free(*ucsname);
-	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH){ // returns only CBSUCCESS or CBSTREAM
-	  /*
-	   * Copy current name to new ucsname */
-	  if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL ){
-	    if(ucsname==NULL)
-	      ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
-	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (*(*(**cbs).cb).current).namelen+1 ) );
-	    (*ucsname)[(*(*(**cbs).cb).current).namelen] = '\0';
-	    for( indx=0; indx<(*(*(**cbs).cb).current).namelen ; ++indx)
-	      (*ucsname)[indx] = (*(*(**cbs).cb).current).namebuf[indx];
-	    if( namelength==NULL )
-	    if(namelength==NULL)
-	      namelength = (int*) malloc( sizeof( int ) ); // int 
- 	      *namelength = (*(*(**cbs).cb).current).namelen;
-	  }else
-	    ret = CBERRALLOC; 
-          if( ucsname==NULL || *ucsname==NULL ){ ret = CBERRALLOC; }
-	}
-
-/*
- * TMP
- * Palauttaa:
- * joko CBSUCCESS tai CBSTREAM tai virhe:
- * CBERRALLOC,
- * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM
- */
-
-	return ret;
-}
 
 /*
  * Sets cursor at name just after rstart, '=' or reads as long as 

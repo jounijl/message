@@ -257,6 +257,14 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength);
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
+ * The same functions overloaded with possible match length of the name. Useful
+ * internally and in some searches. 
+ *  0 - searches any next name not yet used once
+ * -1 - searches endlessly without matching any name passing all unused names */
+int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchlen);
+int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen); 
+
+/*
  * If while reading a character, is found, that cb_set_cursor found a name
  * but one of the get_ch functions returned CBSTREAM after it, removes the
  * erroneus name from memorybuffer after reading it from the stream once.

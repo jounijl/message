@@ -21,11 +21,11 @@
 #rm loop.o
 
 gcc -c test_cbprint.c  &&
-gcc test_cbprint.o ../cb_fifo.o ../cb_search_state.o ../cb_buffer.o ../cb_encoding.o -o cbprint
+gcc test_cbprint.o ../cb_fifo.o ../cb_read.o ../cb_search_state.o ../cb_buffer.o ../cb_encoding.o -o cbprint
 rm test_cbprint.o
 
 gcc -c test_cbfindall.c &&
-gcc test_cbfindall.o ../cb_fifo.o ../cb_search_topo.o ../cb_buffer.o ../cb_encoding.o -o cbfindall
+gcc test_cbfindall.o ../cb_fifo.o ../cb_read.o ../cb_search_topo.o ../cb_buffer.o ../cb_encoding.o -o cbfindall
 
 #gcc -c test_cb_fifo.c &&
 #gcc test_cb_fifo.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o -o test_cbfifo
