@@ -81,6 +81,8 @@
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 int  cb_set_type(CBFILE **buf, char type);
+int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2);
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
 
 
 /*
@@ -120,65 +122,106 @@ void cb_print_counters(CBFILE **cbf){
              (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 }
 
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen){
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2){
 	unsigned long int chr1=0x65, chr2=0x65;
 	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
 	  return CBERRALLOC;
 
-	//fprintf(stderr,"\n\ncb_compare_rfc2822: [");
-	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
-	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
+//	fprintf(stderr,"\n\ncb_compare_rfc2822: [");
+//	cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
+//	cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
-	if(matchlen==-1)
-	  return CBNOTFOUND;
-
-	while( indx1<len1 && indx2<len2 && indx1<matchlen && indx2<matchlen && err1==CBSUCCESS && err2==CBSUCCESS ){
+	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){ // 9.11.2013
 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
-	  if(err1>=CBNEGATION || err2>=CBNEGATION)
+	  if(err1>=CBNEGATION || err2>=CBNEGATION){
+	    //fprintf(stderr,"\n\ncb_compare_rfc2822: returning CBNOTFOUND (2), err1: %i err2: %i.", err1, err2 );
 	    return CBNOTFOUND;
+	  }
 	
 	  if( chr2 == chr1 ){
-	    ;
+	    continue; // while
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
 	    if( chr2 >= 97 && chr2 <= 122 ) // small, difference is 32
 	      if( chr2 == (chr1+32) ) // ASCII, 'A' + 32 = 'a'
-	        ;
+	        continue;
 	  }else if( chr2 >= 65 && chr2 <= 90 ){ // large
 	    if( chr1 >= 97 && chr1 <= 122 ) // small
 	      if( chr1 == (chr2+32) ) 
-	        ;
-	  }else{
-	    return CBNOTFOUND;
+	        continue;
 	  }
+	  //fprintf(stderr,"\n\ncb_compare_rfc2822: returning CBNOTFOUND (3)." );
+	  return CBNOTFOUND;
 	}
-	if( matchlen==len1 && matchlen==len2 )
+	//fprintf(stderr,"\n\ncb_compare_rfc2822: len1=%i, len2=%i, index1=%i, index2=%i, err1=%i, err2=%i.", len1, len2, indx1, indx2, err1, err2 );
+
+	if( len1==len2 )
 	  return CBMATCH;
-	if( indx1==matchlen && indx2==matchlen )
+	else if( len2>len1) // 9.11.2013
 	  return CBMATCHLENGTH;
-	return CBMATCHPART;
+	else if( len2<len1) // 9.11.2013
+	  return CBMATCHPART;
+
+	return err1;
 }
-int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen){
+/*
+ * Compares if name1 matches name2. CBMATCHPART returns if name1 is longer
+ * than name2. CBMATCHLENGTH returns if name1 is shorter than name2.
+ */
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl){
+	int err = CBSUCCESS;
+	unsigned char stb[3] = { 0x20, 0x20, '\0' };
+	unsigned char *stbp = NULL;
+	stbp = &stb[0];
+
+	if(matchctl==-1)
+	  return CBNOTFOUND; // no match
+	if( cbs==NULL || *cbs==NULL )
+	  return CBERRALLOC;
+	if( matchctl==0 )
+	  err = cb_compare_strict( &stbp, 0, &(*name2), len2 );
+	else if((**cbs).cf.asciicaseinsensitive==1)
+	  err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2 );
+	else
+	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2 );
+	switch (matchctl) {
+	  case  0:
+	    if( err==CBMATCHLENGTH )
+	      return CBMATCH; // any
+	    break;
+	  case -2:
+	    if( err==CBMATCH || err==CBMATCHLENGTH )
+	      return CBMATCH; // length (name can be cut for example nam matches name1)
+	    break;
+	  case -3:
+	    if( err==CBMATCH || err==CBMATCHPART )
+	      return CBMATCH; // part
+	    break;
+	  case -4:
+	    if( err==CBMATCH || err==CBMATCHPART || err==CBMATCHLENGTH )
+	      return CBMATCH; // part or length
+	    break;
+	  default:
+	    return err; 
+	}
+	return err; // other information
+}
+int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2){
 	int index=0, err=CBMATCHLENGTH, num=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
- 	if( len1==0 || len2==0 )
-	  return CBNOTFOUND;
 
-//	fprintf(stderr,"cb_compare: name1=[");
-//	cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] name2=[");
-//	cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"]\n");
-
-	if(matchlen==-1)
-	  return CBNOTFOUND; // no match (-1)
+	//fprintf(stderr,"cb_compare: name1=[");
+	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] name2=[");
+	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"]\n");
 
 	num=len1;
 	if(len1>len2)
 	  num=len2;
-	for(index=0;index<num && index<matchlen;++index)
+	for(index=0; index<num ;++index)
 	  if((*name1)[index]!=(*name2)[index]){
 	    index=num+7; err=CBNOTFOUND;
 	  }else{
@@ -187,12 +230,14 @@ int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2
 	    else
 	      err=CBMATCHPART; // 30.3.2013, was: match, not notfound
 	  }
-	if( matchlen==index && ( len1==len2 ) )
-	  err=CBMATCH; // it matchlen>len1 or matchlen>len2, return CBMATCH
-	else if( index==matchlen ) // 4.11.2013
+	if( len1==len2 )
+	  err=CBMATCH;
+	else if( len2>len1) // 9.11.2013
 	  err=CBMATCHLENGTH;
+	else if( len2<len1) // 9.11.2013
+	  err=CBMATCHPART;
 
-	return err; // every name (0) or err (any positive number)
+	return err;
 }
 
 int  cb_copy_name( cb_name **from, cb_name **to ){
@@ -274,7 +319,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
 #ifdef CB2822MESSAGE
-	(**str).cf.caseinsensitive=1;
+	(**str).cf.asciicaseinsensitive=1;
 	(**str).cf.unfold=1;
 	(**str).cf.removewsp=0; // default
 	(**str).cf.removecrlf=0; // default
@@ -286,7 +331,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).rstart=CBRESULTSTART; // tmp
 	(**str).rend=CBRESULTEND; // tmp
 #else
-	(**str).cf.caseinsensitive=0;
+	(**str).cf.asciicaseinsensitive=0;
 	(**str).cf.unfold=0;
 	(**str).cf.removewsp=1;
 	(**str).cf.removecrlf=1;

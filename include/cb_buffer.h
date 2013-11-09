@@ -179,13 +179,13 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        char                type;             // stream (default), file (large namelist) or only buffer (fd is not in use)
-        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-        char                unfold;           // Search names unfolding the text first, RFC 2822
-        char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
-        char                removewsp;        // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
-        char                removecrlf;       // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
+        char                type;                 // stream (default), file (large namelist) or only buffer (fd is not in use)
+        char                searchmethod;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        char                unfold;               // Search names unfolding the text first, RFC 2822
+        char                asciicaseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
+        char                removewsp;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                removecrlf;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 } cb_conf; // 20.8.2013
 
 typedef struct cb_name{
@@ -257,12 +257,18 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength);
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
- * The same functions overloaded with possible match length of the name. Useful
- * internally and in some searches. 
- *  0 - searches any next name not yet used once
- * -1 - searches endlessly without matching any name passing all unused names */
-int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchlen);
-int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen); 
+ * The same functions overloaded with match length of the name. These are 
+ * useful internally and in some searches. 
+ * matchctl  1 - strict match, CBMATCH
+ * matchctl  0 - searches any next name not yet used, once
+ * matchctl -1 - searches endlessly without matching any name listing all the
+ *               rest of the unused names
+ * matchctl -2 - match names length, CBMATCHLEN (this is so called wildcard match)
+ * matchctl -3 - match if part of name matches to other names length, CBMATCHPART
+ * matchctl -4 - match if part of name matches to either names length, CBMATCHPART or CBMATCHLENGTH
+ */
+int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl);
+int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
 
 /*
  * If while reading a character, is found, that cb_set_cursor found a name
@@ -286,8 +292,8 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 
 /*
  * 4.11.2013
- * To find every name to a file or stream to a list. Search reaches the end of the 
- * stream and every name is put to the list. Buffer has to be larger than the data. */
+ * To find every unused name to the list. Search reaches the end of the stream.
+ * Buffer has to be larger than the data to use the names from the list. */
 int  cb_find_every_name(CBFILE **cbs); 
 
 
@@ -353,8 +359,8 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, i
 int  cb_copy_name(cb_name **from, cb_name **to);
 /* Matchlen: -1 = none (lists every name to the list and returns), 0 = every name (returns the next name)
  * length = length of the match (matches length or cut length as in % or * in searches) */
-int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
+//int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
 //int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
 //int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
 

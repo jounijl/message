@@ -5,7 +5,7 @@
 #
 
 LIBSRCS=" cb_buffer.c cb_read.c cb_encoding.c cb_search.c cb_fifo.c "
-LIBOBJS=" cb_buffer.o cb_read.o cb_encoding.o cb_search_state.o cb_search.o cb_search_state.o cb_fifo.o "
+LIBOBJS=" cb_buffer.o cb_read.o cb_encoding.o cb_search_topo.o cb_search.o cb_search_state.o cb_fifo.o "
 LIBARCH="libcb.a"
 
 rm $LIBARCH
@@ -34,6 +34,7 @@ rm test_cb
 # jarjestyksella on valia
 gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -L. test_cb.o $LIBARCH -o test_cb
 
+
 #
 # Programs
 #
@@ -50,6 +51,10 @@ rm cbsearch
 gcc -g -Wall -I.:/usr/include:../include -L/usr/lib test_cbsearch.o get_option.o $LIBARCH -o cbsearch
 rm cbconv
 gcc -g -Wall -I.:/usr/include:../include -L/usr/lib test_cbconv.o get_option.o $LIBARCH -o cbconv
+rm test_cbfile.o
+gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -c ../buffer/test_cbfile.c
+rm test_cbfile
+gcc -g -Wall -I.:/usr/include:../include -L/usr/lib -L. get_option.o test_cbfile.o $LIBARCH -o test_cbfile
 
 #
 # Utility and test programs

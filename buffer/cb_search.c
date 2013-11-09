@@ -22,12 +22,12 @@
 #include "../include/cb_buffer.h"
 
 int  cb_put_name(CBFILE **str, cb_name **cbn);
-int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchlen);
+int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl);
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, unsigned char **charbuf, int index);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
-//int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen);
+//int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
 
 int  cb_put_name(CBFILE **str, cb_name **cbn){ 
         int err=0;
@@ -70,27 +70,21 @@ int  cb_put_name(CBFILE **str, cb_name **cbn){
 }
 
 //int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen){ 
-int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchlen){ // 4.11.2013
+int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl){ // 4.11.2013
 	cb_name *iter = NULL; int err=CBSUCCESS;
 
 	if(*str!=NULL && (**str).cb != NULL ){
 	  iter = &(*(*(**str).cb).name);
 	  while(iter != NULL){
-	    if((**str).cf.caseinsensitive==1)
-	      err = cb_compare_rfc2822( &(*iter).namebuf, (*iter).namelen, &(*name), namelen, matchlen );
-	    else
-	      err = cb_compare( &(*iter).namebuf, (*iter).namelen, &(*name), namelen, matchlen );
-	    // if( err == CBMATCH ){ 
-	    if( err == CBMATCH || err == CBMATCHLENGTH ){ // 4.11.2013
+	    err = cb_compare( &(*str), &(*iter).namebuf, (*iter).namelen, &(*name), namelen, matchctl ); // 9.11.2013
+	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
 	       * 20.8.2013:
 	       * If searching of multiple same names is needed (in buffer also), do not return 
 	       * allready matched name. Instead, increase names matchcount (or set to 1 if it 
 	       * becomes 0) and search the next same name.
 	       */
-	      //if( (**str).cf.searchmethod==CBSEARCHNEXTNAMES ){ // 6.11.2013, matchcount kasvaa mutta ei merkitse jos CBSEARCHUNIQUENAMES
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
-	      //} // pois 6.11.2013.  Muutoin vaihdettaessa CBSEARCHNEXTNAMES:iin, matchcount tulee tayttaa ja haetaan aina uudelleen jo haettuun nimeen
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
 	        if( (**str).cf.type!=CBCFGFILE ) // When used as only buffer, stream case does not apply
@@ -110,7 +104,6 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchle
 	    }
 	    iter = (cb_name *) (*iter).next;
 	  }
-	  //(**str).cb->index=(**str).cb->contentlen;
 	  (**str).cb->index = (**str).cb->contentlen - (**str).ahd.bytesahead;  // 5.9.2013
 	}else{
 	  fprintf(stderr, "\ncb_set_to_name: allocation error.");
@@ -270,7 +263,7 @@ cb_get_chr_unfold_try_another:
 /*
  * Name has one byte for each character.
  */
-int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchlen){
+int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl){
 	int indx=0, chrbufindx=0, err=CBSUCCESS, bufsize=0;
 	unsigned char *ucsname = NULL; 
 	bufsize = *namelength; bufsize = bufsize*4;
@@ -280,12 +273,12 @@ int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelen
 	for( indx=0; indx<*namelength && err==CBSUCCESS; ++indx ){
 	  err = cb_put_ucs_chr( (unsigned long int)(*name)[indx], &ucsname, &chrbufindx, bufsize);
 	}
-	err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &chrbufindx, matchlen);
+	err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &chrbufindx, matchctl);
 	free(ucsname);
 	return err;
 }
 int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
-	return cb_set_cursor_match_length( &(*cbs), &(*name), &(*namelength), *namelength );
+	return cb_set_cursor_match_length( &(*cbs), &(*name), &(*namelength), 1 );
 }
 
 /*
@@ -305,9 +298,9 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength){
  * Name has 4 bytes for one UCS-character.
  */
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
-	return cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), *namelength );
+	return cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), 1 );
 }
-int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchlen){
+int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl){
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
 	int  index=0, buferr=CBSUCCESS; 
 	unsigned long int chr=0, chprev=CBRESULTEND;
@@ -326,8 +319,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	chprev=(**cbs).bypass+1; // 5.4.2013
 
 	// 1) Search table and set cbs.cb.index if name is found
-	//err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength ); // 27.8.2013
-	err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, matchlen ); // 4.11.2013
+	err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, matchctl ); // 4.11.2013
 	if(err==CBSUCCESS){
 	  //fprintf(stderr,"\nName found from list.");
 	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).current).length+(*(*(**cbs).cb).current).offset ) ){
@@ -388,10 +380,18 @@ cb_set_cursor_alloc_name:
 	    //fprintf(stderr, "\ncb_set_cursor_ucs: '=', index=%i, contentlen=%i", (int) (*(**cbs).cb).index, (int) (*(**cbs).cb).contentlen );
 	    //fprintf(stderr, ", ahead=%i, bytesahead=%i. \n", (int) (**cbs).ahd.ahead, (int) (**cbs).ahd.bytesahead );
 
-	    if( buferr==CBSUCCESS )
+	    if( buferr==CBSUCCESS ){
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &(*fname), chroffset, &charbufptr, index);
+	    }
 	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
-	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i.", buferr);
+	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr);
+#ifdef CBSTATETOPOLOGY
+	      fprintf(stderr, "(CBSTATETOPOLOGY).");
+#elif CBSTATEFUL
+	      fprintf(stderr, "(CBSTATEFUL).");
+#else
+	      fprintf(stderr, ".");
+#endif
 	    }
 
 	    if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
@@ -399,15 +399,9 @@ cb_set_cursor_alloc_name:
 	      fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	    }
 
-	    if((**cbs).cf.caseinsensitive==1) // 27.8.2013
-	      cis = cb_compare_rfc2822( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchlen ); // matchlen 4.11.2013
-	    else
-	      cis = cb_compare( &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchlen ); // matchlen 4.11.2013
-	    //if( cis == CBMATCH ){ // 30.3.2013
-	    if( cis == CBMATCH || cis == CBMATCHLENGTH ){ // 4.11.2013
-	      //(**cbs).cb->index = chroffset; // cursor at rstart, 1.9.2013 (pois: 6.9.2013 tai *chroffset+1)
+	    cis = cb_compare( &(*cbs), &(*fname).namebuf, (*fname).namelen, &(*ucsname), *namelength, matchctl ); // matchctl 9.11.2013
+	    if( cis == CBMATCH ){ // 9.11.2013
 	      (**cbs).cb->index = (**cbs).cb->contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
-	      //if( (**cbs).cf.searchmethod == CBSEARCHNEXTNAMES ) // pois 6.11.2013, sama kuin cb_set_name:ssa 
 	      if( (*(**cbs).cb).last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
 	        (*(*(**cbs).cb).last).matchcount++; 
 	      if(err==CBSTREAM){
@@ -423,6 +417,8 @@ cb_set_cursor_alloc_name:
 #ifdef CBSTATETOPOLOGY
           }else if(chprev!=(**cbs).bypass && chr==(**cbs).rend){ // '&', start new name
 	    if(openpairs>=1) --openpairs; // (reader must read similarly, with openpairs count or otherwice)
+#elif CBSTATEFUL
+	  }else if( chprev!=(**cbs).bypass && chr==(**cbs).rend ){ // '&', start new name , sama kuin alla, koe
 #else
 	  }else if( chprev!=(**cbs).bypass && chr==(**cbs).rend ){ // '&', start new name
 #endif
@@ -482,9 +478,9 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name *fname, long int offset, uns
 	      (*fname).namelen = index; // tuleeko olla vasta if:n jalkeen
 	      (*fname).offset = offset;
 
-	      //fprintf(stderr,"\n name:[");
-	      //cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);
-	      //fprintf(stderr,"]");
+	      // fprintf(stderr,"\n cb_save_name_from_charbuf: name [");
+	      // cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);
+	      // fprintf(stderr,"] index=%i, (*fname).buflen=%i", index, (*fname).buflen);
 
               if(index<(*fname).buflen){ 
                 (*fname).namelen=0; // 6.4.2013
@@ -520,8 +516,9 @@ cb_set_cursor_ucs_removals:
               }else{
 	        err = CBNAMEOUTOFBUF;
 	      }
-	      if(err!=CBNAMEOUTOFBUF)
+	      if(err!=CBNAMEOUTOFBUF) // cb_put_name returns CBNAMEOUTOFBUF if buffer is full
 	        err = cb_put_name(&(*cbs), &fname); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
+
 	      return err;
 }
 

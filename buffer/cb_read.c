@@ -18,6 +18,11 @@
 #include <stdlib.h>
 #include "../include/cb_buffer.h"
 
+//int cb_clear_every_matchcount(CBFILE **cbs);
+//int cb_clear_every_matchcount(CBFILE **cbs){
+//	return CBSUCCESS;
+//}
+
 /*
  * 1 or 4 -byte functions.
  */
@@ -58,9 +63,10 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	(**cbs).cf.searchmethod = searchmethod;
 
 	free(*ucsname);
-	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH){ // returns only CBSUCCESS or CBSTREAM
+	if( ret==CBSUCCESS || ret==CBSTREAM ){ // returns only CBSUCCESS or CBSTREAM or error
 	  /*
 	   * Copy current name to new ucsname */
+	  //fprintf(stderr,"\ndebug, cb_get_next_name_ucs: MERKKI.");
 	  if( (**cbs).cb!=NULL && (*(**cbs).cb).current!=NULL ){
 	    if(ucsname==NULL)
 	      ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
