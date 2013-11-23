@@ -131,6 +131,7 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	//fprintf(stderr,"\ncb_compare_rfc2822: [");
 	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
 	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
+	//fprintf(stderr,"\ncb_compare_rfc2822: [from2=%i]", from2);
 
 	indx2 = from2;
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){ // 9.11.2013
@@ -141,7 +142,7 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  if(err1>=CBNEGATION || err2>=CBNEGATION){
 	    return CBNOTFOUND;
 	  }
-	
+	  //fprintf(stderr,".");
 	  if( chr2 == chr1 ){
 	    continue; // while
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
@@ -156,9 +157,9 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  return CBNOTFOUND;
 	}
 
-	if( len1==len2 || len1==(len2-from2) )
+	if( len1==len2 )
 	  return CBMATCH;
-	else if( len2>len1 || len1<(len2-from2) ) // 9.11.2013, 23.11.2013
+	else if( len2>len1 ) // 9.11.2013, 23.11.2013
 	  return CBMATCHLENGTH;
 	else if( len2<len1 || len1>(len2-from2)) // 9.11.2013, 23.11.2013
 	  return CBMATCHPART;
@@ -175,17 +176,20 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	unsigned char *stbp = NULL;
 	stbp = &stb[0]; 
 
+	//fprintf(stderr,"\ncb_compare: [");
+	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
+	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
 	if(matchctl==-1)
 	  return CBNOTFOUND; // no match
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
-	if( matchctl==-6 ){ // %am%, not tested or used 22.11.2013
-	  dfr = (len2 - len1) - 1; // index of name2 to start searching
+	if( matchctl==-6 ){ // %am%
+	  dfr = len2 - len1; // index of name2 to start searching
 	  if(dfr<0){
 	    err = CBNOTFOUND;
 	  }else{
-	    for(indx=0; ( indx<dfr && err!=CBMATCH && err!=CBMATCHLENGTH ); indx+=4){ // %am%, comparisons: dfr*len1
+	    for(indx=0; ( indx<=dfr && err!=CBMATCH && err!=CBMATCHLENGTH ); indx+=4){ // %am%, greediness: compares dfr*len1 times per name
 	      if( (**cbs).cf.asciicaseinsensitive==1 && (len2-indx) > 0 ){
 	        err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, indx );
 	      }else if( (len2-indx) > 0 ){
@@ -195,7 +199,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	      }
 	    }
 	  }
-	}else if( matchctl==-5 ){ // %ame, not tested or used 22.11.2013
+	}else if( matchctl==-5 ){ // %ame
 	  dfr = len2 - len1;
 	  if(dfr<0){
 	    err = CBNOTFOUND;
@@ -216,6 +220,10 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	}
 
 	switch (matchctl) {
+	  case  1:
+	    if( err==CBMATCH )
+	      return CBMATCH; // returns complitely the same or an error
+	    break;
 	  case  0:
 	    if( err==CBMATCHLENGTH )
 	      return CBMATCH; // any
@@ -233,10 +241,12 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	      return CBMATCH; // part or length
 	    break;
 	  case -5:
-	    if( err==CBMATCH )
+	    //fprintf(stderr,"\ncb_compare -5 err=%i", err);
+	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // ( cut from end ame1 matches name1 )
 	    break;
 	  case -6:
+	    //fprintf(stderr,"\ncb_compare -6 err=%i", err);
 	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // in the middle
 	    break;
