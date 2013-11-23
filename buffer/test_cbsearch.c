@@ -1,5 +1,5 @@
 /*
- * Program to search name from cbfput name-value pairs.
+ * Program to search a name from name-value pairs.
  * 
  * Copyright (c) 2006, 2011, 2012 and 2013 Jouni Laakso
  * All rights reserved.
@@ -47,7 +47,7 @@ void usage ( char *progname[] );
 
 int main (int argc, char **argv) {
 	int i=-1,u=0,y=0,namearraylen=0, atoms=0,fromend=0, err=CBSUCCESS;
-	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1;
+	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
 	char list=0, inputenc=CBENC1BYTE;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
@@ -112,6 +112,7 @@ int main (int argc, char **argv) {
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
+	cb_use_as_stream(&in);
 	cb_set_encoding(&in, CBENC1BYTE);
 	(*in).cf.rfc2822headerend=0;
 
@@ -187,7 +188,12 @@ int main (int argc, char **argv) {
 #endif
 
 	// Program
-	for(i=0; i<count && err<=CBERROR; ++i){
+	co = count;
+	if(count==-1)
+	  co = 10;
+	for(i=0; i<co && err<=CBERROR; ++i){
+	  if(count==-1)
+	    i = 0;
 	  fprintf(stderr,"\n%i.", (i+1) );
 	  if( list==0 ) // one name
 	    err = search_and_print_name(&in, &name, (namelen*4) );
@@ -238,20 +244,56 @@ void usage (char *progname[]){
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
 	fprintf(stderr,"\tdefined with flag -s. Names are searched in order. Search\n");
-	fprintf(stderr,"\tsearches next same names. %s only unfolds the text. It does\n", progname[0]);
-	fprintf(stderr,"\tnot remove cr, lf or wsp characters between values and\n");
-	fprintf(stderr,"\tnames.\n\n");
+	fprintf(stderr,"\tsearches next same names. %s only unfolds the text,\n", progname[0]);
+	fprintf(stderr,"\tit does not remove cr, lf or wsp characters between values\n");
+	fprintf(stderr,"\tand names. Name can be matched from beginning, in the middle\n");
+        fprintf(stderr,"\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
+        fprintf(stderr,"\t<count> is -1, search is endless.\n\n");
+        fprintf(stderr,"\tExample 1:\n");
+        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
+        fprintf(stderr,"\tExample 2:\n");
+        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 %cknow%c\n\n", '%', '%');
+        fprintf(stderr,"\tExample 3:\n");
+        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 2 -b 1024 -l 512 -s \"name1 name4 %cknown unkno%c\"\n\n", '%', '%');
+        fprintf(stderr,"\tExample 4:\n");
+        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c -1 -b 1024 -l 512 un_known\n\n");
 }
 
 /*
  * Search name and print it.
  */
 int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
-	int err = 0; 
+	int err = 0, indx = 0; unsigned long int stchr = 0x20, endchr = 0x20;
+	unsigned char tmp[CBNAMEBUFLEN+1];
+	unsigned char *ptr = NULL;
+	tmp[CBNAMEBUFLEN] = '\0';
+	ptr = &(tmp[0]);
 
 	if( in==NULL || *in==NULL )
 	  return CBERRALLOC;
-	err = cb_set_cursor_ucs( &(*in), &(*name), &namelength );
+	if( name!=NULL && *name!=NULL && namelength>0 ){ // %ame nam% %am%
+	  cb_get_ucs_chr(&stchr, &(*name), &indx, namelength); indx = (namelength - 4);
+	  cb_get_ucs_chr(&endchr, &(*name), &indx, namelength);
+	  if( stchr == (unsigned long int) (**in).likechr ){
+	    for(indx=0; indx<namelength-4 && indx<CBNAMEBUFLEN-4; ++indx)
+	      tmp[indx] = (*name)[indx+4] ;
+	    if( endchr == (unsigned long int) (**in).likechr ){
+	      indx -= 4; // %am%
+	      err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, -6 );
+	    }else{
+	      err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, -5 ); // %ame
+	    }
+	  }else if( endchr == (unsigned long int) (**in).likechr ){
+	    namelength -= 4; // %
+	    err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, -2 ); // nam%
+	  }else{
+	    err = cb_set_cursor_ucs( &(*in), &(*name), &namelength ); // matchctl=1
+	  }
+	}else{
+	  fprintf(stderr, "\n Name was null.\n");
+	}
+	//if(err==CBSTREAM || err==CBSTREAMEND) // this is not required here: name is removed automatically, value is not.
+	//  cb_remove_name_from_stream( &(*in) );
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
 	if( err==CBSUCCESS || err==CBSTREAM ){
 	  err = print_current_name(&(*in));
@@ -262,6 +304,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength){
 	}
 	if(err==CBNOTFOUND || err==CB2822HEADEREND ){
 	  fprintf(stderr, "\n Name \"");
+	  //cb_print_ucs_chrbuf( &(*name), len, namelength );
 	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
 	  return err;

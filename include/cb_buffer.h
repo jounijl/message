@@ -57,6 +57,8 @@
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rend to rstart
 #define CBCOMMENTEND        '\n'
 
+#define CBLIKECHR           '%'  // To pass on, likechr is used in user interfaces only, not used internally
+
 /*
  * Configuration options
  */
@@ -225,6 +227,7 @@ typedef struct CBFILE{
 	unsigned long int   bypass;	// Bypass character, bypasses next special characters function
 	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
 	unsigned long int   cend;	// Comment end character
+	unsigned long int   likechr;    // SQL 'LIKE' clause character to use
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
 	int                 encoding;   // list of encodings is in file cb_encoding.h 
 } CBFILE;
@@ -263,9 +266,11 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl  0 - searches any next name not yet used, once
  * matchctl -1 - searches endlessly without matching any name listing all the
  *               rest of the unused names
- * matchctl -2 - match names length, CBMATCHLEN (this is so called wildcard match)
+ * matchctl -2 - match names length, CBMATCHLEN (name like nam% or nam*)
  * matchctl -3 - match if part of name matches to other names length, CBMATCHPART
  * matchctl -4 - match if part of name matches to either names length, CBMATCHPART or CBMATCHLENGTH
+ * matchctl -5 - match from end name1 length (name like %ame or *ame) ; NOT TESTED 22.11.2013
+ * matchctl -6 - match in between name1 length (name like %am% or *am*) ; NOT TESTED 22.11.2013
  */
 int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl);
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
@@ -295,7 +300,6 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
  * To find every unused name to the list. Search reaches the end of the stream.
  * Buffer has to be larger than the data to use the names from the list. */
 int  cb_find_every_name(CBFILE **cbs); 
-
 
 
 /*
@@ -357,18 +361,14 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new t
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
 
 int  cb_copy_name(cb_name **from, cb_name **to);
-/* Matchlen: -1 = none (lists every name to the list and returns), 0 = every name (returns the next name)
- * length = length of the match (matches length or cut length as in % or * in searches) */
-int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
-//int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int matchlen);
-//int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
-//int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start character inside valuename, '#'
 int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character, '\n'
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
+int  cb_set_likechr(CBFILE **str, unsigned long int likechr); // character to use to match length from end or beginning meaning 'any characters of any length'
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
 

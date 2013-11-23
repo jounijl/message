@@ -76,7 +76,8 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchct
 	if(*str!=NULL && (**str).cb != NULL ){
 	  iter = &(*(*(**str).cb).name);
 	  while(iter != NULL){
-	    err = cb_compare( &(*str), &(*iter).namebuf, (*iter).namelen, &(*name), namelen, matchctl ); // 9.11.2013
+	    //err = cb_compare( &(*str), &(*iter).namebuf, (*iter).namelen, &(*name), namelen, matchctl ); // 9.11.2013
+	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, matchctl ); // 23.11.2013
 	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
 	       * 20.8.2013:
@@ -399,7 +400,8 @@ cb_set_cursor_alloc_name:
 	      fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	    }
 
-	    cis = cb_compare( &(*cbs), &(*fname).namebuf, (*fname).namelen, &(*ucsname), *namelength, matchctl ); // matchctl 9.11.2013
+	    //cis = cb_compare( &(*cbs), &(*fname).namebuf, (*fname).namelen, &(*ucsname), *namelength, matchctl ); // matchctl 9.11.2013
+	    cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchctl ); // 23.11.2013
 	    if( cis == CBMATCH ){ // 9.11.2013
 	      (**cbs).cb->index = (**cbs).cb->contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	      if( (*(**cbs).cb).last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013

@@ -81,8 +81,8 @@
 
 int  cb_get_char_read_block(CBFILE **cbf, char *ch);
 int  cb_set_type(CBFILE **buf, char type);
-int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2);
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
+int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
 
 
 /*
@@ -122,23 +122,23 @@ void cb_print_counters(CBFILE **cbf){
              (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 }
 
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2){
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
 	unsigned long int chr1=0x65, chr2=0x65;
 	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
 	  return CBERRALLOC;
 
-//	fprintf(stderr,"\n\ncb_compare_rfc2822: [");
-//	cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
-//	cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
+	//fprintf(stderr,"\ncb_compare_rfc2822: [");
+	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
+	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
+	indx2 = from2;
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){ // 9.11.2013
 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
 	  if(err1>=CBNEGATION || err2>=CBNEGATION){
-	    //fprintf(stderr,"\n\ncb_compare_rfc2822: returning CBNOTFOUND (2), err1: %i err2: %i.", err1, err2 );
 	    return CBNOTFOUND;
 	  }
 	
@@ -153,16 +153,14 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	      if( chr1 == (chr2+32) ) 
 	        continue;
 	  }
-	  //fprintf(stderr,"\n\ncb_compare_rfc2822: returning CBNOTFOUND (3)." );
 	  return CBNOTFOUND;
 	}
-	//fprintf(stderr,"\n\ncb_compare_rfc2822: len1=%i, len2=%i, index1=%i, index2=%i, err1=%i, err2=%i.", len1, len2, indx1, indx2, err1, err2 );
 
-	if( len1==len2 )
+	if( len1==len2 || len1==(len2-from2) )
 	  return CBMATCH;
-	else if( len2>len1) // 9.11.2013
+	else if( len2>len1 || len1<(len2-from2) ) // 9.11.2013, 23.11.2013
 	  return CBMATCHLENGTH;
-	else if( len2<len1) // 9.11.2013
+	else if( len2<len1 || len1>(len2-from2)) // 9.11.2013, 23.11.2013
 	  return CBMATCHPART;
 
 	return err1;
@@ -172,21 +170,51 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
  * than name2. CBMATCHLENGTH returns if name1 is shorter than name2.
  */
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl){
-	int err = CBSUCCESS;
+	int err = CBSUCCESS, dfr = 0, indx = 0;
 	unsigned char stb[3] = { 0x20, 0x20, '\0' };
 	unsigned char *stbp = NULL;
-	stbp = &stb[0];
+	stbp = &stb[0]; 
+
 
 	if(matchctl==-1)
 	  return CBNOTFOUND; // no match
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
-	if( matchctl==0 )
-	  err = cb_compare_strict( &stbp, 0, &(*name2), len2 );
-	else if((**cbs).cf.asciicaseinsensitive==1)
-	  err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2 );
-	else
-	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2 );
+	if( matchctl==-6 ){ // %am%, not tested or used 22.11.2013
+	  dfr = (len2 - len1) - 1; // index of name2 to start searching
+	  if(dfr<0){
+	    err = CBNOTFOUND;
+	  }else{
+	    for(indx=0; ( indx<dfr && err!=CBMATCH && err!=CBMATCHLENGTH ); indx+=4){ // %am%, comparisons: dfr*len1
+	      if( (**cbs).cf.asciicaseinsensitive==1 && (len2-indx) > 0 ){
+	        err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, indx );
+	      }else if( (len2-indx) > 0 ){
+	        err = cb_compare_strict( &(*name1), len1, &(*name2), len2, indx );
+	      }else{
+	        err = CBNOTFOUND;
+	      }
+	    }
+	  }
+	}else if( matchctl==-5 ){ // %ame, not tested or used 22.11.2013
+	  dfr = len2 - len1;
+	  if(dfr<0){
+	    err = CBNOTFOUND;
+	  }else if( (**cbs).cf.asciicaseinsensitive==1 && (len2-dfr) > 0 ){
+	    err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, dfr );
+	  }else if( (len2-dfr) > 0 ){
+	    err = cb_compare_strict( &(*name1), len1, &(*name2), len2, dfr );
+	  }else{
+	    err = CBNOTFOUND;
+	  }
+	}else if( matchctl==0 ){ // all
+	  stbp = &stb[0]; 
+	  err = cb_compare_strict( &stbp, 0, &(*name2), len2, 0 );
+	}else if((**cbs).cf.asciicaseinsensitive==1){ // name or nam%
+	  err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, 0 );
+	}else{ // name or nam%
+	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
+	}
+
 	switch (matchctl) {
 	  case  0:
 	    if( err==CBMATCHLENGTH )
@@ -204,13 +232,21 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	    if( err==CBMATCH || err==CBMATCHPART || err==CBMATCHLENGTH )
 	      return CBMATCH; // part or length
 	    break;
+	  case -5:
+	    if( err==CBMATCH )
+	      return CBMATCH; // ( cut from end ame1 matches name1 )
+	    break;
+	  case -6:
+	    if( err==CBMATCH || err==CBMATCHLENGTH )
+	      return CBMATCH; // in the middle
+	    break;
 	  default:
 	    return err; 
 	}
 	return err; // other information
 }
-int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2){
-	int index=0, err=CBMATCHLENGTH, num=0;
+int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
+	int indx1=0, indx2=0, err=CBMATCHLENGTH, num=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
 
@@ -221,20 +257,23 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	num=len1;
 	if(len1>len2)
 	  num=len2;
-	for(index=0; index<num ;++index)
-	  if((*name1)[index]!=(*name2)[index]){
-	    index=num+7; err=CBNOTFOUND;
+	indx1=0;
+	for(indx2=from2; indx1<num && indx2<num ;++indx2){
+	  if((*name1)[indx1]!=(*name2)[indx2]){
+	    indx2=num+7; err=CBNOTFOUND;
 	  }else{
-	    if(len1==len2)
+	    if( len1==len2 || len1==(len2-from2) )
 	      err=CBMATCH;
 	    else
 	      err=CBMATCHPART; // 30.3.2013, was: match, not notfound
 	  }
+	  ++indx1;
+	}
 	if( len1==len2 )
 	  err=CBMATCH;
-	else if( len2>len1) // 9.11.2013
+	else if( len2>len1 ) // 9.11.2013
 	  err=CBMATCHLENGTH;
-	else if( len2<len1) // 9.11.2013
+	else if( len2<len1 ) // 9.11.2013
 	  err=CBMATCHPART;
 
 	return err;
@@ -302,6 +341,11 @@ int  cb_set_bypass(CBFILE **str, unsigned long int bypass){ // bypass , new - ad
 	(**str).bypass=bypass;
 	return CBSUCCESS;
 }
+int  cb_set_likechr(CBFILE **str, unsigned long int likechr){ // bypass , new - added 19.12.2009
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	(**str).likechr=likechr;
+	return CBSUCCESS;
+}
 
 int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 	unsigned char *blk = NULL; 
@@ -323,15 +367,14 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).cf.unfold=1;
 	(**str).cf.removewsp=0; // default
 	(**str).cf.removecrlf=0; // default
-	//(**str).cf.removewsp=1; // tmp
-	//(**str).cf.rfc2822headerend=0; // tmp 
 	(**str).cf.rfc2822headerend=1; // default, stop at headerend
 	//(**str).rstart=0x00003A; // ':', default
 	//(**str).rend=0x00000A;   // LF, default
 	(**str).rstart=CBRESULTSTART; // tmp
 	(**str).rend=CBRESULTEND; // tmp
 #else
-	(**str).cf.asciicaseinsensitive=0;
+	(**str).cf.asciicaseinsensitive=0; // default
+	//(**str).cf.asciicaseinsensitive=1; // test
 	(**str).cf.unfold=0;
 	(**str).cf.removewsp=1;
 	(**str).cf.removecrlf=1;
@@ -342,6 +385,7 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	(**str).bypass=CBBYPASS;
 	(**str).cstart=CBCOMMENTSTART;
 	(**str).cend=CBCOMMENTEND;
+	(**str).likechr=CBLIKECHR;
 	(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
 	(**str).encoding=CBDEFAULTENCODING;
 	(**str).fd = dup(fd);
