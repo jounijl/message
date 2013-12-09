@@ -23,6 +23,12 @@ export LANG
 
 echo; file tests/*.out
 
+#echo
+#echo "Repeating to all files"
+#sleep 2
+
+# file tests/*.out | cut -d':' -f1 | while read I
+
 #
 # Stress test
 # 
@@ -37,6 +43,14 @@ echo; file tests/*.out
 # <CR><LF> (echo_CR.sh echo_LF.sh add_cr_to_file.sh)
 # cat tests/testi2.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 # cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+
+#for I in CBSETSTATELESS CBSETSTATEFUL CBSETSTATETOPOLOGY
+#  do
+#    cat tests/testi.txt | ./cbsearch.$I -c 4 -b 2048 -l 512 unknown 2>&1 
+# done | less
+
+# Subsearch
+# cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -t -s "unknown nimi1 viides"
 
 #
 # Convert between encodings

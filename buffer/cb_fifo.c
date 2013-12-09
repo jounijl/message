@@ -35,14 +35,14 @@ int  cb_fifo_print_buffer(cb_ring *cfi){
 int  cb_fifo_print_counters(cb_ring *cfi){
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
-        fprintf(stderr,"\nahead:        %i", (*cfi).ahead );
-        fprintf(stderr,"\nbytesahead:   %i", (*cfi).bytesahead );
-        fprintf(stderr,"\nbuflen:       %i", (*cfi).buflen );
-        fprintf(stderr,"\nsizeslen:     %i", (*cfi).sizeslen );
-        fprintf(stderr,"\nfirst:        %i", (*cfi).first );
-        fprintf(stderr,"\nlast:         %i", (*cfi).last );
-        fprintf(stderr,"\nstreamstart:  %i", (*cfi).streamstart );
-        fprintf(stderr,"\nstreamstop:   %i", (*cfi).streamstop );
+        fprintf(stderr,"\nahead:          %i", (*cfi).ahead );
+        fprintf(stderr,"\nbytesahead:     %i", (*cfi).bytesahead );
+        fprintf(stderr,"\nbuflen:         %i", (*cfi).buflen );
+        fprintf(stderr,"\nsizeslen:       %i", (*cfi).sizeslen );
+        fprintf(stderr,"\nfirst:          %i", (*cfi).first );
+        fprintf(stderr,"\nlast:           %i", (*cfi).last );
+        fprintf(stderr,"\nstreamstart:    %i", (*cfi).streamstart );
+        fprintf(stderr,"\nstreamstop:     %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
 

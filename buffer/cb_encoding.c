@@ -26,37 +26,35 @@ int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
 int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
 
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-       int err=CBSUCCESS;
+       int err=CBSUCCESS, ret=CBNOTFOUND;
        if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
-        if((**cbs).encoding==CBENCAUTO) // auto
-          return cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
-        if((**cbs).encoding==CBENCUTF8) // utf-8
-         return cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
-        if((**cbs).encoding==CBENC1BYTE){ // 1 byte or more
-          *bytecount=(**cbs).encodingbytes;
-          *storedbytes=(**cbs).encodingbytes;
-          return cb_get_multibyte_ch(&(*cbs), &(*chr));
-        }
-        if((**cbs).encoding==CBENC2BYTE || (**cbs).encoding==CBENC4BYTE){ // 2 bytes or more, endianness
-          *bytecount=(**cbs).encodingbytes;
-          *storedbytes=(**cbs).encodingbytes;
-          err = cb_get_multibyte_ch(&(*cbs), &(*chr)); 
+       if((**cbs).encoding==CBENCAUTO) // auto
+         ret = cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+       else if((**cbs).encoding==CBENCUTF8) // utf-8
+         ret = cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+       else if((**cbs).encoding==CBENC1BYTE){ // 1 byte or more
+         *bytecount=(**cbs).encodingbytes;
+         *storedbytes=(**cbs).encodingbytes;
+         ret = cb_get_multibyte_ch(&(*cbs), &(*chr));
+       }else if((**cbs).encoding==CBENC2BYTE || (**cbs).encoding==CBENC4BYTE){ // 2 bytes or more, endianness
+         *bytecount=(**cbs).encodingbytes;
+         *storedbytes=(**cbs).encodingbytes;
+         err = cb_get_multibyte_ch(&(*cbs), &(*chr)); 
 #ifdef BIGENDIAN
-          // In stream allways in little endian form if LE machine or if BIGENDIAN is defined in BE machines
-          if( (**cbs).encoding==CBENC4BYTE )
-            *chr = cb_reverse_four_bytes(*chr);
-          if( (**cbs).encoding==CBENC2BYTE )
-            *chr = cb_reverse_two_bytes(*chr);
+         // In stream allways in little endian form if LE machine or if BIGENDIAN is defined in BE machines
+         if( (**cbs).encoding==CBENC4BYTE )
+           *chr = cb_reverse_four_bytes(*chr);
+         if( (**cbs).encoding==CBENC2BYTE )
+           *chr = cb_reverse_two_bytes(*chr);
 #endif
-          return err;
-        }
-        if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
-          return cb_get_utf32_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
-        if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
-          return cb_get_utf16_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
-        return CBNOENCODING;
+         ret = err;
+       }else if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
+         ret = cb_get_utf32_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+       else if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
+         ret = cb_get_utf16_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+       return ret;
 }
-//int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
+
 int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes){ // 12.8.2013
         unsigned long int schr; schr = chr;
         int err=CBSUCCESS; 
@@ -91,6 +89,11 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *stored
 int  cb_set_encodingbytes(CBFILE **str, int bytecount){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encodingbytes=bytecount;
+	return CBSUCCESS;
+}
+int  cb_get_encoding(CBFILE **str, int *number){
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	*number = (**str).encoding;
 	return CBSUCCESS;
 }
 int  cb_set_encoding(CBFILE **str, int number){
