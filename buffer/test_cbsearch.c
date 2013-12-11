@@ -85,7 +85,7 @@ int main (int argc, char **argv) {
 	  namebuflen = NAMEBUFLEN; // 4 * namelen;
 	  name = (unsigned char *) malloc( sizeof(unsigned char)*( namebuflen + 1 ) );
 	  if(name==NULL){ fprintf(stderr,"\nerror in malloc, name was null"); exit(CBERRALLOC); }
-	  // name[ namelen*4 ] = '\0';
+	  name[ namelen*4 ] = '\0';
 	  u = 0;
 	  for(i=0; i<namelen && u<namebuflen; ++i){
 	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
@@ -210,6 +210,7 @@ int main (int argc, char **argv) {
 	      memset( &(*name), (int) 0x20, namebuflen );
 	      namearraylen = strnlen( &(*namearray), namebuflen );
 	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
+	      //u = 0; chprev = (unsigned long int) 0x20; namelen=0;
 	      for(y=0; y<namearraylen && y<10000; ++y ){
 	        chprev = chr;
 	        chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
@@ -321,10 +322,10 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	//  cb_remove_name_from_stream( &(*in) );
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
 	if( err==CBSUCCESS || err==CBSTREAM ){
-	  if(tree!=0)
+	  if(tree==0)
 	    err = print_current_name(&(*in));
-	  //else
-	  //  cb_print_name( &( (*(**in).cb).list.currentleaf ) );
+	  else
+	    cb_print_name( &( (*(**in).cb).list.currentleaf ) );
 	  if(err!=CBSUCCESS){ fprintf(stderr, "\n Name not found.\n"); }
 	}
 	if(err==CB2822HEADEREND ){

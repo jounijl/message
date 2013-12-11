@@ -25,29 +25,29 @@
 #define CBADDEDLEAF          8
 #define CBADDEDNEXTTOLEAF    9
 
-#define CBNEGATION          10
-#define CBSTREAMEND         11
-#define CBBUFFULL           12
-#define CBNOTFOUND          13
-#define CBNAMEOUTOFBUF      14
-#define CBNOTUTF            15
-#define CBNOENCODING        16
-#define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY             18
-#define CBNOTSET            19
-#define CBAUTOENCFAIL       20    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL 21
-#define CBUCSCHAROUTOFRANGE 22
+#define CBNEGATION          20
+#define CBSTREAMEND         21
+#define CBBUFFULL           22
+#define CBNOTFOUND          23
+#define CBNAMEOUTOFBUF      24
+#define CBNOTUTF            25
+#define CBNOENCODING        26
+#define CBMATCHPART         27    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY             28
+#define CBNOTSET            29
+#define CBAUTOENCFAIL       30    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL 31
+#define CBUCSCHAROUTOFRANGE 32
 
-#define CBERROR	            30
-#define CBERRALLOC          31
-#define CBERRFD             32
-#define CBERRFILEOP         33
-#define CBERRFILEWRITE      34
-#define CBERRBYTECOUNT      35
-#define CBARRAYOUTOFBOUNDS  36
-#define CBINDEXOUTOFBOUNDS  37
-#define CBLEAFCOUNTERROR    38
+#define CBERROR	            40
+#define CBERRALLOC          41
+#define CBERRFD             42
+#define CBERRFILEOP         43
+#define CBERRFILEWRITE      44
+#define CBERRBYTECOUNT      45
+#define CBARRAYOUTOFBOUNDS  46
+#define CBINDEXOUTOFBOUNDS  47
+#define CBLEAFCOUNTERROR    48
 
 /*
  * Default values
@@ -248,7 +248,7 @@ typedef struct cb_conf{
 	char                searchstate;          // No states = 0, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	char                json;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
 	char                doubledelim;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	char                statelessinnervalues; // When using CBSTATELESS, saves names from inside values, from '=' to '=' and '&' '='
+	char                leadnames;            // Saves names from inside values, from '=' to '=' and '&' '=', a pointer to name name1=name2=name2value;
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -278,7 +278,7 @@ typedef struct cb_namelist{
 	cb_name            *current;
 	cb_name            *last;
 	long int            namecount;
-	//cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
+	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
 
 typedef struct cbuf{
@@ -450,8 +450,9 @@ int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
 
 /*
- * Not ready: Set to leaf 'result' named 'name' from 'leaf', depth 'openpairs'. */
-int  cb_set_to_leaf(CBFILE **cbs, cb_name **leaf, cb_name **result, unsigned char **name, int namelen, int openpairs, int matchctl); // 9.12.2013, not yet tested 9.12.2013
+ * Not ready: Set to leaf or enxt in list according to 'openpairs' and matchctl. */
+int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl); // 9.12.2013, not yet tested 11.12.2013
+//int  cb_set_to_leaf(CBFILE **cbs, cb_name **leaf, cb_name **result, unsigned char **name, int namelen, int openpairs, int matchctl);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'

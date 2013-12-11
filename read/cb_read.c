@@ -185,7 +185,9 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	    if(err==CBSUCCESS || err==CBSTREAM){ // another subtree search
 	      ret = CBMATCH;          // Return if match and dotted name was searched through (cursor is at name).
 
-	      cmp = cb_set_to_leaf( &(*cbs), &ptr, &ptr, &ucsname, undx, namecount, matchctl);
+	      //cmp = cb_set_to_leaf( &(*cbs), &ptr, &ptr, &ucsname, undx, namecount, matchctl);
+	      //(*(**cbs).cb).list.currentleaf = NULL;
+	      cmp = cb_set_to_leaf( &(*cbs), &ucsname, undx, namecount, matchctl);
 	      if(cmp==CBSUCCESS || cmp==CBNAMEOUTOFBUF){
 	        fprintf(stderr,"\nFound subname: \"");
 	        cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );

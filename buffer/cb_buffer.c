@@ -330,8 +330,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #ifdef CBSETJSON
 	(**str).cf.json=1
 #endif
-	//(**str).cf.statelessinnervalues=0; // default
-	(**str).cf.statelessinnervalues=1; // test
+	(**str).cf.leadnames=0; // default
+	//(**str).cf.leadnames=1; // test
 	(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
 	(**str).encoding=CBDEFAULTENCODING;
 	(**str).fd = dup(fd);
