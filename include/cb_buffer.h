@@ -27,17 +27,18 @@
 
 #define CBNEGATION          20
 #define CBSTREAMEND         21
-#define CBBUFFULL           22
-#define CBNOTFOUND          23
-#define CBNAMEOUTOFBUF      24
-#define CBNOTUTF            25
-#define CBNOENCODING        26
-#define CBMATCHPART         27    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY             28
-#define CBNOTSET            29
-#define CBAUTOENCFAIL       30    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL 31
-#define CBUCSCHAROUTOFRANGE 32
+#define CBVALUEEND          22    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
+#define CBBUFFULL           23
+#define CBNOTFOUND          24
+#define CBNAMEOUTOFBUF      25
+#define CBNOTUTF            26
+#define CBNOENCODING        27
+#define CBMATCHPART         28    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY             29
+#define CBNOTSET            30
+#define CBAUTOENCFAIL       31    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL 32
+#define CBUCSCHAROUTOFRANGE 33
 
 #define CBERROR	            40
 #define CBERRALLOC          41
@@ -245,6 +246,7 @@ typedef struct cb_conf{
         char                rfc2822headerend;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         char                removewsp;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         char                removecrlf;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
+	char                removenamewsp;        // Remove white space characters inside name
 	char                searchstate;          // No states = 0, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	char                json;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
 	char                doubledelim;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
@@ -332,6 +334,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
 /*
  * The same functions overloaded with match length of the name. These are 
  * useful internally and in some searches. 
+ *
  * matchctl  1 - strict match, CBMATCH
  * matchctl  0 - searches any next name not yet used, once
  * matchctl -1 - searches endlessly without matching any name listing all the
@@ -341,9 +344,15 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl -4 - match if part of name matches to either names length, CBMATCHPART or CBMATCHLENGTH
  * matchctl -5 - match from end name1 length (name like %ame or *ame)
  * matchctl -6 - match in between name1 length (name like %am% or *am*)
+ *
+ * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
+ * when openpairs is negative. Next rend after value ends reading. This parameter can be used
+ * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset
  */
-int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl);
-int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
+//int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl);
+//int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
+int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int ocoffset, int matchctl);
+int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
 
 /*
  * If while reading a character, is found, that cb_set_cursor found a name

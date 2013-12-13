@@ -37,7 +37,7 @@ int  cb_find_every_name(CBFILE **cbs){
 	name = &chrs[0];
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, -1 ); // no match
+	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
 }
@@ -86,7 +86,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0 ); // matches first (any)
+	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
 	(**cbs).cf.searchmethod = searchmethod;
 
 	free(*ucsname); ucsname = NULL;
@@ -114,12 +114,11 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 // CBSTREAMEND, dup ? kaksi samalla listalla
 
 	int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
-	int ret = CBNEGATION, cmp = 0;
+	int                  ret = CBNEGATION;
 	char           namecount = 0;
 	char     origsearchstate = 1;
 	unsigned   char *ucsname = NULL;
-	cb_name       *uppername = NULL;
-	cb_name             *ptr = NULL;
+	cb_name       *firstname = NULL;
 	unsigned long int    chr = 0x20;
 	cb_name            *leaf = NULL;
 
@@ -145,10 +144,7 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	  if( chr != (unsigned long int) CBDOTSEPARATOR)
 	    err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
 	  if( chr == (unsigned long int) CBDOTSEPARATOR || indx>=namelen ){ // Name
-	    ++namecount;
-/*
- * KESKEN
- */
+
 	    // Debug:
 	    fprintf(stderr, "\nsearchname=[");
 	    cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
@@ -156,50 +152,25 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	    cb_print_ucs_chrbuf( &(*dotname), namelen, namelen );
 	    fprintf(stderr, "] length %i.", namelen);
 
-	    // Match first at main list to find upper name
-	    if(namecount==1){ // CBTOPOLOGYSEARCH has to be set
-	      err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, matchctl );
-	      uppername = &(*(*(**cbs).cb).list.current);
-	      if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
-	        fprintf(stderr,"\nFound first name: [");
-	        cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
-	        fprintf(stderr,"] leaves: [");
-	        ptr = &(* (cb_name*) (*uppername).leaf);
-	        cb_print_leaves( &ptr );
-	        fprintf(stderr,"]");
-	      }
-	    }else{ // Match inner names and values
-	      //if(err>=CBNEGATION){ // name before matched
-	        fprintf(stderr, "\nGet next any name.");
-	        err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, 0 );
-	        fprintf(stderr, "\nMatch inner names and values: (print leaves) (matchctl 0 search err was %i):\n[", err);
-	        leaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
-	        err2 = cb_print_leaves( &leaf );
-	        fprintf(stderr, "]\n Match end, err=%i, err2=%i (matchctl=%i).", err, err2, matchctl);
-	      //}
+	    err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
+	    if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
+	      firstname = &(*(*(**cbs).cb).list.current);
+	      leaf = &(*(*(**cbs).cb).list.currentleaf);
+	      if(namecount==0)
+	        fprintf(stderr,"\nFound name: ["); // Debug:
+	      else
+	        fprintf(stderr,"\nFound leaf: ["); // Debug:
+	      cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
+	      fprintf(stderr,"] leaves: (%i. name) [", (namecount+1) );
+	      cb_print_leaves( &leaf );
+	      fprintf(stderr,"]");
 	    }
 
 	    if(err!=CBSUCCESS && err!=CBSTREAM)
 	      ret = CBNOTFOUND;
 
-	    if(err==CBSUCCESS || err==CBSTREAM){ // another subtree search
-	      ret = CBMATCH;          // Return if match and dotted name was searched through (cursor is at name).
-
-	      //cmp = cb_set_to_leaf( &(*cbs), &ptr, &ptr, &ucsname, undx, namecount, matchctl);
-	      //(*(**cbs).cb).list.currentleaf = NULL;
-	      cmp = cb_set_to_leaf( &(*cbs), &ucsname, undx, namecount, matchctl);
-	      if(cmp==CBSUCCESS || cmp==CBNAMEOUTOFBUF){
-	        fprintf(stderr,"\nFound subname: \"");
-	        cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
-	        fprintf(stderr,"\": {");
-	        cb_print_leaves( &ptr );
-	        fprintf(stderr,"}");
-	        if(cmp==CBNAMEOUTOFBUF)
-	          fprintf(stderr," out of buffer.");
-	      }
-
-	    }
 	    undx = 0;
+	    ++namecount;
 	  }
 	}
 	(**cbs).cf.searchstate = origsearchstate;

@@ -294,19 +294,19 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	    if( endchr == (unsigned long int) LIKECHR ){
 	      indx -= 4; // %am%
 	      if(tree==0)
-	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, -6 );
+	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -6 );
 	      else
 	        err = cb_tree_set_cursor_ucs( &(*in), &ptr, indx, -6 ); 
 	    }else{
 	      if(tree==0)
-	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, -5 ); // %ame
+	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -5 ); // %ame
 	      else
 	        err = cb_tree_set_cursor_ucs( &(*in), &ptr, indx, -5 ); 
 	    }
 	  }else if( endchr == (unsigned long int) LIKECHR ){
 	    namelength -= 4; // %
 	    if(tree==0)
-	      err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, -2 ); // nam%
+	      err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, -2 ); // nam%
 	    else
 	      err = cb_tree_set_cursor_ucs( &(*in), &(*name), namelength, -2 ); 
 	  }else{

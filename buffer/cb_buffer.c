@@ -88,6 +88,9 @@
  (- Puskurista rengaspuskuri tarvittaessa, "bias")
  - set_cursor: alloc_name vasta cb_save_name_from_charbuf:iin
    - Myos nimen pituus muuttuu kaksi kertaa
+ ===
+ x removewsp ja removecrlf, "neljäs nimi 4"
+   x removenamewsp
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
@@ -292,8 +295,10 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #ifdef CB2822MESSAGE
 	(**str).cf.asciicaseinsensitive=1;
 	(**str).cf.unfold=1;
-	(**str).cf.removewsp=0; // default
-	(**str).cf.removecrlf=0; // default
+	(**str).cf.removewsp=1; // test
+	(**str).cf.removecrlf=1; // test
+	//(**str).cf.removewsp=0; // default
+	//(**str).cf.removecrlf=0; // default
 	(**str).cf.rfc2822headerend=1; // default, stop at headerend
 	//(**str).cf.rstart=0x00003A; // ':', default
 	//(**str).cf.rend=0x00000A;   // LF, default
@@ -310,6 +315,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.rstart=CBRESULTSTART;
 	(**str).cf.rend=CBRESULTEND;
 #endif
+	(**str).cf.removenamewsp=0;
 	(**str).cf.bypass=CBBYPASS;
 	(**str).cf.cstart=CBCOMMENTSTART;
 	(**str).cf.cend=CBCOMMENTEND;
@@ -381,7 +387,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	(**cbf).list.name=NULL;
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
-	//(**cbf).list.currentleaf=NULL; // 9.12.2013
+	(**cbf).list.currentleaf=NULL; // 11.12.2013
 	return CBSUCCESS;
 }
 
@@ -473,7 +479,7 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	}
 	(**buf).list.name=NULL; // 1.6.2013
 	(**buf).list.current=NULL; // 1.6.2013
-	//(**buf).list.currentleaf=NULL; // 9.12.2013
+	(**buf).list.currentleaf=NULL; // 11.12.2013
 	(**buf).list.last=NULL; // 1.6.2013
 	return CBSUCCESS;
 }
