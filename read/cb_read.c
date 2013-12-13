@@ -150,9 +150,10 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	    cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
 	    fprintf(stderr, "] length %i, name [", undx);
 	    cb_print_ucs_chrbuf( &(*dotname), namelen, namelen );
-	    fprintf(stderr, "] length %i.", namelen);
+	    fprintf(stderr, "] length %i namecount %i.", namelen, namecount);
 
 	    err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
+	    fprintf(stderr,"\ncb_set_cursor_match_length_ucs: %i.", err);
 	    if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
 	      firstname = &(*(*(**cbs).cb).list.current);
 	      leaf = &(*(*(**cbs).cb).list.currentleaf);

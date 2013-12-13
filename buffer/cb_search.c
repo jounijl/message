@@ -729,7 +729,7 @@ cb_set_cursor_reset_name_index:
  	    goto cb_set_cursor_reset_name_index;
 	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){ // change \\ to one '\'
 	    chr=(**cbs).cf.bypass+1; // any char not '\'
-	  }else if( ( openpairs<0 || openpairs<=ocoffset ) && \
+	  }else if( ( openpairs<0 || openpairs<ocoffset ) && \
 	            ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){ // Test if value is read
             fprintf(stderr,"\nValue read, openpairs %i ocoffset %i.", openpairs, ocoffset); // debug
 	    /*
