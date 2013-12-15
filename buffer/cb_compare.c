@@ -120,6 +120,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
 
+	//fprintf(stderr,"\ncb_compare: returning %i.", err);
+
 	switch (matchctl) {
 	  case  1:
 	    if( err==CBMATCH )

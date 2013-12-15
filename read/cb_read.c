@@ -146,14 +146,13 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	  if( chr == (unsigned long int) CBDOTSEPARATOR || indx>=namelen ){ // Name
 
 	    // Debug:
-	    fprintf(stderr, "\nsearchname=[");
-	    cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
-	    fprintf(stderr, "] length %i, name [", undx);
-	    cb_print_ucs_chrbuf( &(*dotname), namelen, namelen );
-	    fprintf(stderr, "] length %i namecount %i.", namelen, namecount);
+	    //fprintf(stderr, "\nsearchname=[");
+	    //cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
+	    //fprintf(stderr, "] length %i, name [", undx);
+	    //cb_print_ucs_chrbuf( &(*dotname), namelen, namelen );
+	    //fprintf(stderr, "] length %i namecount %i.", namelen, namecount);
 
 	    err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
-	    fprintf(stderr,"\ncb_set_cursor_match_length_ucs: %i.", err);
 	    if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
 	      firstname = &(*(*(**cbs).cb).list.current);
 	      leaf = &(*(*(**cbs).cb).list.currentleaf);
@@ -169,6 +168,8 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 
 	    if(err!=CBSUCCESS && err!=CBSTREAM)
 	      ret = CBNOTFOUND;
+	    else
+	      ret = err;
 
 	    undx = 0;
 	    ++namecount;
@@ -176,8 +177,9 @@ int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, 
 	}
 	(**cbs).cf.searchstate = origsearchstate;
 	free(ucsname);
-	if(indx==namelen && ret==CBMATCH) // Match and dotted name was searched through (cursor is at name)
-	  return CBSUCCESS;
+	//if(indx==namelen && ret==CBMATCH) // Match and dotted name was searched through (cursor is at name)
+	if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
+	  return ret;
 	else // Name was not searched through or no match (cursor is somewhere in value)
 	  return CBNOTFOUND;
 }

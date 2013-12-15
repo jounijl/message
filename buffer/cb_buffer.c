@@ -86,8 +86,14 @@
    - unfolding, samoja testeja
    - blokin koko, puskurin koko ja reuna-alueet  
  (- Puskurista rengaspuskuri tarvittaessa, "bias")
- - set_cursor: alloc_name vasta cb_save_name_from_charbuf:iin
-   - Myos nimen pituus muuttuu kaksi kertaa
+ x set_cursor: alloc_name vasta cb_save_name_from_charbuf:iin
+   - Myos nimen pituus muuttuu kaksi kertaa, muistin kokonaiskaytto jaa pienemmaksi vaikka vahan (malloc ja kopiointi) hitaampi
+ x print_leaves printtaa yhden tason liian pitkalle kokeiltaessa testiohjelmalla test_cbsearch.c
+ x bugi joka on merkattu tiedostoon cb_search.c merkilla "VIRHE"
+   -> tarkistus viela
+ - test_cbsearch.c printtaa oksat/lehdet huonosti
+ - listasta ei viela loydy oikein: cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more
+
  ===
  x removewsp ja removecrlf, "neljäs nimi 4"
    x removenamewsp
@@ -97,21 +103,26 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
 int  cb_set_type(CBFILE **buf, char type);
 int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
 int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
+int  cb_print_leaves_inner(cb_name **cbn);
 
 /*
  * Debug
  */
 
 int  cb_print_leaves(cb_name **cbn){ 
+	cb_name *ptr = NULL;
+	if(cbn==NULL || *cbn==NULL)
+	  return CBERRALLOC;
+	ptr = &(* (cb_name*) (**cbn).leaf);
+	return cb_print_leaves_inner( &ptr );
+}
+int  cb_print_leaves_inner(cb_name **cbn){ 
 	int err = CBSUCCESS;
 	cb_name *iter = NULL, *leaf = NULL;
-	if(cbn==NULL || *cbn==NULL) return CBERRALLOC;
+	if(cbn==NULL || *cbn==NULL){ fprintf(stderr," null."); return err; }
 
 	iter = &(**cbn);
-	if(iter==NULL){
-	  fprintf(stderr," null.");
-	  return err;
-	}
+	if(iter==NULL){ fprintf(stderr," null."); return CBSUCCESS; }
         if( iter!=NULL ){ // Name
 	  // Self
 	  if(iter!=NULL){
@@ -129,13 +140,13 @@ int  cb_print_leaves(cb_name **cbn){
 	  if( (*iter).leaf != NULL ){
 	    leaf = &(* (cb_name*) (*iter).leaf);
 	    fprintf(stderr,"{");
-	    err = cb_print_leaves( &leaf ); // TOWARDS LEFT
+	    err = cb_print_leaves_inner( &leaf ); // LEFT
 	    fprintf(stderr,"}");
 	  }
 	  // Right
 	  if( (*iter).next != NULL ){
 	    leaf = &(* (cb_name*) (*iter).next);
-	    err = cb_print_leaves( &leaf ); // TOWARDS RIGHT
+	    err = cb_print_leaves_inner( &leaf ); // RIGHT
 	  }
 	}
 	return err;

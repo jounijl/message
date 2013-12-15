@@ -23,10 +23,9 @@
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs);
-//int  cb_put_leaf(cb_name **tree, cb_name **leaf, int openpairs); // not yet tested 7.12.2013
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs); // 13.12.2013
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
-//int  cb_set_to_leaf(CBFILE **cbs, cb_name **leaf, cb_name **result, unsigned char **name, int namelen, int openpairs, int matchctl); // 9.12.2013, not yet tested 9.12.2013
+int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl);
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl);
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
@@ -51,7 +50,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, matchctl);
 	if(err==CBMATCH){
 	  if( openpairs < 2 ){ // list
-            fprintf(stderr, "\ncb_set_to_leaf: debug: openpairs was %i, list is at cb_set_to_name.", openpairs); // debug
+            fprintf(stderr, "\ncb_set_to_leaf: error: openpairs was %i, list is at cb_set_to_name.", openpairs); // debug
 	  }else if( openpairs == 2 ){ // 2 = first leaf (leaf or next)
             /*
              * 9.12.2013 (from set_to_name):
@@ -59,14 +58,13 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
              * allready matched name. Instead, increase names matchcount (or set to 1 if it 
              * becomes 0) and search the next same name.
              */
-            fprintf(stderr, "\ncb_set_to_leaf: debug: SET_CURSOR."); // debug
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
             if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTNAMES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
               if( (**cbs).cf.type!=CBCFGFILE ) // When used as only buffer, stream case does not apply
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
                    * Leafs content was out of memorybuffer, setting
-                   * CBFILE:s index to the edge of buffer.
+                   * CBFILE:s index to the edge of the buffer.
                    */
                   (*(**cbs).cb).index = (*(**cbs).cb).buflen; // set as a stream, 1.12.2013
                   return CBNAMEOUTOFBUF;
@@ -137,7 +135,8 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 	  if(iter!=NULL){
 	    ++nextcount;
 	  }
-	  if( iter==NULL ){ // To the left if right was null
+	  //if( iter==NULL ){ // To the left if right was null
+	  if( iter==NULL && leafcount<*openpairs ){ // To the left if right was null, 15.12.2013
 	    iter = &(* (cb_name*) (*node).leaf);
 	    if(iter!=NULL){
 	      ++leafcount;
@@ -147,21 +146,23 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 	   * Leafcount has to be at the same level (or lower) to
 	   * get the rightmost leaf of the same openpairs count.
 	   */
-	  if(iter!=NULL && leafcount<=*openpairs){ 
+	  //if(iter!=NULL && leafcount<=*openpairs){ 
+	  if(iter!=NULL){  // 15.12.2013
 	    node = &(*iter);
 	    *lastleaf = &(*node);
 	  }else{ // The rightmost leaf
 	    iter = NULL; // stop the loop ( leafcount<=*openpairs )
 	  }
 	}
-	*openpairs = leafcount;
 	*lastleaf = &(*node);
-	if(nextcount>=CBMAXLEAVES || leafcount>=CBMAXLEAVES)
+	*openpairs = leafcount;
+	if(nextcount>=CBMAXLEAVES || leafcount>=CBMAXLEAVES){
+	  fprintf(stderr,"\ncb_set_to_last_leaf: CBLEAFCOUNTERROR.");
 	  return CBLEAFCOUNTERROR;
+	}
 	return CBSUCCESS; // returns allways a proper not null node or CBEMPTY, in error CBLEAFCOUNTERROR
 }
 
-//int  cb_put_leaf(cb_name **tree, cb_name **leaf, int openpairs){
 /*
  * Put leaf in 'current' name -tree and update 'currentleaf'. */
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
@@ -196,7 +197,6 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
 	/*
 	 * Find last leaf */
 	leafcount = openpairs;
-	//err = cb_set_to_last_leaf( &(*tree), &lastleaf, &leafcount);
 	err = cb_set_to_last_leaf( &(*(**str).cb).list.current, &lastleaf, &leafcount);
 	if(err>=CBERROR){ fprintf(stderr,"\ncb_put_leaf: cb_set_to_last_leaf returned error %i.", err); }
 	(*(**str).cb).list.currentleaf = &(*lastleaf); // last
@@ -223,24 +223,23 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
 	    if( lastleaf==NULL ){
 	      return CBERRALLOC;
 	    }
-	    //(*lastleaf).next = &(*newleaf);
 	    (*(*(**str).cb).list.currentleaf).next = &(*newleaf); // 13.12.2013
+	    lastleaf = &(* (cb_name*) (*(*(**str).cb).list.currentleaf).next);
 	    ret = CBADDEDNEXTTOLEAF;
 	  }else if( leafcount<openpairs ){ // Leaf, to "left"
 	    if( lastleaf==NULL ){
 	      return CBERRALLOC;
 	    }
-	    //(*lastleaf).leaf = &(*newleaf);
 	    (*(*(**str).cb).list.currentleaf).leaf = &(*newleaf); // 13.12.2013
+	    lastleaf = &(* (cb_name*) (*(*(**str).cb).list.currentleaf).leaf);
 	    ret = CBADDEDLEAF;
-	  }else{
+	  }else if( leafcount>openpairs ){ // 
+	    fprintf(stderr,"\ncb_put_leaf: error, leafcount>openpairs.");
 	    return CBLEAFCOUNTERROR;
 	  }
 	}
 
-	//fprintf(stderr,"\ncb_put_leaf: leaf put was: [");
-	//cb_print_name(&newleaf);
-	//fprintf(stderr,"], err=%i, ret=%i, leafcount=%i, openpairs=%i, returning.", err, ret, leafcount, openpairs);
+	(*(**str).cb).list.currentleaf = &(*lastleaf);
 
 	if(err>=CBNEGATION)
 	  return err;
@@ -339,7 +338,6 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchct
 	        return CBSUCCESS;
 	      }
 	    }
-	    // iter = (cb_name *) (*iter).next;
 	    iter = &(* (cb_name *) (*iter).next); // 9.12.2013
 	  }
 	  (*(**str).cb).index = (*(**str).cb).contentlen - (**str).ahd.bytesahead;  // 5.9.2013
@@ -592,6 +590,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	if((**cbs).cf.searchstate==3)
 	  fprintf(stderr, "\nCBSTATETREE");
 
+
 	// Initialize memory characterbuffer and its counters
 	memset( &(charbuf[0]), (int) 0x20, (size_t) CBNAMEBUFLEN);
 	if(charbuf==NULL){  return CBERRALLOC; }
@@ -605,7 +604,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	// Set cursor to the end to search next names
 	(*(**cbs).cb).index = (*(**cbs).cb).contentlen; // -bytesahead ?
 
-	fprintf(stderr, "\nopenpairs %i ocoffset %i", openpairs, ocoffset );
+	//fprintf(stderr, "\nopenpairs %i ocoffset %i", openpairs, ocoffset );
 
 	// Allocate new name
 cb_set_cursor_reset_name_index:
@@ -624,6 +623,9 @@ cb_set_cursor_reset_name_index:
 
 	  tovalue=0;
 
+	  /*
+	   * Read until rstart '='
+	   */
 	  // doubledelim is not tested 8.12.2013
 	  if( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ){ // '=', save name
 	    if( ( chr==(**cbs).cf.rstart || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) ) && \
@@ -652,90 +654,113 @@ cb_set_cursor_reset_name_index:
 
 	    atvalue=1;
 
-	    //fprintf(stderr,"\nAT VALUE buferr=%i", buferr);
-
 	    if( buferr==CBSUCCESS ){
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index); // 7.12.2013
-	      //fprintf(stderr,"\nAT VALUE 1.2 buferr=%i", buferr);
+	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
 	      if(buferr!=CBNAMEOUTOFBUF){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	        buferr = cb_put_name(&(*cbs), &fname, openpairs); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
 	        if( buferr==CBADDEDNAME || buferr==CBADDEDLEAF || buferr==CBADDEDNEXTTOLEAF){
 	          buferr = CBSUCCESS;
 	        }
 	      }
-	      if(openpairs>=1) // CBSTATETREE, reset charbuf index, 7.12.2013
-	        goto cb_set_cursor_reset_name_index;
-	      if( ! ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) )
-	        if( (**cbs).cf.leadnames==1)              // From '=' to '=' and from '&' to '=',
-	          goto cb_set_cursor_reset_name_index;    // not just from '&' to '=', 8.12.2013.
-
+	      if( ! ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){
+	        if( (**cbs).cf.leadnames==1 )              // From '=' to '=' and from '&' to '=',
+	          goto cb_set_cursor_reset_name_index;     // not just from '&' to '=', 8.12.2013.
+	      }else{
+	        if( openpairs>(ocoffset+1) && (**cbs).cf.searchstate==CBSTATETREE ) // reset charbuf index if second rstart or more from ocoffset
+	          goto cb_set_cursor_reset_name_index;
+	        if( openpairs>1 && (**cbs).cf.searchstate==CBSTATETOPOLOGY ) // reset charbuf index if second rstart or more
+	          goto cb_set_cursor_reset_name_index; 
+	        else if( ocoffset!=0 && openpairs!=(ocoffset+1) ) 
+	          goto cb_set_cursor_reset_name_index;
+	        else if( openpairs<(ocoffset+1) || openpairs<1 )
+	          fprintf(stderr, "\ncb_set_cursor_ucs: error, openpairs<(ocoffset+1) || openpairs<1, %i<%i.", openpairs, (ocoffset+1));
+	      }
 	    }
 	    if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){
-	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr);
+	      fprintf(stderr, "\ncb_set_cursor_ucs: cb_put_name returned %i ", buferr);
 	    }
-	    //fprintf(stderr,"\nAT VALUE 2");
 
 	    if(err==CBSTREAM){ // Set length of namepair to indicate out of buffer.
 	      cb_remove_name_from_stream( &(*cbs) ); // also leaves
 	      fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	    }
-	    //
-	    // Name (openpairs==0)
-	    if( openpairs<=0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
+	    /*
+	     * Name (openpairs==1) 
+	     */
+	    if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
+	      //fprintf(stderr,"\nNAME COMPARE");
 	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchctl ); // 23.11.2013
 	      if( cis == CBMATCH ){ // 9.11.2013
 	        (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	        if( (*(**cbs).cb).list.last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
 	          (*(*(**cbs).cb).list.last).matchcount++; 
 	        if(err==CBSTREAM){
-	          fprintf(stderr,"\nName found from stream.");
+	          //fprintf(stderr,"\nName found from stream.");
 	          ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	          goto cb_set_cursor_ucs_return;
 	        }else{
-	          fprintf(stderr,"\nName found from buffer.");
+	          //fprintf(stderr,"\nName found from buffer.");
 	          ret = CBSUCCESS; // cursor set
 	          goto cb_set_cursor_ucs_return;
 	        }
 	      }
-	    }
-	    //
-	    // Leaf (openpairs==ocoffset)
-	    if( openpairs==ocoffset ){ // 13.12.2013, order ocoffset name from name1.name2.name3
+	    }else if( ocoffset!=0 && openpairs==(ocoffset+1) ){ // 13.12.2013, order ocoffset name from name1.name2.name3
+	    /*
+	     * Leaf (openpairs==(ocoffset+1) if ocoffset > 0)
+	     */
+	      //fprintf(stderr,"\nLEAF COMPARE");
 	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchctl ); // 23.11.2013
 	      if( cis == CBMATCH ){ // 9.11.2013
 	        (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	        if( (*(**cbs).cb).list.currentleaf != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
 	          (*(*(**cbs).cb).list.currentleaf).matchcount++; 
 	        if(err==CBSTREAM){
-	          fprintf(stderr,"\nName found from stream.");
+	          //fprintf(stderr,"\nLeaf found from stream.");
 	          ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	          goto cb_set_cursor_ucs_return;
 	        }else{
-	          fprintf(stderr,"\nName found from buffer.");
+	          //fprintf(stderr,"\nLeaf found from buffer.");
 	          ret = CBSUCCESS; // cursor set
 	          goto cb_set_cursor_ucs_return;
 	        }
 	      }
+	    }else{
+	      fprintf(stderr,"\ncb_set_cursor_ucs: error: not leaf nor name, reseting charbuf.");
 	    }
-	  }else if( chprev!=(**cbs).cf.bypass && ( chr==(**cbs).cf.rend || \
-	            ( chr==(**cbs).cf.subrend && intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) ) ){ // '&', start a new name
-	    if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
-	      --openpairs; // reader must read similarly, with openpairs count or otherwice
-	      if( (**cbs).cf.json==1 && intiseven( openpairs ) && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
- 	        --openpairs; // If not ',' as should, remove last comma in list: a, b, c } , not yet tested 8.12.2013
-	      }
-	    }
-	    atvalue=0; cb_free_name(&fname); fname=NULL; // allocate_name is at put_leaf and put_name
- 	    goto cb_set_cursor_reset_name_index;
-	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){ // change \\ to one '\'
-	    chr=(**cbs).cf.bypass+1; // any char not '\'
-	  }else if( ( openpairs<0 || openpairs<ocoffset ) && \
-	            ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){ // Test if value is read
-            fprintf(stderr,"\nValue read, openpairs %i ocoffset %i.", openpairs, ocoffset); // debug
 	    /*
-	     * When reading inner name-value -pairs, read of outer value ended.
+	     * No match. Reset charbuf to search next name. 
 	     */
-	    return CBVALUEEND; // 12.12.2013
+	    if( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.leadnames==1 ){
+	      //fprintf(stderr,"\nRESET (2)");
+	      goto cb_set_cursor_reset_name_index; // 15.12.2013
+	    }else
+	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN); // write '='
+	  }else if( chprev!=(**cbs).cf.bypass && ( chr==(**cbs).cf.rend || \
+	            ( chr==(**cbs).cf.subrend && intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) ) ){
+	      /*
+	       * '&', start a new name 
+	       */
+	      if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
+	        --openpairs; // reader must read similarly, with openpairs count or otherwice
+	        if( (**cbs).cf.json==1 && intiseven( openpairs ) && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
+ 	          --openpairs; // If not ',' as should, remove last comma in list: a, b, c } , not yet tested 8.12.2013
+	        }
+	      }
+	      atvalue=0; cb_free_name(&fname); fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
+ 	      goto cb_set_cursor_reset_name_index;
+	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){
+	      /*
+	       * change \\ to one '\' 
+	       */
+	      chr=(**cbs).cf.bypass+1; // any char not '\'
+	  }else if( ( openpairs<0 || openpairs<ocoffset ) && \
+	            ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){
+	      /*
+	       * When reading inner name-value -pairs, read of outer value ended.
+	       */
+              fprintf(stderr,"\nValue read, openpairs %i ocoffset %i.", openpairs, ocoffset); // debug
+ 	      return CBVALUEEND; // 12.12.2013
 	  }else if( ( (**cbs).cf.searchstate==CBSTATEFUL || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) && atvalue==1){ // Do not save data between '=' and '&' 
 	      /*
 	       * This state is to use indefinite length values. Index does not increase and

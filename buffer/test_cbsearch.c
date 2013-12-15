@@ -44,7 +44,8 @@
 
 int  main (int argc, char **argv);
 int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, char tree);
-int  print_current_name(CBFILE **cbf);
+int  print_name(CBFILE **cbf, cb_name **nm);
+int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl);
 void usage ( char *progname[] );
 
 int main (int argc, char **argv) {
@@ -91,8 +92,6 @@ int main (int argc, char **argv) {
 	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
 	    err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	  }
-	  //if( namebuflen>(i*4) )
-	  //  name[ i*4 ] = '\0';
 	  if( namebuflen > u )
 	    name[ u ] = '\0';
 	  if(err!=CBSUCCESS){ fprintf(stderr,"\ncbsearch: cb_put_ucs_chr, err=%i.", err); }
@@ -210,19 +209,14 @@ int main (int argc, char **argv) {
 	      memset( &(*name), (int) 0x20, namebuflen );
 	      namearraylen = strnlen( &(*namearray), namebuflen );
 	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
-	      //u = 0; chprev = (unsigned long int) 0x20; namelen=0;
-	      for(y=0; y<namearraylen && y<10000; ++y ){
+	      for(y=0; y<namearraylen && y<10000; ++y ){ // (if first char in name is sp, possibly prints "null name")
 	        chprev = chr;
 	        chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
 	        if( ! WSP( chr ) ){
 	          err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	       	  namelen = u;
-	          //fprintf(stderr,"%C", chr );
 	        } 
-	        if( ( WSP( chr ) && ! WSP( chprev ) ) || y==(namearraylen-1) || chr=='\0' ){
-	          //fprintf(stderr,"\n Search name: ");
-	          //cb_print_ucs_chrbuf(&name, namelen, namebuflen);
-	          //fprintf(stderr,".\n");
+	        if( ( WSP( chr ) && ! WSP( chprev ) && namelen>0 ) || y==(namearraylen-1) || chr=='\0' ){
 	          name[ namelen*4 ] = '\0';
 	          err = search_and_print_name(&in, &name, namelen, tree );
 	          namelen = 0; u = 0;
@@ -234,7 +228,7 @@ int main (int argc, char **argv) {
 	}
 
 	// Debug:
-	//cb_print_names(&in);
+	cb_print_names(&in);
 
 	memset( &(*name), (int) 0x20, namebuflen );
 	name[namebuflen] = '\0';
@@ -280,7 +274,8 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	int err = 0, indx = 0; unsigned long int stchr = 0x20, endchr = 0x20;
 	unsigned char tmp[CBNAMEBUFLEN+1];
 	unsigned char *ptr = NULL;
-	tmp[CBNAMEBUFLEN] = '\0';
+	cb_name   *nameptr = NULL;
+	tmp[CBNAMEBUFLEN]  = '\0';
 	ptr = &(tmp[0]);
 
 	if( in==NULL || *in==NULL )
@@ -293,59 +288,61 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	      tmp[indx] = (*name)[indx+4] ;
 	    if( endchr == (unsigned long int) LIKECHR ){
 	      indx -= 4; // %am%
-	      if(tree==0)
+	      if(tree==0){
 	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -6 );
-	      else
-	        err = cb_tree_set_cursor_ucs( &(*in), &ptr, indx, -6 ); 
+	      }else
+	        err = search_and_print_tree( &(*in), &ptr, indx, -6 );
 	    }else{
-	      if(tree==0)
+	      if(tree==0){
 	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -5 ); // %ame
-	      else
-	        err = cb_tree_set_cursor_ucs( &(*in), &ptr, indx, -5 ); 
+	      }else
+	        err = search_and_print_tree( &(*in), &ptr, indx, -5 ); 
 	    }
 	  }else if( endchr == (unsigned long int) LIKECHR ){
 	    namelength -= 4; // %
-	    if(tree==0)
+	    if(tree==0){
 	      err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, -2 ); // nam%
-	    else
-	      err = cb_tree_set_cursor_ucs( &(*in), &(*name), namelength, -2 ); 
+	    }else{
+	      err = search_and_print_tree( &(*in), &(*name), namelength, -2 ); 
+	    }
 	  }else{
-	    if(tree==0)
+	    if(tree==0){
 	      err = cb_set_cursor_ucs( &(*in), &(*name), &namelength ); // matchctl=1
-	    else
-	      err = cb_tree_set_cursor_ucs( &(*in), &(*name), namelength, 1 ); 
+	    }else
+	      err = search_and_print_tree( &(*in), &(*name), namelength, 1 ); 
 	  }
 	}else{
 	  fprintf(stderr, "\n Name was null.\n");
 	}
-	//if(err==CBSTREAM || err==CBSTREAMEND) // this is not required here: name is removed automatically, value is not.
-	//  cb_remove_name_from_stream( &(*in) );
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
+	if(tree==0)
+	  nameptr = &(*(*(**in).cb).list.current);
+	else
+	  nameptr = &(*(*(**in).cb).list.currentleaf);
 	if( err==CBSUCCESS || err==CBSTREAM ){
-	  if(tree==0)
-	    err = print_current_name(&(*in));
-	  else
-	    cb_print_name( &( (*(**in).cb).list.currentleaf ) );
-	  if(err!=CBSUCCESS){ fprintf(stderr, "\n Name not found.\n"); }
+	  nameptr = &(*(*(**in).cb).list.current);
+	  fprintf(stderr, "\n cbsearch, printing name:");
+	  print_name(&(*in), &nameptr );
+	  fprintf(stderr, " cbsearch, printing leafs:");
+	  cb_print_leaves( &nameptr );
 	}
 	if(err==CB2822HEADEREND ){
 	  fprintf(stderr, "\n Header end. \n");
 	}
-	if(err==CBNOTFOUND || err==CB2822HEADEREND ){
+	if( tree==0 && ( err==CBNOTFOUND || err==CB2822HEADEREND ) ){
 	  fprintf(stderr, "\n Name \"");
-	  //cb_print_ucs_chrbuf( &(*name), len, namelength );
 	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
 	  return err;
 	}
 	if(err==CBSTREAM){
-	  fprintf(stderr, "\n Stream start.\n");
+	  fprintf(stderr, "\n Stream.\n");
 	}else if(err==CBSTREAMEND){
 	  fprintf(stderr, "\n Stream end.\n");
 	}
 	return err;
 }
-int  print_current_name(CBFILE **cbf){
+int  print_name(CBFILE **cbf, cb_name **nm){
 	int err = 0;
 	signed long int tmp=0;
 
@@ -353,19 +350,19 @@ int  print_current_name(CBFILE **cbf){
 
 	unsigned long int chr = (unsigned long int) ' ', chrprev = (unsigned long int) ' ';
 
-	if(cbf==NULL || *cbf==NULL || (**cbf).cb == NULL || (*(**cbf).cb).list.current == NULL)
+	if(cbf==NULL || *cbf==NULL || (**cbf).cb == NULL || nm == NULL || *nm ==NULL )
 	  return CBERRALLOC;
 
 	chrprev=(**cbf).cf.bypass+4; chr=(**cbf).cf.rend+4;
 
 	fprintf(stderr, "\n Name:         \t[");
-	cb_print_ucs_chrbuf( &(*(*(**cbf).cb).list.current).namebuf, (*(*(**cbf).cb).list.current).namelen, (*(*(**cbf).cb).list.current).buflen);
-	fprintf(stderr, "]\n Name length:  \t%i", (*(*(**cbf).cb).list.current).namelen);
-	fprintf(stderr, "\n Offset:       \t%lli", (*(*(**cbf).cb).list.current).offset);
-	fprintf(stderr, "\n Length set to:\t%i", (*(*(**cbf).cb).list.current).length);
+	cb_print_ucs_chrbuf( &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
+	fprintf(stderr, "]\n Name length:  \t%i", (**nm).namelen);
+	fprintf(stderr, "\n Offset:       \t%lli", (**nm).offset);
+	fprintf(stderr, "\n Length set to:\t%i", (**nm).length);
 	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
 	fprintf(stderr, "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );
-	fprintf(stderr, "\n Matchcount:   \t%li", (*(*(**cbf).cb).list.current).matchcount );
+	fprintf(stderr, "\n Matchcount:   \t%li", (**nm).matchcount );
 	fprintf(stderr, "\n Content:      \t\"");
 
 	chrprev = chr;
@@ -379,7 +376,6 @@ int  print_current_name(CBFILE **cbf){
 	  if(err==CBSTREAM)
 	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary
 	  fprintf(stderr,"%c", (int) chr);
-	  //if( (**cbf).cf.searchstate==CBSTATETOPOLOGY ){
 	  if( (**cbf).cf.searchstate==CBSTATETOPOLOGY ){
 	    if( chr==(**cbf).cf.rend )
 	      --opennamepairs;
@@ -395,5 +391,74 @@ int  print_current_name(CBFILE **cbf){
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr_unfold: %i.", err); }
 	fprintf(stderr,"\"\n");
 	return err;
+}
+
+/*
+ * Search name1.name2.name3  */
+int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl){
+
+        int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
+        int                  ret = CBNEGATION;
+        char           namecount = 0;
+        char     origsearchstate = 1;
+        unsigned   char *ucsname = NULL;
+        cb_name       *firstname = NULL;
+        unsigned long int    chr = 0x20;
+        cb_name            *leaf = NULL;
+
+        if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+        if( dotname==NULL || *dotname==NULL ) return CBERRALLOC;
+
+        /* Allocate new name to hold the name */
+        ucsname = (unsigned char *) malloc( sizeof(char)*( namelen+1 ) );       
+        if( ucsname == NULL ) { return CBERRALLOC; }
+        ucsname[namelen] = '\0';
+
+        origsearchstate = (**cbs).cf.searchstate;
+        (**cbs).cf.searchstate = CBSTATETREE;
+
+        /* Every name */
+        undx = 0; indx=0;
+        while( indx<namelen && err<=CBNEGATION && err2<=CBNEGATION ){
+          err2 = cb_get_ucs_chr( &chr, &(*dotname), &indx, namelen );
+          if( chr != (unsigned long int) '.')
+            err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
+          if( chr == (unsigned long int) '.' || indx>=namelen ){ // Name
+
+            err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
+            if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
+              firstname = &(*(*(**cbs).cb).list.current);
+              leaf = &(*(*(**cbs).cb).list.currentleaf);
+              if(namecount==0){
+                fprintf(stderr,"\nFound \"");
+	        cb_print_ucs_chrbuf( &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
+	        fprintf(stderr,"\", (from list)");
+                fprintf(stderr," leaves from currentleaf: ");
+                leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);
+                cb_print_leaves( &leaf );
+              }else{
+                fprintf(stderr,"\nFound leaf (currentleaf) \"");
+	        cb_print_ucs_chrbuf( &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
+	        fprintf(stderr,"\" (from tree).");
+                fprintf(stderr," leaves from currentleaf: ");
+                cb_print_leaves( &leaf );
+	      }
+            }
+
+            if(err!=CBSUCCESS && err!=CBSTREAM)
+              ret = CBNOTFOUND;
+            else
+              ret = err;
+
+            undx = 0;
+            ++namecount;
+          }
+        }
+        (**cbs).cf.searchstate = origsearchstate;
+        free(ucsname);
+        if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
+          return ret;
+        else // Name was not searched through or no match (cursor is somewhere in value)
+          return CBNOTFOUND;
 }
 

@@ -209,7 +209,6 @@
                                                     ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
                                                     ( (chr) == 0x20 || (chr)  == 0x09 )      )
 
-
 /*
  * Characters to remove from name: BOM. Comment string is removed elsewhere.
  * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
@@ -250,7 +249,7 @@ typedef struct cb_conf{
 	char                searchstate;          // No states = 0, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	char                json;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
 	char                doubledelim;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	char                leadnames;            // Saves names from inside values, from '=' to '=' and '&' '=', a pointer to name name1=name2=name2value;
+	char                leadnames;            // Saves names from inside values, from '=' to '=' and '&' '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -347,7 +346,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
  * when openpairs is negative. Next rend after value ends reading. This parameter can be used
- * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset
+ * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset.
  */
 //int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int matchctl);
 //int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
@@ -458,9 +457,7 @@ int  cb_free_name(cb_name **name);
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
 
-/*
- * Not ready: Set to leaf or enxt in list according to 'openpairs' and matchctl. */
-int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl); // 9.12.2013, not yet tested 11.12.2013
+//int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl); // not tested
 //int  cb_set_to_leaf(CBFILE **cbs, cb_name **leaf, cb_name **result, unsigned char **name, int namelen, int openpairs, int matchctl);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
