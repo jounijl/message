@@ -93,7 +93,7 @@
    -> tarkistus viela
  x test_cbsearch.c printtaa oksat/lehdet huonosti
  x listasta ei viela loydy oikein: cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more
- - cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more # dd ei loydy (hakemalla listasta, dd on cc:sta yksi oikealla, molemmat yhden vasemmalla)
+ x cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more # dd ei loydy (hakemalla listasta, dd on cc:sta yksi oikealla, molemmat yhden vasemmalla)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
 
@@ -405,22 +405,6 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	return CBSUCCESS;
 }
 
-/*
- *int  cb_allocate_sub_cbfile(CBFILE **buf, CBFILE **sub){
-        int err = CBSUCCESS;       
-        if( buf==NULL || *buf==NULL ) return CBERRALLOC;
-        err = cb_allocate_cbfile( &(*sub), (**buf).fd, 0, 0 ); // includes dup
-        if( err!=CBSUCCESS ){ fprintf(stderr,"\ncb_allocate_sub_cbfile_from: err=%i.", err); return err; }
-        if( sub==NULL || *sub==NULL ) { fprintf(stderr,"\ncb_allocate_sub_cbfile_from: malloc error."); return CBERRALLOC; }
-        (*(**sub).cb).buf = &(*(*(**buf).cb).buf);
-        (*(**sub).blk).buf = &(*(*(**buf).blk).buf);
-	(*(**sub).cb).buflen = (*(**buf).cb).buflen;
-	(*(**sub).cb).index = (*(**buf).cb).index;
-	(*(**sub).cb).contentlen = (*(**buf).cb).contentlen;
-        return err;
-}*
- */
-
 int  cb_reinit_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL ){ return CBERRALLOC; }
@@ -428,11 +412,7 @@ int  cb_reinit_cbfile(CBFILE **buf){
 	err = cb_reinit_buffer(&(**buf).blk);
 	return err;
 }
-int  cb_free_sub_cbfile(CBFILE **buf){ 
-	(*(**buf).cb).buf=NULL;
-	(*(**buf).blk).buf=NULL;
-	return cb_free_cbfile( &(*buf) );
-}
+
 int  cb_free_cbfile(CBFILE **buf){ 
 	int err=CBSUCCESS; 
 	cb_reinit_buffer(&(**buf).cb); // free names
@@ -449,6 +429,7 @@ int  cb_free_cbfile(CBFILE **buf){
 	free(*buf); // free buf
 	return err;
 }
+
 int  cb_free_buffer(cbuf **buf){
         int err=CBSUCCESS;
         err = cb_reinit_buffer( &(*buf) );
