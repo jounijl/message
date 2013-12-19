@@ -104,82 +104,9 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 }
 
 
-/*
- * Search name1.name2.name3  */
-int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl){
-
+//int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl){
 // Oli virhe:
 // sz = read((**cbf).fd, (*blk).buf, (ssize_t)(*blk).buflen);
 // =>
 // CBSTREAMEND, dup ? kaksi samalla listalla
 
-	int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
-	int                  ret = CBNEGATION;
-	char           namecount = 0;
-	char     origsearchstate = 1;
-	unsigned   char *ucsname = NULL;
-	cb_name       *firstname = NULL;
-	unsigned long int    chr = 0x20;
-	cb_name            *leaf = NULL;
-
-	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
-	if( dotname==NULL || *dotname==NULL ) return CBERRALLOC;
-
-	/* Allocate new name to hold the name */
-	ucsname = (unsigned char *) malloc( sizeof(char)*( namelen+1 ) );	
-	if( ucsname == NULL ) { return CBERRALLOC; }
-	ucsname[namelen] = '\0';
-
-	origsearchstate = (**cbs).cf.searchstate;
-	(**cbs).cf.searchstate = CBSTATETREE;
-
-/*
- * DEBUG
- */
-
-	/* Every name */
-	undx = 0; indx=0;
-	while( indx<namelen && err<=CBNEGATION && err2<=CBNEGATION ){
-	  err2 = cb_get_ucs_chr( &chr, &(*dotname), &indx, namelen );
-	  if( chr != (unsigned long int) CBDOTSEPARATOR)
-	    err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
-	  if( chr == (unsigned long int) CBDOTSEPARATOR || indx>=namelen ){ // Name
-
-	    // Debug:
-	    //fprintf(stderr, "\nsearchname=[");
-	    //cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
-	    //fprintf(stderr, "] length %i, name [", undx);
-	    //cb_print_ucs_chrbuf( &(*dotname), namelen, namelen );
-	    //fprintf(stderr, "] length %i namecount %i.", namelen, namecount);
-
-	    err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
-	    if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
-	      firstname = &(*(*(**cbs).cb).list.current);
-	      leaf = &(*(*(**cbs).cb).list.currentleaf);
-	      if(namecount==0)
-	        fprintf(stderr,"\nFound name: ["); // Debug:
-	      else
-	        fprintf(stderr,"\nFound leaf: ["); // Debug:
-	      cb_print_ucs_chrbuf( &ucsname, undx, CBNAMEBUFLEN );
-	      fprintf(stderr,"] leaves: (%i. name) [", (namecount+1) );
-	      cb_print_leaves( &leaf );
-	      fprintf(stderr,"]");
-	    }
-
-	    if(err!=CBSUCCESS && err!=CBSTREAM)
-	      ret = CBNOTFOUND;
-	    else
-	      ret = err;
-
-	    undx = 0;
-	    ++namecount;
-	  }
-	}
-	(**cbs).cf.searchstate = origsearchstate;
-	free(ucsname);
-	//if(indx==namelen && ret==CBMATCH) // Match and dotted name was searched through (cursor is at name)
-	if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
-	  return ret;
-	else // Name was not searched through or no match (cursor is somewhere in value)
-	  return CBNOTFOUND;
-}
