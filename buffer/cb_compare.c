@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-//#include <unistd.h>
 #include "../include/cb_buffer.h"
 
 int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
@@ -43,7 +42,6 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  if(err1>=CBNEGATION || err2>=CBNEGATION){
 	    return CBNOTFOUND;
 	  }
-	  //fprintf(stderr,".");
 	  if( chr2 == chr1 ){
 	    continue; // while
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
@@ -120,8 +118,6 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
 
-	//fprintf(stderr,"\ncb_compare: returning %i.", err);
-
 	switch (matchctl) {
 	  case  1:
 	    if( err==CBMATCH )
@@ -144,12 +140,10 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	      return CBMATCH; // part or length
 	    break;
 	  case -5:
-	    //fprintf(stderr,"\ncb_compare -5 err=%i", err);
 	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // ( cut from end ame1 matches name1 )
 	    break;
 	  case -6:
-	    //fprintf(stderr,"\ncb_compare -6 err=%i", err);
 	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // in the middle
 	    break;

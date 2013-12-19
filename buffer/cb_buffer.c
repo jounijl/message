@@ -91,8 +91,11 @@
  x print_leaves printtaa yhden tason liian pitkalle kokeiltaessa testiohjelmalla test_cbsearch.c
  x bugi joka on merkattu tiedostoon cb_search.c merkilla "VIRHE"
    -> tarkistus viela
- - test_cbsearch.c printtaa oksat/lehdet huonosti
- - listasta ei viela loydy oikein: cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more
+ x test_cbsearch.c printtaa oksat/lehdet huonosti
+ x listasta ei viela loydy oikein: cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more
+ - cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more # dd ei loydy (hakemalla listasta, dd on cc:sta yksi oikealla, molemmat yhden vasemmalla)
+   cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
+   cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
 
  ===
  x removewsp ja removecrlf, "neljäs nimi 4"

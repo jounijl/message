@@ -155,7 +155,6 @@ int main (int argc, char **argv) {
 	    tree = 1;
             continue;
           }
-	  fprintf(stderr,"\n ON");
 	  u = get_option( argv[i], argv[i+1], 'e', &value); // end character
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    if(value!=NULL){
@@ -228,7 +227,7 @@ int main (int argc, char **argv) {
 	}
 
 	// Debug:
-	cb_print_names(&in);
+	//cb_print_names(&in);
 
 	memset( &(*name), (int) 0x20, namebuflen );
 	name[namebuflen] = '\0';
@@ -320,10 +319,10 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	else
 	  nameptr = &(*(*(**in).cb).list.currentleaf);
 	if( err==CBSUCCESS || err==CBSTREAM ){
-	  nameptr = &(*(*(**in).cb).list.current);
-	  fprintf(stderr, "\n cbsearch, printing name:");
+	  //nameptr = &(*(*(**in).cb).list.current);
+	  //fprintf(stderr, "\n cbsearch, printing name:");
 	  print_name(&(*in), &nameptr );
-	  fprintf(stderr, " cbsearch, printing leafs:");
+	  fprintf(stderr, " cbsearch, printing leaves:");
 	  cb_print_leaves( &nameptr );
 	}
 	if(err==CB2822HEADEREND ){
@@ -443,7 +442,11 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
                 fprintf(stderr," leaves from currentleaf: ");
                 cb_print_leaves( &leaf );
 	      }
-            }
+            }else{
+	      fprintf(stderr,"\n\"");
+	      cb_print_ucs_chrbuf( &ucsname, undx, undx );
+	      fprintf(stderr,"\" not found.");
+	    }
 
             if(err!=CBSUCCESS && err!=CBSTREAM)
               ret = CBNOTFOUND;

@@ -26,6 +26,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs);
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs); // 13.12.2013
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl);
+int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl);
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl);
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
@@ -37,7 +38,13 @@ int  cb_automatic_encoding_detection(CBFILE **cbs);
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
  * matchctl and openpairs count. Returns CBNOTFOUND if leaf was not found. 'result' may be NULL. */
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl){
-	int err = CBSUCCESS, pairsleft=0;
+	if( (*(**cbs).cb).list.current==NULL )
+	  return CBEMPTY;
+	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
+	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, matchctl);
+}
+int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl){
+	int err = CBSUCCESS;
 	cb_name *leafptr = NULL;
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL ){
 	  fprintf(stderr,"\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
@@ -47,11 +54,14 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	  return CBEMPTY;
 	// Node
 	leafptr = &(*(*(**cbs).cb).list.currentleaf);
+
 	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, matchctl);
 	if(err==CBMATCH){
-	  if( openpairs < 2 ){ // list
-            fprintf(stderr, "\ncb_set_to_leaf: error: openpairs was %i, list is at cb_set_to_name.", openpairs); // debug
-	  }else if( openpairs == 2 ){ // 2 = first leaf (leaf or next)
+	  if( openpairs < 0 ){ 
+	    fprintf(stderr, "\ncb_set_to_leaf: error: openpairs was %i.", openpairs); // debug
+	    return CBNOTFOUND;
+	  }
+	  if( openpairs == 1 ){ // 1 = first leaf (leaf or next)
             /*
              * 9.12.2013 (from set_to_name):
              * If searching of multiple same names is needed (in buffer also), do not return 
@@ -72,19 +82,22 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
               (*(**cbs).cb).index=(*leafptr).offset; // 1.12.2013
             }
 	    return CBSUCCESS; // CBMATCH
-	  }else
-	    fprintf(stderr, "\ncb_set_to_leaf: openpairs %i, pairs %i, mismatch.", openpairs, pairsleft); // debug
+	  }
 	}
-	if( (*leafptr).leaf!=NULL && openpairs>=2 ){ // Left
+	if( (*leafptr).leaf!=NULL && openpairs>=1 ){ // Left
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).leaf);
-	  pairsleft = openpairs - 1;
-	}else if( (*leafptr).next!=NULL ){ // Right
-	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
-	}else{
-	  (*(**cbs).cb).list.currentleaf = NULL;
-	  return CBNOTFOUND;
+	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, (openpairs-1), matchctl);
+	  if(err==CBSUCCESS)
+	    return err;
 	}
-	return cb_set_to_leaf( &(*cbs), &(*name), namelen, pairsleft, matchctl);
+	if( (*leafptr).next!=NULL ){ // Right
+	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
+	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, matchctl);
+	  if(err==CBSUCCESS)
+	    return err;
+	}
+	(*(**cbs).cb).list.currentleaf = NULL;
+	return CBNOTFOUND;
 }
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 
@@ -191,7 +204,6 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
 	cb_name *lastleaf  = NULL;
 	cb_name *newleaf   = NULL;
 
-	//if( tree==NULL || *tree==NULL || leaf==NULL || *leaf==NULL) return CBERRALLOC;
 	if( str==NULL || *str==NULL || (**str).cb==NULL || leaf==NULL || *leaf==NULL) return CBERRALLOC;
 
 	/*
@@ -433,7 +445,6 @@ int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset
 	  if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
 	  if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
 
-	  // jos tulokseksi tulee esim. kaksi space/tab:ia, ei poista enaa toista kertaa
 cb_get_chr_unfold_try_another:
 	  if( WSP( *chr ) && err<CBNEGATION ){
 	    cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
@@ -561,9 +572,9 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	if( ocoffset==0 ) // 12.12.2013
 	  err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, matchctl ); // 4.11.2013
 	else
-	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, openpairs, matchctl ); // set to leaf from current name 12.12.2013
+	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, matchctl ); // set to leaf from current name 12.12.2013
 	if(err==CBSUCCESS){
-	  fprintf(stderr,"\nName found from list.");
+	  //fprintf(stderr,"\nName found from list.");
 	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).list.current).length+(*(*(**cbs).cb).list.current).offset ) ){
 	    ret = CBSUCCESS;
 	    goto cb_set_cursor_ucs_return;
@@ -581,7 +592,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	if(*ucsname==NULL)
 	  return CBERRALLOC;
 
-	if((**cbs).cf.searchstate==0)
+/*	if((**cbs).cf.searchstate==0)
 	  fprintf(stderr, "\nCBSTATELESS");
 	if((**cbs).cf.searchstate==1)
 	  fprintf(stderr, "\nCBSTATEFUL");
@@ -589,7 +600,7 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	  fprintf(stderr, "\nCBSTATETOPOLOGY");
 	if((**cbs).cf.searchstate==3)
 	  fprintf(stderr, "\nCBSTATETREE");
-
+*/
 
 	// Initialize memory characterbuffer and its counters
 	memset( &(charbuf[0]), (int) 0x20, (size_t) CBNAMEBUFLEN);
@@ -763,8 +774,8 @@ cb_set_cursor_reset_name_index:
  	      return CBVALUEEND; // 12.12.2013
 	  }else if( ( (**cbs).cf.searchstate==CBSTATEFUL || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) && atvalue==1){ // Do not save data between '=' and '&' 
 	      /*
-	       * This state is to use indefinite length values. Index does not increase and
-	       * unordered values length is not bound to length CBNAMEBUFLEN. 
+	       * Indefinite length values. Index does not increase and unordered
+	       * values length is not bound to CBNAMEBUFLEN. (index boundary check?)
 	       */
 	      ;
 	  }else if((**cbs).cf.searchstate==CBSTATETREE ){ // save character to buffer, CBSTATETREE

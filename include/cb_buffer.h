@@ -388,7 +388,7 @@ int  cb_find_every_name(CBFILE **cbs);
 /*
  * 30.11.2013. Finds a variable described by dot-separated namelist
  * name1.name2.name3 from the values of the previous variables. */
-int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // NOT FUNCTIONAL
+//int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // 
 
 /* /cb_read.c */
 
@@ -437,28 +437,18 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
-// pois:
-/*
- * Allocates CBFILE and copies the original buffer and block with it's counters
- * to search another CBFILE list, for example values list. Flow control characters
- * can be set to another from originals. Originals rend is copied to end character. */
-//int  cb_allocate_sub_cbfile(CBFILE **buf, CBFILE **sub); 
 int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen and index and empties names
 int  cb_empty_names(cbuf **buf); // frees names and zero namecount
 int  cb_reinit_cbfile(CBFILE **buf);
-//int  cb_free_sub_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
-
-//int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl); // not tested
-//int  cb_set_to_leaf(CBFILE **cbs, cb_name **leaf, cb_name **result, unsigned char **name, int namelen, int openpairs, int matchctl);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
