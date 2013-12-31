@@ -246,10 +246,10 @@ typedef struct cb_conf{
         char                removewsp;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         char                removecrlf;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 	char                removenamewsp;        // Remove white space characters inside name
+	char                leadnames;            // Saves names from inside values, from '=' to '=' and '&' '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
 	char                searchstate;          // No states = 0, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	char                json;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
 	char                doubledelim;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	char                leadnames;            // Saves names from inside values, from '=' to '=' and '&' '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -446,6 +446,9 @@ int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
+
+int cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); 
+int cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); 
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2

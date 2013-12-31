@@ -96,9 +96,10 @@
  x cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more # dd ei loydy (hakemalla listasta, dd on cc:sta yksi oikealla, molemmat yhden vasemmalla)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
+ - bitwice cb_conf
 
  ===
- x removewsp ja removecrlf, "neljäs nimi 4"
+ x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
  */
 
@@ -358,7 +359,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
 	cb_fifo_init_counters( &(**str).ahd );
-	return CBSUCCESS;
+	return err;
 }
 
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
@@ -642,3 +643,26 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	}
 	return CBERRALLOC;
 }
+
+// to be removed if unused/useless :
+
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size){ 
+        int from=0, to=0;
+        to = *size;
+        return cb_get_buffer_range(cbs,buf,size,&from,&to);
+}
+
+// Allocates new buffer
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to){ 
+        int index=0;
+        if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
+        *buf = (unsigned char *) malloc( sizeof(char)*( *size+1 ) );
+        if(*buf==NULL){ fprintf(stderr, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
+        (*buf)[(*size)] = '\0';
+        for(index=0;(index<(*to-*from) && index<(*size) && (index+*from)<(*cbs).contentlen); ++index){
+          (*buf)[index] = (*cbs).buf[index+*from];
+        }
+        *size = index;
+        return CBSUCCESS;
+}
+
