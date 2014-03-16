@@ -191,7 +191,7 @@ int main (int argc, char **argv) {
               err = cb_put_chr(&out, chr, &bcount, &strdbytes );
 	    }
 	  }
-          err = cb_put_chr(&out, (*out).rstart, &bcount, &strdbytes );
+          err = cb_put_chr(&out, (*out).cf.rstart, &bcount, &strdbytes );
 	  err = cb_flush(&out);
 	  if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err ); return err; }
 	  for(u=0; u<vals; ++u){
@@ -228,7 +228,7 @@ int main (int argc, char **argv) {
               err = cb_put_chr(&out, chr, &bcount, &strdbytes );
 	    }
 	  }
-          err = cb_put_chr(&out, (*out).rend, &bcount, &strdbytes );
+          err = cb_put_chr(&out, (*out).cf.rend, &bcount, &strdbytes );
 	  err = cb_flush(&out);
 	  if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err ); return err; }
 	  nams += nameincrease;

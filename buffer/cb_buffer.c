@@ -97,6 +97,7 @@
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
  - bitwice cb_conf
+ - Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
 
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"

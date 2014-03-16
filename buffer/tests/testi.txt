@@ -1,6 +1,6 @@
 neljås=4&
 aa=AA&
-bb=cc=CC& dd=DD& ee=EE& ff= gg=GG& & &
+bb=cc=CC& dd=DD& ee=EE& ff= gg= hh= HH& GG& & &
 neljös=4&
 neljÄs=4&
 unknown=a1=a1 unknown& a2=a2 unknown& a3=a4=a4 u5nknown& & a3=a3 u6nknown& unknown here&

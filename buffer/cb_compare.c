@@ -17,9 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../include/cb_buffer.h"
+//#include "../include/cb_compare.h"
+
+#include <pcre.h>   // to use matchctl -7
 
 int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
+int  cb_compare_regexp(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, cb_match mctl);
 
 
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
@@ -69,7 +73,8 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
  * Compares if name1 matches name2. CBMATCHPART returns if name1 is longer
  * than name2. CBMATCHLENGTH returns if name1 is shorter than name2.
  */
-int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl){
+//int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl){
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match mctl){
 	int err = CBSUCCESS, dfr = 0, indx = 0;
 	unsigned char stb[3] = { 0x20, 0x20, '\0' };
 	unsigned char *stbp = NULL;
@@ -79,11 +84,11 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
 	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 
-	if(matchctl==-1)
+	if(mctl.matchctl==-1)
 	  return CBNOTFOUND; // no match
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
-	if( matchctl==-6 ){ // %am%
+	if( mctl.matchctl==-6 ){ // %am%
 	  dfr = len2 - len1; // index of name2 to start searching
 	  if(dfr<0){
 	    err = CBNOTFOUND;
@@ -98,7 +103,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	      }
 	    }
 	  }
-	}else if( matchctl==-5 ){ // %ame
+	}else if( mctl.matchctl==-5 ){ // %ame
 	  dfr = len2 - len1;
 	  if(dfr<0){
 	    err = CBNOTFOUND;
@@ -109,7 +114,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  }else{
 	    err = CBNOTFOUND;
 	  }
-	}else if( matchctl==0 ){ // all
+	}else if( mctl.matchctl==0 ){ // all
 	  stbp = &stb[0]; 
 	  err = cb_compare_strict( &stbp, 0, &(*name2), len2, 0 );
 	}else if((**cbs).cf.asciicaseinsensitive==1){ // name or nam%
@@ -118,7 +123,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
 
-	switch (matchctl) {
+	switch (mctl.matchctl) {
 	  case  1:
 	    if( err==CBMATCH )
 	      return CBMATCH; // returns complitely the same or an error
@@ -186,3 +191,61 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	return err;
 }
 
+/*
+ * To use compare -7 */
+int  cb_get_matchctl(CBFILE **cbf, const char *pattern, int options, cb_match **ctl, int matchctl){
+	void *re = NULL; 
+	const char *errptr = NULL; int errcode=0, erroffset=0;
+	const char  errmsg[6] = {'e','r','r','o','r','\0'};	
+	errptr = &errmsg[0];
+	if(cbf==NULL || *cbf==NULL)
+	  return CBERRALLOC;
+
+	/*
+	 * Allocate new ctl if it was NULL */
+	if(ctl==NULL || *ctl==NULL){
+	  if(ctl==NULL)
+	    ctl = (cb_match**) malloc(sizeof(int)); // pointer size
+          if(ctl==NULL)
+            return CBERRALLOC;
+	  *ctl = (cb_match*) malloc(sizeof(cb_match));
+          if(*ctl==NULL)
+            return CBERRALLOC;
+	}
+	(**ctl).re = NULL; (**ctl).re_extra = NULL;
+	if(pattern==NULL){ // return empty cb_match if pattern was null
+	  (**ctl).matchctl = matchctl;
+	  return CBREPATTERNNULL;
+	}
+
+	/*
+	 * Compile pattern to re and re_extra */
+	if(pattern!=NULL){ // default character tables
+	  if( (**cbf).encoding==CBENCUTF32LE || (**cbf).encoding==CBENCUTF32BE ){
+	    options = options | PCRE_UTF32;
+	    // Allokoiko funktio errptr:n vai kirjoittaako mihin hyvansa muistiin:
+/*
+	http://www.pcre.org/pcre.txt
+	If errptr is NULL, pcre_compile() returns NULL immediately.  Otherwise,
+	if compilation of a pattern fails,  pcre_compile()  returns  NULL,  and
+	sets the variable pointed to by errptr to point to a textual error mes-
+	sage.
+*/
+	    re = (void*) pcre32_compile2( &(*(PCRE_SPTR32) pattern), options, &errcode, &errptr, &erroffset, NULL );
+	  }else if((**cbf).encoding==CBENCUTF16LE || (**cbf).encoding==CBENCUTF16BE || (**cbf).encoding==CBENCPOSSIBLEUTF16LE){
+	    options = options | PCRE_UTF16;
+	    re = (void*) pcre16_compile2( &(*(PCRE_SPTR16) pattern), options, &errcode, &errptr, &erroffset, NULL );
+	  }else if( (**cbf).encoding==CBENCUTF8 ){
+	    options = options | PCRE_UTF8;
+	    re = (void*) pcre_compile2( &(*(char*) pattern), options, &errcode, &errptr, &erroffset, NULL );
+	  }else{
+	    re = (void*) pcre_compile2( &(*(char*) pattern), options, &errcode, &errptr, &erroffset, NULL );
+	  }
+	  (**ctl).re = &re;
+	  if( re==NULL ){
+            fprintf(stderr,"\ncb_get_matchctl: error compiling re: %s offset %i, at re offset %i.", errptr, erroffset, errcode);
+            return CBERRREGEXCOMP;
+          }
+	}
+	return CBSUCCESS;
+}

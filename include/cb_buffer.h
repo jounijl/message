@@ -39,6 +39,7 @@
 #define CBAUTOENCFAIL       31    // First bytes bom was not in recognisable format
 #define CBWRONGENCODINGCALL 32
 #define CBUCSCHAROUTOFRANGE 33
+#define CBREPATTERNNULL     34
 
 #define CBERROR	            40
 #define CBERRALLOC          41
@@ -49,6 +50,7 @@
 #define CBARRAYOUTOFBOUNDS  46
 #define CBINDEXOUTOFBOUNDS  47
 #define CBLEAFCOUNTERROR    48
+#define CBERRREGEXCOMP      49
 
 /*
  * Default values
@@ -221,6 +223,15 @@
 #define intiseven( x )       ( ( x )%2 == 0 )
 
 #include "./cb_encoding.h"	// Encoding macros
+//#include "./cb_compare.h"       // Comparing functions
+
+/*
+ * Compare ctl */
+typedef struct cb_match {
+        int matchctl; // If match function is not regexp match, next can be NULL
+        void *re; // cast to pcre, pcre16 or pcre32 depending on encoding
+        void *re_extra; // cast to pcre_extra, pcre_extra16 or pcre_extra32 depending on encoding
+} cb_match;
 
 /*
  * Fifo ring structure */
@@ -338,11 +349,12 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl  0 - searches any next name not yet used, once
  * matchctl -1 - searches endlessly without matching any name listing all the
  *               rest of the unused names
- * matchctl -2 - match names length, CBMATCHLEN (name like nam% or nam*)
- * matchctl -3 - match if part of name matches to other names length, CBMATCHPART
+ * matchctl -2 - match names length text, CBMATCHLEN (name like nam% or nam*)
+ * matchctl -3 - match if part of name matches to other names length text, CBMATCHPART
  * matchctl -4 - match if part of name matches to either names length, CBMATCHPART or CBMATCHLENGTH
  * matchctl -5 - match from end name1 length (name like %ame or *ame)
  * matchctl -6 - match in between name1 length (name like %am% or *am*)
+ * matchctl -7 - match with provided re and pcre_extra (in cb_match, not null) according to encoding 
  *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
  * when openpairs is negative. Next rend after value ends reading. This parameter can be used
@@ -352,6 +364,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
 //int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int matchctl);
 int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int ocoffset, int matchctl);
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
+int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match ctl);
 
 /*
  * If while reading a character, is found, that cb_set_cursor found a name
@@ -447,11 +460,14 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
 
-int cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); 
-int cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); 
+int cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // if unused/useless, removed from future versions
+int cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // if unused/useless, removed from future versions
 
 int  cb_copy_name(cb_name **from, cb_name **to);
-int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
+
+//int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match ctl); // compares name1 to name2
+int  cb_get_matchctl(CBFILE **cbs, const char *pattern, int options, cb_match **ctl, int matchctl);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
