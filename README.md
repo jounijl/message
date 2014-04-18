@@ -34,8 +34,8 @@ characters between values and names.
 Testing program test_cb converts between encodings and tests input files 
 value-name pairs.
 
-Utility programs to make tests cases are found in directory buffer/tests. For 
-example loop outputs file endlessly to output.
+Utility programs to make test cases are found in directory buffer/tests. For 
+example loop outputs file endlessly to output. 
 
 Testing program **cbsearch** searches a name or names from input. It finds multiple 
 same names from stream.

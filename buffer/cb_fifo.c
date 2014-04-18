@@ -175,14 +175,20 @@ int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
 /*
  * 4-byte characterbuffer. 
  */
-
 int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
         int index=0, err=CBSUCCESS;
         unsigned long int chr=0;
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
         for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
            err = cb_get_ucs_chr(&chr, &(*chrbuf), &index, buflen);
-           fprintf(stderr, "%C", (unsigned int) chr );
+	   if( chr==0x0000 && err==CBSUCCESS ){ // null terminator
+             fprintf(stderr, "(null)");
+	   }else if(err!=CBSUCCESS){
+	     fprintf(stderr, "(err %i)", err);
+	   }else{
+             fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
+             //fprintf(stderr, "(0x%lx)", chr );
+	   }
         }
         return CBSUCCESS;
 }
@@ -201,7 +207,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
 
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int buflen){
         static unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
-        if( chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
+        if( bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
         if( *bufindx>(buflen-4) ){               return CBARRAYOUTOFBOUNDS; }
         *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1; 
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
@@ -210,3 +216,23 @@ int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx
         //fprintf(stderr, "[%lx]", *chr);
         return CBSUCCESS;
 } 
+
+// 16.3.2014, a regexp block, not tested yet (16.3.2014)
+int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int countfromend ){
+	int cpyblk=0, indx=0;
+	if( bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
+	if(*bufindx >= countfromend)
+	  cpyblk=countfromend; // multiple of 4, usually the buffer is full before copying
+	else
+	  cpyblk=4; // multiple of 4, this case is not yet tested 17.3.2014
+	for(indx=0; indx<countfromend && indx<buflen && indx<=2147483646 && *bufindx<buflen; ){
+	  memmove( &( (*chrbuf)[indx] ), &( (*chrbuf)[*bufindx-cpyblk] ), (size_t) cpyblk ); // memove is nondestructive when overlapping
+	  indx+=cpyblk;
+	  *bufindx -= cpyblk;
+	}
+	if(indx>=countfromend)
+	  *bufindx = countfromend;
+	else
+	  *bufindx = indx;
+	return CBSUCCESS;
+}

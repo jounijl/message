@@ -98,7 +98,8 @@
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
  - bitwice cb_conf
  - Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
-
+ - json testi, joka toinen rstart ja rend, joka toinen subrstart ja subrend
+ - dup pois
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
@@ -598,7 +599,7 @@ cb_put_ch_put:
               (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = ch; // 12.8.2013
 	      ++(*(**cbs).blk).contentlen;
 	    }else if((**cbs).cf.type!=CBCFGBUFFER){ // 20.8.2013
-	      err = cb_flush(cbs); // new block
+	      err = cb_flush(cbs); // new block				13.4.2014: tassa kohdassa on flush vaarin use_as_bufferin kanssa
 	      goto cb_put_ch_put;
 	    }else if((**cbs).cf.type==CBCFGBUFFER){ // 20.8.2013
 	      return CBBUFFULL;

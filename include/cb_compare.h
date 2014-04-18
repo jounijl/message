@@ -14,14 +14,24 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
-#include <pcre.h>
+#include <pcre.h>	// to use matchctl -7 and -8 (cb_match has void* re and re_extra to leave these ctls optionally out if needed)
 
-typedef struct cb_matchctl {
-        int matchctl;
-	pcre *re;
-	pcre_extra *re_extra;
-} cb_matchctl;
+/*
+ * Size of block to compare the re and size of
+ * the overlap to next block. */
+#define CBREINPUTBUFFERSIZE   1024
+#define CBREINPUTOVERLAPSIZE  256
 
-int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, int matchctl); // compares name1 to name2
-//int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_matchctl ctl); // compares name1 to name2
+/*
+ * pcre result vector size (array multiple of 3). */
+#define OVECSIZE      (3*64)
 
+/*
+ * Utility functions encapsulated by function cb_compare . #include "cb_buffer.h" is needed to use
+ * these, struct cb_match is in cb_buffer.h .
+ */
+
+int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
+int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
+int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); 
+int  cb_compare_regexp(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl);

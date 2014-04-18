@@ -67,14 +67,16 @@ int get_option(const char *argv1, const char *argv2, char chr, char **value){
         err = strncmp(argv1, test_str, (size_t) 2); // "-'chr''value'" ; -txyz or -t<value>
 	if(err==0){ // match
           // parse value and return pointer
-          if( ( chr_ptr = strchr(argv1, (int) chr) ) != NULL )
+          //if( ( chr_ptr = strchr(argv1, (int) chr) ) != NULL )
+          if( ( chr_ptr = strchr( &(*argv1), (int) chr) ) != NULL ) // 7.12.2013
             *value = &( chr_ptr[1] );
           return GETOPTSUCCESSATTACHED;
         }
 
         // Values without parameter
         if ( argv1[0]=='-' ){
-          if( strchr(argv1, (int) chr) != NULL ){ // "-"[a-z]+'chr'[a-z]+
+          //if( strchr(argv1, (int) chr) != NULL ){ // "-"[a-z]+'chr'[a-z]+
+          if( strchr(&(*argv1), (int) chr) != NULL ){ // "-"[a-z]+'chr'[a-z]+ , 7.12.2013
             if(argv2!=NULL){
               *value = (char *) &(*argv2);
               return GETOPTSUCCESSPOSSIBLEVALUE;

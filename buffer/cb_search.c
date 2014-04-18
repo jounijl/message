@@ -26,12 +26,9 @@
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs);
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs); // 13.12.2013
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
-//int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl);
-int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match mctl); // 11.3.2014
-//int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl);
-int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match mctl); // 16.3.2014
-//int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl);
-int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match mctl); // 11.3.2014
+int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
+int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 16.3.2014, 23.3.2014
+int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index);
@@ -41,20 +38,20 @@ int  cb_automatic_encoding_detection(CBFILE **cbs);
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
  * matchctl and openpairs count. Returns CBNOTFOUND if leaf was not found. 'result' may be NULL. */
-//int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl){
-int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match mctl){
+int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 23.3.2014
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){ 
+	  fprintf(stderr,"\ncb_set_to_leaf: allocation error."); return CBERRALLOC; 
+	}
 	if( (*(**cbs).cb).list.current==NULL )
 	  return CBEMPTY;
 	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
-	//return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, matchctl);
-	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, mctl); // 11.3.2014
+	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*mctl)); // 11.3.2014
 }
-//int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int matchctl){
-int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match mctl){ // 11.4.2014
+int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 11.4.2014, 23.3.2014
 	int err = CBSUCCESS;
 	cb_name *leafptr = NULL;
-	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL ){
-	  fprintf(stderr,"\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
+	  fprintf(stderr,"\ncb_set_to_leaf_inner: allocation error."); return CBERRALLOC;
 	}
 
 	if( (*(**cbs).cb).list.currentleaf==NULL )
@@ -62,8 +59,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	// Node
 	leafptr = &(*(*(**cbs).cb).list.currentleaf);
 
-	//err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, matchctl);
-	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, mctl); // 11.4.2014
+	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, &(*mctl)); // 11.4.2014, 23.3.2014
 	if(err==CBMATCH){
 	  if( openpairs < 0 ){ 
 	    fprintf(stderr, "\ncb_set_to_leaf: error: openpairs was %i.", openpairs); // debug
@@ -94,15 +90,13 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	}
 	if( (*leafptr).leaf!=NULL && openpairs>=1 ){ // Left
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).leaf);
-	  //err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, (openpairs-1), matchctl);
-	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, (openpairs-1), mctl); // 11.4.2014
+	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, (openpairs-1), &(*mctl)); // 11.4.2014, 23.3.2014
 	  if(err==CBSUCCESS)
 	    return err;
 	}
 	if( (*leafptr).next!=NULL ){ // Right
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
-	  //err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, matchctl);
-	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, mctl); // 11.4.2014
+	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*mctl)); // 11.4.2014, 23.3.2014
 	  if(err==CBSUCCESS)
 	    return err;
 	}
@@ -326,15 +320,13 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){
         return CBADDEDNAME;
 }
 
-//int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, int matchctl){ // matchctl 4.11.2013
-int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match mctl){ // cb_match 11.3.2014
+int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl){ // cb_match 11.3.2014, 23.3.2014
 	cb_name *iter = NULL; int err=CBSUCCESS;
 
-	if(*str!=NULL && (**str).cb != NULL ){
+	if(*str!=NULL && (**str).cb != NULL && mctl!=NULL ){
 	  iter = &(*(*(**str).cb).list.name);
 	  while(iter != NULL){
-	    //err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, matchctl ); // 23.11.2013
-	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, mctl ); // 23.11.2013, 11.4.2014
+	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, &(*mctl) ); // 23.11.2013, 11.4.2014
 	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
 	       * 20.8.2013:
@@ -563,9 +555,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl){
 	cb_match mctl;
 	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
-	return cb_set_cursor_match_length_ucs_matchctl(&(*cbs), &(*ucsname), &(*namelength), ocoffset, mctl);
+	return cb_set_cursor_match_length_ucs_matchctl(&(*cbs), &(*ucsname), &(*namelength), ocoffset, &mctl);
 }
-int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match mctl){
+int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
 	int  index=0, buferr=CBSUCCESS; 
 	unsigned long int chr=0, chprev=CBRESULTEND;
@@ -578,8 +570,9 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
         unsigned long int ch3prev=CBRESULTEND+2, ch2prev=CBRESULTEND+1;
 	int openpairs=0; // cbstatetopology, cbstatetree
 
-	if( cbs==NULL || *cbs==NULL )
-	  return CBERRALLOC;
+	if( cbs==NULL || *cbs==NULL || mctl==NULL){
+	  fprintf(stderr,"\ncb_set_cursor_match_length_ucs_matchctl: allocation error."); return CBERRALLOC;
+	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
 
 	if( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) // Search next matching leaf
@@ -587,11 +580,9 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 
 	// 1) Search list (or tree leaves) and set cbs.cb.list.index if name is found
 	if( ocoffset==0 ){ // 12.12.2013
-	  //err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, matchctl ); // 4.11.2013
-	  err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, mctl ); // 11.3.2014
+	  err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, &(*mctl) ); // 11.3.2014, 23.3.2014
 	}else{
-	  //err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, matchctl ); // set to leaf from current name 12.12.2013
-	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, mctl ); // mctl 11.3.2014
+	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, &(*mctl) ); // mctl 11.3.2014, 23.3.2014
 	}
 	if(err==CBSUCCESS){
 	  //fprintf(stderr,"\nName found from list.");
@@ -721,8 +712,7 @@ cb_set_cursor_reset_name_index:
 	     */
 	    if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
 	      //fprintf(stderr,"\nNAME COMPARE");
-	      //cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchctl ); // 23.11.2013
-	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, mctl ); // 23.11.2013, 11.4.2014
+	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
 	      if( cis == CBMATCH ){ // 9.11.2013
 	        (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	        if( (*(**cbs).cb).list.last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
@@ -742,8 +732,7 @@ cb_set_cursor_reset_name_index:
 	     * Leaf (openpairs==(ocoffset+1) if ocoffset > 0)
 	     */
 	      //fprintf(stderr,"\nLEAF COMPARE");
-	      //cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, matchctl ); // 23.11.2013
-	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, mctl ); // 23.11.2013, 11.3.2014
+	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
 	      if( cis == CBMATCH ){ // 9.11.2013
 	        (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	        if( (*(**cbs).cb).list.currentleaf != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013

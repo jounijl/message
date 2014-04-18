@@ -23,8 +23,7 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include 
-<stdio.h>
+#include <stdio.h>
 #include <string.h>     // memset
 
 #include "../../include/cb_buffer.h"
