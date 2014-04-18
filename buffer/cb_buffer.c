@@ -599,7 +599,7 @@ cb_put_ch_put:
               (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = ch; // 12.8.2013
 	      ++(*(**cbs).blk).contentlen;
 	    }else if((**cbs).cf.type!=CBCFGBUFFER){ // 20.8.2013
-	      err = cb_flush(cbs); // new block				13.4.2014: tassa kohdassa on flush vaarin use_as_bufferin kanssa
+	      err = cb_flush(cbs); // new block	
 	      goto cb_put_ch_put;
 	    }else if((**cbs).cf.type==CBCFGBUFFER){ // 20.8.2013
 	      return CBBUFFULL;
@@ -645,8 +645,6 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	}
 	return CBERRALLOC;
 }
-
-// to be removed if unused/useless :
 
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size){ 
         int from=0, to=0;

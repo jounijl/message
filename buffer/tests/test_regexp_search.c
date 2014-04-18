@@ -41,14 +41,14 @@
 
 
 /*
- * Pcre_exec return 1 if it matched (once). If return value is more than one, internal groups were
+ * Pcre_exec returns 1 if it matched (once). If return value is more than one, internal groups were
  * found. (Groups are delimited in the re-pattern with parenthesis).
  *
  * pcre_get_substring gets allways the next groups text until it returns PCRE_ERROR_NOSUBSTRING. 
  * Third parameter of pcre_get_substring may be the return value of pcre_exec (the count of subtexts
  * to fetch).
  *
- * If it's wanted to get a new search from the same block, ovecs largest value is put to 
+ * If it's wanted to get a new search from the same block, ovecs largest value has to be put to 
  * pcre_execs offset and fetch again.
  *
  * Same text has to be matched again and when it matches, resultvectors largest value, for example

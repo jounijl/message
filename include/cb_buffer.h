@@ -472,14 +472,12 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
 
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // if unused/useless, removed from future versions
-int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // if unused/useless, removed from future versions
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // these can be used to get a block from blk when used as buffer
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); 
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
-//int  cb_get_matchctl(CBFILE **cbs, const unsigned char *pattern, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before)
-//int  cb_get_matchctl(CBFILE **cbs, unsigned char *pattern, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before)
 int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='

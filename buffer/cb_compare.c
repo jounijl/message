@@ -290,23 +290,6 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, 
 	sage.
 */
 
-/*
-	Pattern -teksti on oltava joko muodossa UTF-8 tai yksitavuinen.
-	On parasta muuntaa UCS-teksti UTF-muotoiseksi tekstiksi.
-
-	UCS-muotoisen tekstin NULL-merkit katkaisisivat tekstin 
-	pcre-funktiokutsussa liian lyhyeksi. 
-
-	"For example, an 8-bit pattern that begins with "(*UTF8)" or 
-	"(*UTF)" turns on UTF-8 mode, which interprets patterns and
-	subjects as strings of UTF-8 characters instead of individual 
-	8-bit characters."
-
-	Toivotaan etta pattern voi olla muodossa UTF-8 ja funktiot
-	toimivat 32-bittisina ilman ylimaaraisia option lippuja 
-	(PCRE_UTF32).
-*/
-
 	sptr = &(* (PCRE_SPTR32)  *pattern); // vastaa sptr = &(**pattern)
 
 	//fprintf(stderr,"\ncb_compare_get_matchctl: pattern [");
