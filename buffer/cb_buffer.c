@@ -75,6 +75,7 @@
    Se ei ole heti kaytettavissa.
  x cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
  - Testausohjelmiin kuvaavat virheilmoitukset.
+ - 32-bittinen regexp loytaa tekstin mutta regexp erikoismerkit ja haut eivat toimi
  ===
  x cb_conf:iin myos eri hakutavat
  x listaan lisaksi aikaleima milloin viimeksi haettu
@@ -97,9 +98,11 @@
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
  - bitwice cb_conf
- - Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
+ x Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
+   x ei
  - json testi, joka toinen rstart ja rend, joka toinen subrstart ja subrend
  - dup pois
+ - UTF-32, UTF-16 endianness
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp

@@ -128,6 +128,11 @@ int main (int argc, char **argv) {
               count = 1;
 	    continue;
 	  }
+	  u = get_option( argv[i], argv[i+1], 'x', &value); // regular expression search
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
+	    tree = -10;
+	    continue;
+	  }
 	  u = get_option( argv[i], argv[i+1], 'b', &value); // buffer size
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    bufsize = (int) strtol(value,&str_err,10);
@@ -240,11 +245,11 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
+	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] [-x]\\\n", progname[0]);
 	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] <name> \n\n");
 	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] \\\n");
-	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n");
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [-x]\\\n");
+	fprintf(stderr,"\t         -s \"<name1> [ <name2> [?<name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
@@ -255,7 +260,7 @@ void usage (char *progname[]){
         fprintf(stderr,"\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
         fprintf(stderr,"\t<count> is -1, search is endless. With -t the search include\n");
         fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
-	fprintf(stderr,"\tthe sublevels.\n\n");
+	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'.\n\n");
         fprintf(stderr,"\tExample 1:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
         fprintf(stderr,"\tExample 2:\n");
@@ -280,35 +285,39 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	if( in==NULL || *in==NULL )
 	  return CBERRALLOC;
 	if( name!=NULL && *name!=NULL && namelength>0 ){ // %ame nam% %am%
-	  cb_get_ucs_chr(&stchr, &(*name), &indx, namelength); indx = (namelength - 4);
-	  cb_get_ucs_chr(&endchr, &(*name), &indx, namelength);
-	  if( stchr == (unsigned long int) LIKECHR ){
-	    for(indx=0; indx<namelength-4 && indx<CBNAMEBUFLEN-4; ++indx)
-	      tmp[indx] = (*name)[indx+4] ;
-	    if( endchr == (unsigned long int) LIKECHR ){
-	      indx -= 4; // %am%
+	  if(tree<=-8){ // regular expression search
+	    err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, tree );
+	  }else{ // Test LIKECHR
+	    cb_get_ucs_chr(&stchr, &(*name), &indx, namelength); indx = (namelength - 4);
+	    cb_get_ucs_chr(&endchr, &(*name), &indx, namelength);
+	    if( stchr == (unsigned long int) LIKECHR ){
+	      for(indx=0; indx<namelength-4 && indx<CBNAMEBUFLEN-4; ++indx)
+	        tmp[indx] = (*name)[indx+4] ;
+	      if( endchr == (unsigned long int) LIKECHR ){
+	        indx -= 4; // %am%
+	        if(tree==0){
+	          err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -6 );
+	        }else
+	          err = search_and_print_tree( &(*in), &ptr, indx, -6 );
+	      }else{
+	        if(tree==0){
+	          err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -5 ); // %ame
+	        }else
+	          err = search_and_print_tree( &(*in), &ptr, indx, -5 ); 
+	      }
+	    }else if( endchr == (unsigned long int) LIKECHR ){
+	      namelength -= 4; // %
 	      if(tree==0){
-	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -6 );
-	      }else
-	        err = search_and_print_tree( &(*in), &ptr, indx, -6 );
+	        err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, -2 ); // nam%
+	      }else{
+	        err = search_and_print_tree( &(*in), &(*name), namelength, -2 ); 
+	      }
 	    }else{
 	      if(tree==0){
-	        err = cb_set_cursor_match_length_ucs( &(*in), &ptr, &indx, 0, -5 ); // %ame
+	        err = cb_set_cursor_ucs( &(*in), &(*name), &namelength ); // matchctl=1
 	      }else
-	        err = search_and_print_tree( &(*in), &ptr, indx, -5 ); 
+	        err = search_and_print_tree( &(*in), &(*name), namelength, 1 ); 
 	    }
-	  }else if( endchr == (unsigned long int) LIKECHR ){
-	    namelength -= 4; // %
-	    if(tree==0){
-	      err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, -2 ); // nam%
-	    }else{
-	      err = search_and_print_tree( &(*in), &(*name), namelength, -2 ); 
-	    }
-	  }else{
-	    if(tree==0){
-	      err = cb_set_cursor_ucs( &(*in), &(*name), &namelength ); // matchctl=1
-	    }else
-	      err = search_and_print_tree( &(*in), &(*name), namelength, 1 ); 
 	  }
 	}else{
 	  fprintf(stderr, "\n Name was null.\n");

@@ -186,8 +186,9 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
 	   }else if(err!=CBSUCCESS){
 	     fprintf(stderr, "(err %i)", err);
 	   }else{
-             fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
-             //fprintf(stderr, "(0x%lx)", chr );
+             //fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
+             //fprintf(stderr, "(0x%lx)", chr ); // 8.6.2014
+             fprintf(stderr, "(%#x)", (unsigned int) chr ); // 10.6.2014
 	   }
         }
         return CBSUCCESS;

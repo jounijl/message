@@ -226,13 +226,16 @@
  * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
-#define NAMEXCL( x )           ( ( x ) == 0xFEFF )
+#define NAMEXCL( x )          ( ( x ) == 0xFEFF )
 
 /* 4 bytes - 1 bit. ANSI C 1999, 6.5.5: "The operands
  * of the % operator shall have integer type." */
-#define intiseven( x )       ( ( x )%2 == 0 )
+#define intiseven( x )        ( ( x )%2 == 0 )
 
 #include "./cb_encoding.h"	// Encoding macros
+
+/* Size of a pointer */
+#define PSIZE                 int*
 
 /*
  * Compare ctl */
@@ -367,7 +370,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl -7 - match once or group with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
  * matchctl -8 - match once or group with null terminated pattern in name1 compiling it to re just before searching (using 4-byte characterbuffer and pcre32)
  * re multiple:
- * matchctl -9 - match once, group or multiple times with with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
+ * matchctl -9 - match once, group or multiple times with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
  * matchctl -10 - match once, group or multiple times with null terminated pattern in name1 compiling it to re just before searching (using 4-byte characterbuffer and pcre32)
  *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
