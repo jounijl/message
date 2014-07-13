@@ -186,9 +186,9 @@ int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
 	   }else if(err!=CBSUCCESS){
 	     fprintf(stderr, "(err %i)", err);
 	   }else{
-             //fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
+             fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
              //fprintf(stderr, "(0x%lx)", chr ); // 8.6.2014
-             fprintf(stderr, "(%#x)", (unsigned int) chr ); // 10.6.2014
+             //fprintf(stderr, "(%#x)", (unsigned int) chr ); // 10.6.2014
 	   }
         }
         return CBSUCCESS;
@@ -227,7 +227,7 @@ int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int bufle
 	else
 	  cpyblk=4; // multiple of 4, this case is not yet tested 17.3.2014
 	for(indx=0; indx<countfromend && indx<buflen && indx<=2147483646 && *bufindx<buflen; ){
-	  memmove( &( (*chrbuf)[indx] ), &( (*chrbuf)[*bufindx-cpyblk] ), (size_t) cpyblk ); // memove is nondestructive when overlapping
+	  memmove( &( (*chrbuf)[indx] ), &( (*chrbuf)[*bufindx-cpyblk] ), (size_t) cpyblk ); // memmove is nondestructive when overlapping
 	  indx+=cpyblk;
 	  *bufindx -= cpyblk;
 	}
@@ -237,3 +237,5 @@ int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int bufle
 	  *bufindx = indx;
 	return CBSUCCESS;
 }
+
+

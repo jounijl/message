@@ -97,12 +97,17 @@
  x cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.dd unknown" 2>&1 | more # dd ei loydy (hakemalla listasta, dd on cc:sta yksi oikealla, molemmat yhden vasemmalla)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "bb.dd unknown" 2>&1 | more # dd loytyy (hakemalla puskurista)
    cat tests/testi.txt | ./cbsearch.CBSETSTATETREE -c 4 -b 2048 -l 512 -t -s "nimi1 bb.cc unknown" 2>&1 | more # cc loytyy (seuraava oikealla)
- - bitwice cb_conf
+ x bitwice cb_conf
  x Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
    x ei
  - json testi, joka toinen rstart ja rend, joka toinen subrstart ja subrend
  - dup pois
  - UTF-32, UTF-16 endianness
+   - BE 32 / LE 32 on vaarinpain
+ - voi tehda vertausfunktion viela leksikaalisen pienempi tai suurempi kuin vertaukselle
+   - joka tavu muutetaan host byte muotoon, taman lisaksi regexp on ainoa missa tata kaytetaan
+     - pcre:n pattern ja subject -funktioissa ainoastaan: "host byte order",
+       muutoin aina alkuperaisessa muodossa.
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
@@ -354,7 +359,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #endif
 	(**str).cf.json=0;
 #ifdef CBSETJSON
-	(**str).cf.json=1
+	(**str).cf.json=1;
 #endif
 	(**str).cf.leadnames=0; // default
 	//(**str).cf.leadnames=1; // test

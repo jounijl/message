@@ -1,7 +1,4 @@
 
-# Wikipedia: 
-#Koodaus 	??????#Unicode 	U+00C5 	U+00E5 	U+00C4 	U+00E4 	U+00D6 	U+00F6
-
 LANG=fi_FI.UTF-8
 export LANG
 
@@ -36,13 +33,17 @@ echo; file tests/*.out
 # bash: return value 137 is signal 9.
 
 #
-# Test sequential name search
+# Name search
 #
 # cat tests/testi.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown
 # cat tests/testi.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 # <CR><LF> (echo_CR.sh echo_LF.sh add_cr_to_file.sh)
 # cat tests/testi2.txt | ./cbsearch -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
 # cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -s "unknown nimi1 viides"
+#
+# Name from tree:
+# cat tests/testi.txt | ./cbsearch.CBSETSTATELESS -c 4 -b 2048 -l 512 -t -s "nimi1 bb.ff.gg unknown" 2>&1 | more
+# cat tests/testi.txt | ./cbsearch.CBSETSTATELESS -c 4 -b 2048 -l 512 -t -s "bb.ff.gg nimi1 unknown" 2>&1 | more
 
 #for I in CBSETSTATELESS CBSETSTATEFUL CBSETSTATETOPOLOGY
 #  do
@@ -50,7 +51,20 @@ echo; file tests/*.out
 # done | less
 
 # Subsearch
-# cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -t -s "unknown nimi1 viides"
+## cat tests/testi2.txt.utf8 | ./cbsearch -i 3 -c 4 -b 1028 -l 128 -t -s "unknown nimi1 viides"
+
+# Regular expressions
+# LD_LIBRARY_PATH=path_to_pcre32_with_utf:$LD_LIBRARY_PATH; export LD_LIBRARY_PATH
+# cat tests/testi2.txt.utf8 | ./cbsearch -x unknow[n]
+# cat ~/Documents/Pyora/pyora_specialized.txt | ./test_regexp_search "Wheel" 2>&1 | grep -v 24
+# cat ~/Documents/Pyora/pyora_specialized.txt | ./test_regexp_search "Whe.l" 2>&1 | grep -v 24
+# cat ~/Documents/Pyora/pyora_specialized.txt | ./test2_regexp_search "(*UTF8)Wheel" 2>&1 | grep -v 24
+# cat ~/Documents/Pyora/pyora_specialized.txt | pcregrep "Wheel"
+# cat ~/Documents/Pyora/pyora_specialized.txt | pcregrep "Whe.l"
+# ../../pcre/bin/pcretest -32 -C pcre32 
+## less ./test-suite.log
+## man pcrestack
+## ulimit -s
 
 #
 # Convert between encodings

@@ -273,7 +273,7 @@ typedef struct cb_conf{
         char                removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 	char                removenamewsp:2;        // Remove white space characters inside name
 	char                leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
-	char                json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
+	char                json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	char                doubledelim:3;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	char                searchstate:5;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 

@@ -7,6 +7,10 @@ gcc -c test_regexp_search.c &&
 gcc $FLAGS test_regexp_search.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o -o test_regexp_search
 rm test_regexp_search.o
 
+gcc -c regexp_search.c &&
+gcc $FLAGS regexp_search.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o -o regexp_search
+rm regexp_search.o
+
 gcc -c test2_regexp_search.c &&
 gcc $FLAGS test2_regexp_search.o ../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o -o test2_regexp_search
 rm test2_regexp_search.o

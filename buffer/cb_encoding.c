@@ -668,3 +668,34 @@ unsigned int  cb_reverse_two_bytes(unsigned int  from){
 	new = new | upper;
 	return new;
 }
+
+/*
+ * OSI Representation layer:  Host byte order conversion if needed 
+ * ----------------------------------------------------------------------
+ * OSI Session layer:         4-byte UCS in application or in stored form
+ */
+unsigned int  cb_from_host_byte_order_to_ucs( unsigned int chr ){
+        return cb_from_ucs_to_host_byte_order( chr );
+}
+unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
+	int test = cb_test_cpu_endianness();
+        if( test == CBBIGENDIAN ){ 
+          return chr;
+        }else if( test == CBLITTLEENDIAN ){ 
+          return cb_reverse_four_bytes( chr );
+        }
+        return chr;
+}
+int  cb_test_cpu_endianness(){
+        static union {
+          unsigned short  two;
+          unsigned char   td[ sizeof(unsigned short) ];
+        } hend;
+        hend.two = 0xFEFF;
+        if( hend.td[0] == 0xFE ){
+          return CBBIGENDIAN;
+        }else if( hend.td[0] == 0xFF ){
+          return CBLITTLEENDIAN;
+        }
+	return CBUNKNOWNENDIANNESS;
+}
