@@ -54,6 +54,9 @@
 #define CBLEAFCOUNTERROR    48
 #define CBERRREGEXCOMP      49    // regexp pattern compile error 03/2014
 #define CBERRREGEXEC        50    // regexp exec error 03/2014
+#define CBBIGENDIAN         51
+#define CBLITTLEENDIAN      52
+#define CBUNKNOWNENDIANNESS 53
 
 /*
  * Default values
@@ -234,7 +237,7 @@
 
 #include "./cb_encoding.h"	// Encoding macros
 
-/* Size of a pointer */
+/* Pointer size */
 #define PSIZE                 int*
 
 /*
@@ -261,18 +264,18 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        char                type;                 // stream (default), file (large namelist) or only buffer (fd is not in use)
-        char                searchmethod;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-        char                unfold;               // Search names unfolding the text first, RFC 2822
-        char                asciicaseinsensitive; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822headerend;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
-        char                removewsp;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
-        char                removecrlf;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
-	char                removenamewsp;        // Remove white space characters inside name
-	char                leadnames;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
-	char                searchstate;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
-	char                json;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
-	char                doubledelim;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+        char                type:4;                 // stream (default), file (large namelist) or only buffer (fd is not in use)
+        char                searchmethod:4;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        char                unfold:2;               // Search names unfolding the text first, RFC 2822
+        char                asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
+        char                removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
+	char                removenamewsp:2;        // Remove white space characters inside name
+	char                leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
+	char                json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values)
+	char                doubledelim:3;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+	char                searchstate:5;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -544,3 +547,9 @@ unsigned int  cb_reverse_two_bytes(unsigned  int  from); // change two bytes ord
 unsigned int  cb_reverse_int32_bits(unsigned int  from); // 32 bits
 unsigned int  cb_reverse_int16_bits(unsigned int  from); // reverse last 16 bits and return them
 unsigned char cb_reverse_char8_bits(unsigned char from); // 8 bits
+
+unsigned int  cb_from_ucs_to_host_byte_order(unsigned int chr); // Returns reversed 4-bytes chr if run time cpu endianness is LE, otherwice chr
+unsigned int  cb_from_host_byte_order_to_ucs(unsigned int chr); // The same
+
+int  cb_test_cpu_endianness();
+
