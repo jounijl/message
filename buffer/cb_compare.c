@@ -40,6 +40,9 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
+	  chr1 = cb_from_ucs_to_host_byte_order( chr1 ); // 31.7.2014
+	  chr2 = cb_from_ucs_to_host_byte_order( chr2 ); // 31.7.2014
+
 	  if(err1>=CBNEGATION || err2>=CBNEGATION){
 	    return CBNOTFOUND;
 	  }
@@ -54,14 +57,19 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	      if( chr1 == (chr2+32) ) 
 	        continue;
 	  }
+	  if( len1>(len2-from2) || ( len1==(len2-from2) && chr1<chr2 ) )
+	    return CBGREATERTHAN; // 31.7.2014
+	  else if( len1<(len2-from2) || ( len1==(len2-from2) && chr1>chr2 ) )
+	    return CBLESSTHAN; // 31.7.2014
 	  return CBNOTFOUND;
 	}
 
-	if( len1==len2 )
+	//if( len1==len2 )
+	if( len1==(len2-from2) ) // 31.7.2014
 	  return CBMATCH;
-	else if( len2>len1 ) // 9.11.2013, 23.11.2013
+	else if( (len2-from2)>len1 ) // 9.11.2013, 23.11.2013, 31.7.2014 	// else if( len2>len1 ) // 9.11.2013, 23.11.2013
 	  return CBMATCHLENGTH;
-	else if( len2<len1 || len1>(len2-from2)) // 9.11.2013, 23.11.2013
+	else if( (len2-from2)<len1 || len1>(len2-from2)) // 9.11.2013, 23.11.2013
 	  return CBMATCHPART;
 
 	return err1;
@@ -142,7 +150,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_compare_strict( &stbp, 0, &(*name2), len2, 0 );
 	}else if((**cbs).cf.asciicaseinsensitive==1){ // name or nam%
 	  err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, 0 );
-	}else{ // name or nam%
+	}else{ // name or nam% , (or lexical compare if matchctl is -11, -12, -13 or -14)
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
 
@@ -170,7 +178,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  case -5:
 	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // ( cut from end ame1 matches name1 )
-	    break;
+	    break; // match from end
 	  case -6:
 	    if( err==CBMATCH || err==CBMATCHLENGTH )
 	      return CBMATCH; // in the middle
@@ -191,13 +199,29 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	    if( err==CBMATCH || err==CBMATCHGROUP || err==CBMATCHMULTIPLE )
 	      return CBMATCH;
 	    break;
+	  case -11: // new 31.7.2014, not tested, match lexically equal or less than
+	    if( err==CBMATCH || err==CBMATCHPART || err==CBLESSTHAN )
+	      return CBMATCH; // <=
+	    break;
+	  case -12: // new 31.7.2014, not tested, match lexically equal or greater than
+	    if( err==CBMATCH || err==CBMATCHLENGTH || err==CBGREATERTHAN )
+	      return CBMATCH; // =>
+	    break;
+	  case -13: // new 31.7.2014, not tested, match lexically less than
+	    if( err==CBMATCHPART || err==CBLESSTHAN )
+	      return CBMATCH; // <
+	    break;
+	  case -14: // new 31.7.2014, not tested, match lexically greater than
+	    if( err==CBMATCHLENGTH || err==CBGREATERTHAN )
+	      return CBMATCH; // >
+	    break;
 	  default:
 	    return err; 
 	}
 	return err; // other information
 }
 int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
-	int indx1=0, indx2=0, err=CBMATCHLENGTH, num=0;
+	signed int indx1=0, indx2=0, err=CBSUCCESS, num=0, cmp=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
 
@@ -209,24 +233,36 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	if(len1>len2)
 	  num=len2;
 	indx1=0;
-	for(indx2=from2; indx1<num && indx2<num ;++indx2){
-	  if((*name1)[indx1]!=(*name2)[indx2]){
+	for(indx2=from2; indx1<num && indx2<num && err<CBNEGATION; ++indx2){
+	  if( (*name1)[indx1]!=(*name2)[indx2] ){
 	    indx2=num+7; err=CBNOTFOUND;
+
+            cmp = (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name1)[indx1] );  // 31.7.2014
+            cmp -= (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name2)[indx2] ); // 31.7.2014
+
+	    if( len1 > (len2-from2) || ( len1==(len2-from2) && cmp>0 ) )
+	      err = CBGREATERTHAN; 	// 31.7.2014
+	    else if( len1 < (len2-from2) || ( len1==(len2-from2) && cmp<0 ) )
+	      err = CBLESSTHAN;    	// 31.7.2014
+
 	  }else{
-	    if( len1==len2 || len1==(len2-from2) )
-	      err=CBMATCH;
-	    else
-	      err=CBMATCHPART; // 30.3.2013, was: match, not notfound
+	    if( err < CBNEGATION ){
+	      if( len1 > (len2-from2) )
+	        err = CBMATCHPART; // 30.3.2013, was: match, not notfound
+	      else if( len1 < (len2-from2) )
+	        err = CBMATCHLENGTH; // 30.3.2013, was: match, not notfound, 31.7.2014
+	    }
 	  }
 	  ++indx1;
 	}
-	if( len1==len2 )
-	  err=CBMATCH;
-	else if( len2>len1 ) // 9.11.2013
-	  err=CBMATCHLENGTH;
-	else if( len2<len1 ) // 9.11.2013
-	  err=CBMATCHPART;
-
+	if( err < CBNEGATION ){
+	  if( len1==(len2-from2) )
+	    err=CBMATCH;
+	  else if( len2 > (len1+from2) ) // 9.11.2013
+	    err=CBMATCHLENGTH;
+	  else if( len2 < (len1+from2) ) // 9.11.2013
+	    err=CBMATCHPART;
+	}
 	return err;
 }
 
