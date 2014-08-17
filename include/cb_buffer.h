@@ -42,6 +42,8 @@
 #define CBWRONGENCODINGCALL 32
 #define CBUCSCHAROUTOFRANGE 33
 #define CBREPATTERNNULL     34    // given pattern text was null 03/2014
+#define CBGREATERTHAN       35    // same as not found with lexical comparison of name1 to name2
+#define CBLESSTHAN          36
 
 #define CBERROR	            40
 #define CBERRALLOC          41
@@ -92,6 +94,10 @@
  * Search options */
 #define CBSEARCHUNIQUENAMES       0   // Names are unique (returns allways the first name in list)
 #define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+
+/*
+ * Third search option is to leave buffer empty amd search allways the next name, with either above setting.
+ */
 
 /*
  * Use options, changes functionality as below */
@@ -193,7 +199,7 @@
  */
 //#undef CBSETSTATEFUL
 //#undef CBSETSTATETOPOLOGY
-//#undef CBSETSTATETOPOLOGYLEAF
+//#undef CBSETSTATETREE
 //#define CBSETSTATELESS
 
 /*
@@ -375,6 +381,10 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * re multiple:
  * matchctl -9 - match once, group or multiple times with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
  * matchctl -10 - match once, group or multiple times with null terminated pattern in name1 compiling it to re just before searching (using 4-byte characterbuffer and pcre32)
+ * matchctl -11 - match if name1 is in UCS codechart ("lexically") less or equal than name2 (not yet tested 31.7.2014 ->)
+ * matchctl -12 - match if name1 is in UCS coding greater or equal than name2 
+ * matchctl -13 - match if name1 is in UCS coding less than name2
+ * matchctl -14 - match if name1 is in UCS coding greater than name2
  *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
  * when openpairs is negative. Next rend after value ends reading. This parameter can be used
