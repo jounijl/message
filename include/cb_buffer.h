@@ -478,7 +478,6 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
-int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
@@ -488,11 +487,7 @@ int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
 
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // these can be used to get a block from blk when used as buffer
-int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); 
-
 int  cb_copy_name(cb_name **from, cb_name **to);
-
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
 int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
@@ -563,3 +558,9 @@ unsigned int  cb_from_host_byte_order_to_ucs(unsigned int chr); // The same
 
 int  cb_test_cpu_endianness();
 
+/*
+ * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
+int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
+int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen); 

@@ -108,6 +108,9 @@
    - joka tavu muutetaan host byte muotoon, taman lisaksi regexp on ainoa missa tata kaytetaan
      - pcre:n pattern ja subject -funktioissa ainoastaan: "host byte order",
        muutoin aina alkuperaisessa muodossa.
+ - encodingbytes on mahdollista valita erikseen ja ohjelma voi jaada tilaan jossa
+   se ei lue merkkeja oikein jos: pelkka alustus ja err = cb_set_encodingbytes(&cbf, 0);
+
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
@@ -654,14 +657,29 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	return CBERRALLOC;
 }
 
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size){ 
-        int from=0, to=0;
+/*
+ * CBFILE can be used as a block: set buffer size to 0.
+ * These functions can be used to set and get blocks. The block
+ * has to be in the encoding of the CBFILE.
+ */
+
+int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen){
+	if( blklen==NULL || blk==NULL || *blk==NULL || cbs==NULL || *cbs==NULL || (*cbs).blk==NULL ){ return CBERRALLOC;}
+	(*blk) = &(*(**cbf).blk).buf[0];
+	(*(**cbf).blk).buf = NULL;
+	*contentlen = (*(**cbf).blk).contentlen;
+	*blklen = (*(**cbf).blk).buflen;
+	return cb_free_cbfile( cbf );
+}
+
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){ 
+        long int from=0, to=0;
         to = *size;
         return cb_get_buffer_range(cbs,buf,size,&from,&to);
 }
 
-// Allocates new buffer
-int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to){ 
+// Allocates new buffer (or a block if cblk)
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to){ 
         int index=0;
         if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
         *buf = (unsigned char *) malloc( sizeof(char)*( *size+1 ) );
