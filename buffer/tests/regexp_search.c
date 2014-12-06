@@ -1,5 +1,5 @@
 /*
- * Program to test a function in cb_fifo.c .
+ * Program to test regular expression match.
  * 
  * Copyright (c) 2009, 2010 and 2013, Jouni Laakso
  * All rights reserved.
@@ -66,9 +66,8 @@
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0, err2=CBSUCCESS;
+        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0;
         unsigned char *ucsname = NULL; 
-        char *str_err = NULL;
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
