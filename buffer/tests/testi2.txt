@@ -1,8 +1,9 @@
-nimi1=teksti1&
+nimi1=A2=teksti2& teksti1 &
 
 nimi2=teksti2& 	nimi 3= teksti3& # neljas nimi
 neljäs nimi 4 =neljäs teksti&
 neljås=4&
+un_known=a1=a2=a2 teksti&a1 teksti& a3=a3 teksti& &
 neljös=4&
 neljÄs=4&
 nimi3=oikea nimi3&

@@ -1,13 +1,16 @@
+neljås=4&
+aa=AA&
+bb=cc=CC& dd=DD& ee=EE& ff= gg= hh= HH& GG& & &
+neljös=4&
+neljÄs=4&
+unknown=a1=a1 unknown& a2=a2 unknown& a3=a4=a4 u5nknown& & a3=a3 u6nknown& unknown here&
 nimi1=teksti1&
  
  nimi2=teksti2& 	nimi 3= teksti3& # neljas nimi
 neljäs nimi 4 =neljäs teksti&
-neljås=4&
-neljös=4&
-neljÄs=4&
 nimi3=oikea nimi3&
 unknown=unknown here&
-unknown=second unknown here&
+unknown=s1econd unknown AK= s2ub unknown her1e& unknown= u3nknown=s4ub sub unknow2n& another sub unkwnow3n& her4e&
   nimi 3= 2. nimi3&
   nimi 3  = 3. nimi3&
   
@@ -18,7 +21,7 @@ nimi 3
 = 5. nimi3&
 neljÅs=4&
 neljÖs=4&
-viides=ensimmainen viides&
+viides=ensimmainen viides &
 vIIdes=ensimmainen vIIdes&
 viiDes=ensimmainen viiDes&
 unknown=third unknown here&
@@ -26,4 +29,10 @@ viides=toinen viides&
 viides=kuudes<rstart here>viimeisen v\&o, vd ja kdes&
 seitsemäs=stsemännen arvo&a&b&c&
 kahdeksas=sisakkain on yhdeksas=yhdeksannen arvo& kahdeksannen loppu&
+nimi3=oikea nimi4&
 kymmenes=kymmenennen arvo&
+nimi3=oikea nimi5&
+nimi3=oikea nimi6&
+nimi3=oikea nimi7&
+nimi3=oikea nimi8&
+

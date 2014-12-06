@@ -21,7 +21,8 @@ int main(int argc, char **argv) {
 	err = cb_allocate_cbfile(&in, 0, 2048, 512);
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
-	cb_set_encoding(&in, 0);
+	//cb_set_encoding(&in, 0);
+	cb_set_encoding(&in, 3); // 10.11.2013
 
 	do{
 	  err = cb_get_chr(&in, &chr, &bcount, &strdbytes );

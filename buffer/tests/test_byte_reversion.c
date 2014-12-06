@@ -1,5 +1,5 @@
 /*
- * Program to test librarys bit reversion functions.
+ * Program to test byte reversion.
  * 
  * Copyright (c) 2009, 2010 and 2013, Jouni Laakso
  * All rights reserved.

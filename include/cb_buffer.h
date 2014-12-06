@@ -16,34 +16,49 @@
 
 #define CBSUCCESS            0
 #define CBSTREAM             1
-#define CBMATCH              2
-//#define CBSTREAMEDGE       3
-#define CBUSEDASBUFFER       4
-#define CBUTFBOM             5
-#define CB2822HEADEREND      6
+#define CBMATCH              2    // Matched and the lengths are the same
+#define CBUSEDASBUFFER       3
+#define CBUTFBOM             4
+#define CB2822HEADEREND      5
+#define CBMATCHLENGTH        6    // Matched the given length
+#define CBADDEDNAME          7
+#define CBADDEDLEAF          8
+#define CBADDEDNEXTTOLEAF    9
+#define CBMATCHMULTIPLE     10    // regexp multiple occurences 03/2014
+#define CBMATCHGROUP        11    // regexp group 03/2014
 
-#define CBNEGATION          10
-#define CBSTREAMEND         11
-#define CBBUFFULL           12
-#define CBNOTFOUND          13
-#define CBNAMEOUTOFBUF      14
-#define CBNOTUTF            15
-#define CBNOENCODING        16
-#define CBMATCHPART         17    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY             18
-#define CBNOTSET            19
-#define CBAUTOENCFAIL       20    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL 21
-#define CBUCSCHAROUTOFRANGE 22
+#define CBNEGATION          20
+#define CBSTREAMEND         21
+#define CBVALUEEND          22    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
+#define CBBUFFULL           23
+#define CBNOTFOUND          24
+#define CBNAMEOUTOFBUF      25
+#define CBNOTUTF            26
+#define CBNOENCODING        27
+#define CBMATCHPART         28    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY             29
+#define CBNOTSET            30
+#define CBAUTOENCFAIL       31    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL 32
+#define CBUCSCHAROUTOFRANGE 33
+#define CBREPATTERNNULL     34    // given pattern text was null 03/2014
+#define CBGREATERTHAN       35    // same as not found with lexical comparison of name1 to name2
+#define CBLESSTHAN          36
 
-#define CBERROR	            30
-#define CBERRALLOC          31
-#define CBERRFD             32
-#define CBERRFILEOP         33
-#define CBERRFILEWRITE      34
-#define CBERRBYTECOUNT      35
-#define CBARRAYOUTOFBOUNDS  36
-#define CBINDEXOUTOFBOUNDS  37
+#define CBERROR	            40
+#define CBERRALLOC          41
+#define CBERRFD             42
+#define CBERRFILEOP         43
+#define CBERRFILEWRITE      44
+#define CBERRBYTECOUNT      45
+#define CBARRAYOUTOFBOUNDS  46
+#define CBINDEXOUTOFBOUNDS  47
+#define CBLEAFCOUNTERROR    48
+#define CBERRREGEXCOMP      49    // regexp pattern compile error 03/2014
+#define CBERRREGEXEC        50    // regexp exec error 03/2014
+#define CBBIGENDIAN         51
+#define CBLITTLEENDIAN      52
+#define CBUNKNOWNENDIANNESS 53
 
 /*
  * Default values
@@ -51,11 +66,25 @@
 #define CBNAMEBUFLEN        1024
 #define CBREADAHEADSIZE     28
 
+/*
+ CBREADAHEADSIZE is used to read RFC-822 unfolding characters. It's size should be small
+ to use the CBFILE in other purposes without too much overhead and to avoid reading
+ too much before without a cause. Size is multiple of 4 (4-bytes characters).
+ */
+
+
+#define CBMAXLEAVES         1000  // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
+                                  // (this can be set to a maximum number of unsigned integer)
+
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
 #define CBBYPASS            '\\'
 #define CBCOMMENTSTART      '#'  // Allowed inside valuename from rend to rstart
 #define CBCOMMENTEND        '\n'
+
+#define CBSUBRESULTSTART    '='  // If set to another, in CBSTATETREE, swithes every other separator (every odd separator)
+#define CBSUBRESULTEND      '&'  // 
+
 
 /*
  * Configuration options
@@ -67,11 +96,16 @@
 #define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
 
 /*
+ * Third search option is to leave buffer empty amd search allways the next name, with either above setting.
+ */
+
+/*
  * Use options, changes functionality as below */
 #define CBCFGSTREAM          0   // Use as stream (namelist is bound by buffer)
 #define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
 #define CBCFGFILE            2   // Use as file (namelist is bound by file),
                                  // cb_reinit_buffer empties names but does not seek, use: lseek((**cbf).fd if needed
+
 
 /*
  * This setting enables multibyte, UTF-16 and UTF-32 support if
@@ -79,6 +113,39 @@
  * Sparc and some Motorola processors). Not yet tested 31.8.2013.
  */
 //#undef BIGENDIAN
+
+
+
+/*
+ * When CBSTATETREE is used, CBSETJSON setting causes
+ * the name parsing to:
+ * - Ignore the last delimiter in list if the next character is
+ *   even openpairs count (the first delimiter is "stronger" than
+ *   the second and it reduces openpairs twice if the last name-
+ *   value pair had no end character. - not yet tested 5.12.2013
+ * - Empty names must be allowed to use empty object (without name)
+ *   and twice the delimiters for example: { Name:{ Name2: val } },
+ *   Object starts with no name and : and { are together. These must
+ *   both be one empty name. WSP:s should be removed between : and {
+ *   (in json, character after ':' is allways '"' , '[' or '{').
+ *   if(inteven(openpairs)) - not yet done or tested 5.12.2013
+ */
+//#define CBSETJSON
+
+/*
+ * When using CBSTATETREE, uses other delimiters every second
+ * time when the openpairs count increases.
+ */
+//#define CBSETDOUBLEDELIM 
+
+/*
+ * Sets CBSTATETREE. CBSTATETREE saves name-valuepairs from value to leaves.
+ * For example: a=b=c&d=f&& becomes  a { b { c } d { f } } , not just a{ }
+ * Form is not an ordinary binary tree. Setting saves the next inner name-value
+ * to the left and next name-value to the right. The order stays the same as it
+ * was in input if reading is done in order: node, left, right.
+ */
+//#define CBSETSTATETREE
 
 /*
  * This setting takes account only outermost name and leaves all inner 
@@ -93,7 +160,7 @@
  * It should count every open '=' and read beyond every paired '&' until 
  * count is zero at last '&'.
  */
-//#define CBSTATETOPOLOGY
+//#define CBSETSTATETOPOLOGY
 
 /*
  * Stateful. After first value separator ('='), state is changed to read to next name separator 
@@ -107,7 +174,7 @@
  *
  * Reading a value is unlimited. Buffer is in use only from '&' to '='.
  */
-//#define CBSTATEFUL
+//#define CBSETSTATEFUL
 
 /*
  * Default setting with no defines.
@@ -130,8 +197,18 @@
  * Reading names and values are restricted to read buffer size, size is CBNAMEBUFLEN 
  * with 4 byte characters.
  */
-//#undef CBSTATEFUL
-//#undef CBSTATETOPOLOGY
+//#undef CBSETSTATEFUL
+//#undef CBSETSTATETOPOLOGY
+//#undef CBSETSTATETREE
+//#define CBSETSTATELESS
+
+/*
+ * The use of states in searching the name (as in cb_set_cursor_ucs ) */
+#define CBSTATELESS              0
+#define CBSTATEFUL               1
+#define CBSTATETOPOLOGY          2
+#define CBSTATETREE              3
+
 
 /*
  * With this define, cb_set_cursor stops searching the stream when it encounters
@@ -153,15 +230,29 @@
                                                     ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
                                                     ( (chr) == 0x20 || (chr)  == 0x09 )      )
 
-
 /*
  * Characters to remove from name: BOM. Comment string is removed elsewhere.
  * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
  * http://www.unicode.org/L2/L2005/05356-utc-bomsig.html
  */
-#define NAMEXCL( x )           ( ( x ) == 0xFEFF )
+#define NAMEXCL( x )          ( ( x ) == 0xFEFF )
+
+/* 4 bytes - 1 bit. ANSI C 1999, 6.5.5: "The operands
+ * of the % operator shall have integer type." */
+#define intiseven( x )        ( ( x )%2 == 0 )
 
 #include "./cb_encoding.h"	// Encoding macros
+
+/* Pointer size */
+#define PSIZE                 int*
+
+/*
+ * Compare ctl */
+typedef struct cb_match {
+        int matchctl; // If match function is not regexp match, next can be NULL
+        void *re; // cast to pcre32 (void here to be able to compile the files without pcre)
+        void *re_extra; // cast to pcre_extra32
+} cb_match;
 
 /*
  * Fifo ring structure */
@@ -174,40 +265,62 @@ typedef struct cb_ring {
         int bytesahead;
         int first;
         int last;
-	int streamstart; // id of first character from stream
-	int streamstop;  // id of stop character
+	int streamstart;      // id of first character from stream
+	int streamstop;       // id of stop character
 } cb_ring;
 
 typedef struct cb_conf{
-        char                type;             // stream (default), file (large namelist) or only buffer (fd is not in use)
-        char                searchmethod;     // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-        char                unfold;           // Search names unfolding the text first, RFC 2822
-        char                caseinsensitive;  // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822headerend; // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
-        char                removewsp;        // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
-        char                removecrlf;       // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
-} cb_conf; // 20.8.2013
+        char                type:4;                 // stream (default), file (large namelist) or only buffer (fd is not in use)
+        char                searchmethod:4;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        char                unfold:2;               // Search names unfolding the text first, RFC 2822
+        char                asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
+        char                removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
+	char                removenamewsp:2;        // Remove white space characters inside name
+	char                leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
+	char                json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	char                doubledelim:3;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+	char                searchstate:5;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
+
+	unsigned long int   rstart;	// Result start character
+	unsigned long int   rend;	// Result end character
+	unsigned long int   bypass;	// Bypass character, bypasses next special characters function
+	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
+	unsigned long int   cend;	// Comment end character
+
+	unsigned long int   subrstart;   // If CBSTATETREE and doubledelim is set, rstart of every other openpairs (odd), subtrees delimiters
+	unsigned long int   subrend;     // If CBSTATETREE and doubledelim is set, rend of every other openpairs (odd), subtrees delimiters 
+} cb_conf; 
 
 typedef struct cb_name{
-        unsigned char        *namebuf;      // name
-	int                   buflen;       // name+excess buffer space
-        int                   namelen;      // name length
-        signed long long int  offset;       // offset from the beginning of data
-        int                   length;       // unknown (almost allways -1) (length of data), possibly empty, set after it's known
-        long int              matchcount;   // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
-        void                  *next;        // Last is NULL
+        unsigned char        *namebuf;        // name
+	int                   buflen;         // name+excess buffer space
+        int                   namelen;        // name length
+        signed long long int  offset;         // offset from the beginning of data
+        int                   length;         // unknown (almost allways -1) (length of data), possibly empty, set after it's known
+        long int              matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        void                 *next;           // Last is NULL {1}{2}{3}{4}
+	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
+	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
+	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
+
+typedef struct cb_namelist{
+        cb_name            *name;
+	cb_name            *current;
+	cb_name            *last;
+	long int            namecount;
+	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
+} cb_namelist;
 
 typedef struct cbuf{
         unsigned char      *buf; 
         long int            buflen;       // In bytes
 	long int            index;        // Cursor offset in bytes
 	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
-        cb_name            *name;
-	cb_name            *current;
-	cb_name            *last;
-	long int            namecount;
-        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters
+	cb_namelist         list;
+        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters (offset set at last new line character)
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -218,11 +331,6 @@ typedef struct CBFILE{
 	cblk               *blk;	// Input read or output write -block 
 	cb_ring             ahd;	// Ring buffer to save data read ahead
         cb_conf             cf;         // All configurations, 20.8.2013
-	unsigned long int   rstart;	// Result start character
-	unsigned long int   rend;	// Result end character
-	unsigned long int   bypass;	// Bypass character, bypasses next special characters function
-	unsigned long int   cstart;	// Comment start character (comment can appear from rend to rstart)
-	unsigned long int   cend;	// Comment end character
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
 	int                 encoding;   // list of encodings is in file cb_encoding.h 
 } CBFILE;
@@ -255,6 +363,38 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength);
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
+ * The same functions overloaded with match length of the name. These are 
+ * useful internally and in some searches. 
+ *
+ * matchctl  1 - strict match, CBMATCH
+ * matchctl  0 - searches any next name not yet used, once
+ * matchctl -1 - searches endlessly without matching any name listing all the
+ *               rest of the unused names
+ * matchctl -2 - match names length text, CBMATCHLEN (name like nam% or nam*)
+ * matchctl -3 - match if part of name matches to other names length text, CBMATCHPART
+ * matchctl -4 - match if part of name matches to either names length, CBMATCHPART or CBMATCHLENGTH
+ * matchctl -5 - match from end name1 length (name like %ame or *ame)
+ * matchctl -6 - match in between name1 length (name like %am% or *am*)
+ * re strict:
+ * matchctl -7 - match once or group with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
+ * matchctl -8 - match once or group with null terminated pattern in name1 compiling it to re just before searching (using 4-byte characterbuffer and pcre32)
+ * re multiple:
+ * matchctl -9 - match once, group or multiple times with provided re and pcre_extra (in cb_match, not null) using 4-byte characterbuffer and pcre32
+ * matchctl -10 - match once, group or multiple times with null terminated pattern in name1 compiling it to re just before searching (using 4-byte characterbuffer and pcre32)
+ * matchctl -11 - match if name1 is in UCS codechart ("lexically") less or equal than name2 (not yet tested 31.7.2014 ->)
+ * matchctl -12 - match if name1 is in UCS coding greater or equal than name2 
+ * matchctl -13 - match if name1 is in UCS coding less than name2
+ * matchctl -14 - match if name1 is in UCS coding greater than name2
+ *
+ * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
+ * when openpairs is negative. Next rend after value ends reading. This parameter can be used
+ * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset.
+ */
+int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int ocoffset, int matchctl);
+int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
+int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *ctl);
+
+/*
  * If while reading a character, is found, that cb_set_cursor found a name
  * but one of the get_ch functions returned CBSTREAM after it, removes the
  * erroneus name from memorybuffer after reading it from the stream once.
@@ -262,6 +402,36 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * Sets namelegth to indicate that the names content is out of buffer.
  */
 int  cb_remove_name_from_stream(CBFILE **cbs);
+
+
+/*
+ * cb_read.c These use the base library:  (a library using the basic library),
+ * to be relocated.
+ */
+
+/*
+ * 4.11.2013
+ * Finds next unused name, first from the list and then after the cursors 
+ * position. New 'ucsname' is allocated and the name is copied 4-bytes
+ * per character. Length is bytelength. */
+int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+
+/*
+ * 30.11.2013. Allocates new ucsname and copies current name to it. */
+int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
+
+/*
+ * 4.11.2013
+ * To find every unused name to the list. Search reaches the end of the stream.
+ * Buffer has to be larger than the data to use the names from the list. */
+int  cb_find_every_name(CBFILE **cbs); 
+
+/*
+ * 30.11.2013. Finds a variable described by dot-separated namelist
+ * name1.name2.name3 from the values of the previous variables. */
+//int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // this function is in cbsearch
+
+/* /cb_read.c */
 
 /*
  * One character at a time. Output flushes when the buffer is full.
@@ -306,36 +476,36 @@ int  cb_put_ch(CBFILE **cbs, unsigned char ch); // *ch -> ch 12.8.2013
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf); // multibyte
 int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
-int  cb_write_to_block(CBFILE **cbs, unsigned char *buf, int size); // special: write to block to read again (others use filedescriptors to read or write if useasbuffer was not set)
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
-int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
-int  cb_allocate_name(cb_name **cbn);
-int  cb_reinit_buffer(cbuf **buf); // empty names
+int  cb_allocate_name(cb_name **cbn, unsigned int namelen);
+int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
+int  cb_empty_names(cbuf **buf); // frees names and zero namecount
 int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
-int  cb_free_fname(cb_name **name);
-
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, int *size); // Allocate new text and copy it's content from 'cbs'
-int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, int *size, int *from, int *to); // Allocate and copy range, new
+int  cb_free_name(cb_name **name);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
-int  cb_compare(unsigned char **name1, int len1, unsigned char **name2, int len2);
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2);
+int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
+int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start character inside valuename, '#'
 int  cb_set_cend(CBFILE **str, unsigned long int cend); // comment end character, '\n'
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypass next special character, '\\' (late, 14.12.2009)
+int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart); // If set to another, every second open pair uses these '='
+int  cb_set_subrend(CBFILE **str, unsigned long int subrend); // If set to another, every second open pair uses these '&'
+int  cb_set_search_state(CBFILE **str, char state); // CBSTATELESS, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE, ...
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
+int  cb_get_encoding(CBFILE **str, int *number); 
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // namelist is bound by filesize
-int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size
+int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
 int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_polysemantic_names(CBFILE **cbf); // multiple same names, default
 
@@ -343,9 +513,10 @@ int  cb_set_to_polysemantic_names(CBFILE **cbf); // multiple same names, default
  * Helper queues and queue structures 
  */
 // 4-byte character array
-int cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
+int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
+int  cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
+int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int chrcount ); // copies chrcount or less characters to use as a new 4-byte block
 
 // 4-byte fifo, without buffer or it's size
 int  cb_fifo_init_counters(cb_ring *cfi);
@@ -360,7 +531,9 @@ int  cb_fifo_print_buffer(cb_ring *cfi);
 int  cb_fifo_print_counters(cb_ring *cfi);
 
 // Debug
+int  cb_print_name(cb_name **cbn);
 int  cb_print_names(CBFILE **str);
+int  cb_print_leaves(cb_name **cbn); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
 void cb_print_counters(CBFILE **str);
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
@@ -379,3 +552,15 @@ unsigned int  cb_reverse_two_bytes(unsigned  int  from); // change two bytes ord
 unsigned int  cb_reverse_int32_bits(unsigned int  from); // 32 bits
 unsigned int  cb_reverse_int16_bits(unsigned int  from); // reverse last 16 bits and return them
 unsigned char cb_reverse_char8_bits(unsigned char from); // 8 bits
+
+unsigned int  cb_from_ucs_to_host_byte_order(unsigned int chr); // Returns reversed 4-bytes chr if run time cpu endianness is LE, otherwice chr
+unsigned int  cb_from_host_byte_order_to_ucs(unsigned int chr); // The same
+
+int  cb_test_cpu_endianness();
+
+/*
+ * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
+int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
+int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
+int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen); 
