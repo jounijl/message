@@ -66,12 +66,11 @@
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0, err2=CBSUCCESS;
+        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0; 
         unsigned char *ucsname = NULL; 
-        char *str_err = NULL;
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
-	cb_match mctl;
+	cb_match mctl; int mcount=0;
 	int res=-1;
 	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; // these has to be initialized, otherwice free causes memory leak
 
@@ -100,6 +99,7 @@ int main (int argc, char *argv[]) {
 	/* Copy */
 	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<strlen( argv[1] ); ++indx ){
 	  err = cb_put_ucs_chr( (unsigned long int) argv[1][indx], &ucsname, &chrbufindx, (parambufsize*4));
+	  //err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned long int) argv[1][indx] ), &ucsname, &chrbufindx, (parambufsize*4)); // 13.7.2014
 	}
 	parambufsize = chrbufindx;
 	ucsname[ parambufsize+1 ]='\0';
@@ -129,9 +129,12 @@ int main (int argc, char *argv[]) {
 	/*
 	 * Matching the input stream as overlapped blocks */
 	chr = (unsigned long int) getc(stdin); 	// bom is not needed [pcre.txt, "CHARACTER CODES"], pcre ignores bom and assumes host byte order
+	//fprintf(stderr,"\ntest_regexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
 	while( chr!=EOF && bufindx<BLKSIZE ){
 	  cb_put_ucs_chr(chr, &chrbuf, &bufindx, BLKSIZE);
+	  //cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( chr ), &chrbuf, &bufindx, BLKSIZE); // 13.7.2014
 	  chr = (unsigned long int) getc(stdin);
+	  //fprintf(stderr,"\ntest_regexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
 	  if(bufindx>=(BLKSIZE-6) || chr==EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
 
             if( chr!=(unsigned char)EOF ){ // Last one char has to be searched still
@@ -143,7 +146,7 @@ int main (int argc, char *argv[]) {
 	       * Last block. */
 	      opt = opt & ~PCRE_NOTEOL;
 	    }
-	    err = cb_compare_regexp(&chrbuf, bufindx, 0, 0, &mctl);
+	    err = cb_compare_regexp(&chrbuf, bufindx, 0, 0, &mctl, &mcount);
 	    fprintf(stderr,"\n After cb_compare_regexp,");
 	    if(err>=CBERROR )
 	      fprintf(stderr," error %i.", err);

@@ -274,7 +274,7 @@ typedef struct cb_conf{
         char                searchmethod:4;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
         char                unfold:2;               // Search names unfolding the text first, RFC 2822
         char                asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
+        char                rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
         char                removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         char                removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 	char                removenamewsp:2;        // Remove white space characters inside name
@@ -300,10 +300,10 @@ typedef struct cb_name{
         signed long long int  offset;         // offset from the beginning of data
         int                   length;         // unknown (almost allways -1) (length of data), possibly empty, set after it's known
         long int              matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
-        void                  *next;          // Last is NULL {1}{2}{3}{4}
+        void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
-	void                  *leaf;          // { {1}{2} { {3}{4} } } , last is NULL
+	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
 typedef struct cb_namelist{
@@ -320,7 +320,7 @@ typedef struct cbuf{
 	long int            index;        // Cursor offset in bytes
 	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
 	cb_namelist         list;
-        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters
+        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters (offset set at last new line character)
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -479,7 +479,7 @@ int  cb_flush(CBFILE **cbs);
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
-int  cb_allocate_name(cb_name **cbn, int namelen);
+int  cb_allocate_name(cb_name **cbn, unsigned int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
 int  cb_empty_names(cbuf **buf); // frees names and zero namecount
 int  cb_reinit_cbfile(CBFILE **buf);
