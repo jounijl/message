@@ -108,7 +108,8 @@ Cursor is left at value.</p>
 <p>If you get CBSTREAM when reading a character, the block read has reached the buffer boundary and the character is 
 not automatically saved in the buffer anymore.</p>
 
-<pre><code>int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+<pre><code>// read or append:
+int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_flush(CBFILE **cbs);
 </code></pre>
