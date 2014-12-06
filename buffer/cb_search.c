@@ -632,6 +632,14 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 cb_set_cursor_reset_name_index:
 	index=0;
 
+	/*
+	 * 6.12.2014:
+	 * If name has to be replaced (not a stream function), information where
+	 * the name starts is important. Since flow control characters must be
+	 * bypassed with \ and only if the name is found, it's put to the index,
+	 * name offset can be set here (to test after 6.12.2014). */
+	//nameoffset = 
+
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return

@@ -30,7 +30,7 @@
 #include <limits.h> // strtol
 #include <fcntl.h>  // open
 #include <sys/types.h> // write
-#include <sys/uio.h>   // write
+//#include <sys/uio.h>   // write
 #include <unistd.h>    // write
 #include <sys/stat.h>  // mode_t, chmod at open
 
@@ -91,8 +91,10 @@ int main (int argc, char *argv[]) {
 	static unsigned long int cr = 0x0D; // cr
 #endif
 	unsigned char *filename = NULL;
-	char infile[FILENAMELEN+5];
-	char outfile[FILENAMELEN+6];
+	//char infile[FILENAMELEN+5];
+	char infile[FILENAMELEN+5+1]; // 27.11.2014
+	//char outfile[FILENAMELEN+6];
+	char outfile[FILENAMELEN+6+1]; // 27.11.2014
 	int filenamelen = 0, err = 0;
 	ssize_t ret = (ssize_t) 0;
 	unsigned long int chr = 0, chrout = 0;
@@ -138,8 +140,8 @@ int main (int argc, char *argv[]) {
 	err = cb_allocate_buffer(&name_list, bufsize);
 	if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_buffer, namelist: %i.", err); return CBERRALLOC;}
 	// Filenames
-	memset(&(*infile), ' ', (size_t) 100); infile[FILENAMELEN+5]='\0';
-	memset(&(*outfile), ' ', (size_t) 104); outfile[FILENAMELEN+6]='\0';
+	memset(&(*infile), ' ', (size_t) FILENAMELEN); infile[FILENAMELEN+5]='\0';
+	memset(&(*outfile), ' ', (size_t) FILENAMELEN+4); outfile[FILENAMELEN+6]='\0';
 
 	//
 	// Every filename

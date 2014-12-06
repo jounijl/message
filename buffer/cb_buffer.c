@@ -238,12 +238,12 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 	return CBERRALLOC;
 }
 
-int  cb_allocate_name(cb_name **cbn, int namelen){ 
+int  cb_allocate_name(cb_name **cbn, unsigned int namelen){ 
 	int err=0;
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
 	if(*cbn==NULL)
 	  return CBERRALLOC;
-	(**cbn).namebuf = (unsigned char*) malloc(sizeof(char)*(namelen+1)); // 7.12.2013
+	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*(namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL)
 	  return CBERRALLOC;
 	for(err=0;err<namelen && err<CBNAMEBUFLEN;++err) // 7.12.2013
@@ -664,7 +664,7 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
  */
 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen){
-	if( blklen==NULL || blk==NULL || *blk==NULL || cbs==NULL || *cbs==NULL || (*cbs).blk==NULL ){ return CBERRALLOC;}
+	if( blklen==NULL || blk==NULL || *blk==NULL || cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC;}
 	(*blk) = &(*(**cbf).blk).buf[0];
 	(*(**cbf).blk).buf = NULL;
 	*contentlen = (*(**cbf).blk).contentlen;

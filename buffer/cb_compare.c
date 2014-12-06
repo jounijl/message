@@ -69,7 +69,7 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  return CBMATCH;
 	else if( (len2-from2)>len1 ) // 9.11.2013, 23.11.2013, 31.7.2014 	// else if( len2>len1 ) // 9.11.2013, 23.11.2013
 	  return CBMATCHLENGTH;
-	else if( (len2-from2)<len1 || len1>(len2-from2)) // 9.11.2013, 23.11.2013
+	else if( len1>(len2-from2) ) // 9.11.2013, 23.11.2013, 31.7.2014
 	  return CBMATCHPART;
 
 	return err1;

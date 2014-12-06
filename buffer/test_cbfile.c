@@ -32,7 +32,7 @@
 #include "../include/cb_buffer.h"
 #include "../get_option/get_option.h"
 
-#define NAMEBUFLEN    2048
+//#define NAMEBUFLEN    2048
 #define BUFSIZE       1024
 #define BLKSIZE       128
 
