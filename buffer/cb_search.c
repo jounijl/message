@@ -31,7 +31,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
-int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index);
+int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
 
@@ -47,6 +47,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
 	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*mctl)); // 11.3.2014
 }
+// unsigned to 'int namelen' 6.12.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 11.4.2014, 23.3.2014
 	int err = CBSUCCESS;
 	cb_name *leafptr = NULL;
@@ -83,7 +84,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
                   (*(**cbs).cb).index = (*(**cbs).cb).buflen; // set as a stream, 1.12.2013
                   return CBNAMEOUTOFBUF;
                 }
-              (*(**cbs).cb).index=(*leafptr).offset; // 1.12.2013
+              (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
             }
 	    return CBSUCCESS; // CBMATCH
 	  }
@@ -291,8 +292,12 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){
 	  }
 
 	  // Previous names length
-          if( (*(**str).cb).list.namecount>=1 )
-            (*(*(**str).cb).list.current).length = ( (*(**str).cb).index - (**str).ahd.bytesahead ) - (*(*(**str).cb).list.current).offset;
+          if( (*(**str).cb).list.namecount>=1 ){
+	    if((**str).ahd.bytesahead>=0)
+              (*(*(**str).cb).list.current).length = ( (*(**str).cb).index - (**str).ahd.bytesahead ) - (*(*(**str).cb).list.current).offset;
+	    else
+              (*(*(**str).cb).list.current).length = (*(**str).cb).index - (*(*(**str).cb).list.current).offset; // if signed ahead (for some reason) is negative
+	  }
 
 	  // Add name 
           (*(**str).cb).list.last    = &(* (cb_name*) (*(*(**str).cb).list.last).next );
@@ -320,6 +325,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){
         return CBADDEDNAME;
 }
 
+// unsigned to 'int namelen' 6.12.2014
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl){ // cb_match 11.3.2014, 23.3.2014
 	cb_name *iter = NULL; int err=CBSUCCESS;
 
@@ -516,7 +522,8 @@ cb_get_chr_unfold_try_another:
  * Name has one byte for each character.
  */
 int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int ocoffset, int matchctl){
-	int indx=0, chrbufindx=0, err=CBSUCCESS, bufsize=0;
+	int indx=0, err=CBSUCCESS; int bufsize=0;
+	int chrbufindx=0;
 	unsigned char *ucsname = NULL; 
 	bufsize = *namelength; bufsize = bufsize*4;
 	ucsname = (unsigned char*) malloc( sizeof(char)*( 1 + bufsize ) );
@@ -559,9 +566,11 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 }
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
-	int  index=0, buferr=CBSUCCESS; 
+	int  buferr=CBSUCCESS; 
+	int  index=0;
 	unsigned long int chr=0, chprev=CBRESULTEND;
 	long int chroffset=0;
+	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0; 
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
@@ -632,18 +641,21 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 cb_set_cursor_reset_name_index:
 	index=0;
 
-	/*
-	 * 6.12.2014:
-	 * If name has to be replaced (not a stream function), information where
-	 * the name starts is important. Since flow control characters must be
-	 * bypassed with \ and only if the name is found, it's put to the index,
-	 * name offset can be set here (to test after 6.12.2014). */
-	//nameoffset = 
-
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
+
+	/*
+	 * 6.12.2014:
+	 * If name has to be replaced (not a stream function), information where
+	 * the name starts is important. Since flow control characters must be
+	 * bypassed with '\' and only if the name is found, it's put to the index,
+	 * name offset can be set here (to test after 6.12.2014). Programmer 
+	 * should leave the cursor where the data ends, at '&'. */
+	//nameoffset = (*(**cbs).cb).index;
+	nameoffset = chroffset;
+	//fprintf(stderr,"\nset_cursor: nameoffset %d", nameoffset);
 
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
 
@@ -685,7 +697,7 @@ cb_set_cursor_reset_name_index:
 	    atvalue=1;
 
 	    if( buferr==CBSUCCESS ){
-	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index); // 7.12.2013
+	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index, nameoffset); // 7.12.2013, 6.12.2014
 	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
 	      if(buferr!=CBNAMEOUTOFBUF){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	        buferr = cb_put_name(&(*cbs), &fname, openpairs); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
@@ -806,7 +818,8 @@ cb_set_cursor_reset_name_index:
           if((**cbs).cf.rfc2822headerend==1)
             if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
               if( (*(**cbs).cb).offsetrfc2822 == 0 )
-                (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
+	        if( chroffset < 0x7FFFFFFF) // integer size - 1 
+                  (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
 	      ret = CB2822HEADEREND;
 	      goto cb_set_cursor_ucs_return;
             }
@@ -834,9 +847,10 @@ cb_set_cursor_ucs_return:
 
 /*
  * Allocates fname */
-int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index){
+int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset){
 	unsigned long int cmp=0x61;
-	int indx=0, buferr=CBSUCCESS, err=CBSUCCESS;
+	int buferr=CBSUCCESS, err=CBSUCCESS;
+	int indx = 0;
 	char atname=0;
 
 	if( cbs==NULL || *cbs==NULL || fname==NULL || charbuf==NULL )
@@ -845,8 +859,10 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 	err = cb_allocate_name(&(*fname), (index+1) ); // moved here 7.12.2013 ( +1 is one over the needed size )
 	if(err!=CBSUCCESS){  return err; } // 30.8.2013
 
-	(**fname).namelen = index; // tuleeko olla vasta if:n jalkeen
+	(**fname).namelen = index;
 	(**fname).offset = offset;
+	(**fname).nameoffset = nameoffset; // 6.12.2014
+	//fprintf(stderr,"\ncb_save_name_from_charbuf: setting nameoffset %d .", nameoffset);
 
 	//fprintf(stderr,"\n cb_save_name_from_charbuf: name [");
 	//cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);

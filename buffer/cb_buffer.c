@@ -176,7 +176,10 @@ int  cb_print_name(cb_name **cbn){
         fprintf(stderr, " name [" );
 	if( (**cbn).namebuf!=NULL && (**cbn).buflen>0 )
           cb_print_ucs_chrbuf(&(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen);
-        fprintf(stderr, "] offset [%lli] length [%i]", (**cbn).offset, (**cbn).length);
+        //fprintf(stderr, "] offset [%lli] length [%i]", (**cbn).offset, (**cbn).length);
+        fprintf(stderr, "] offset [%li] length [%i]", (**cbn).offset, (**cbn).length); // 6.12.2014
+        //fprintf(stderr, " nameoffset [%lli]\n", (**cbn).nameoffset);
+        fprintf(stderr, " nameoffset [%li]\n", (**cbn).nameoffset);
         fprintf(stderr, " matchcount [%li]", (**cbn).matchcount);
         fprintf(stderr, " first found [%li]", (**cbn).firsttimefound);
         fprintf(stderr, " last used [%li]\n", (**cbn).lasttimeused);
@@ -238,16 +241,16 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 	return CBERRALLOC;
 }
 
-int  cb_allocate_name(cb_name **cbn, unsigned int namelen){ 
-	int err=0;
+int  cb_allocate_name(cb_name **cbn, int namelen){ 
+	int indx=0;
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
 	if(*cbn==NULL)
 	  return CBERRALLOC;
 	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*(namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL)
 	  return CBERRALLOC;
-	for(err=0;err<namelen && err<CBNAMEBUFLEN;++err) // 7.12.2013
-	  (**cbn).namebuf[err]=' ';
+	for(indx=0;indx<namelen && indx<CBNAMEBUFLEN;++indx) // 7.12.2013
+	  (**cbn).namebuf[indx]=' ';
 	(**cbn).namebuf[namelen]='\0'; // 7.12.2013
 	(**cbn).buflen=namelen; // 7.12.2013
 	(**cbn).namelen=0;
@@ -349,16 +352,18 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.cend=CBCOMMENTEND;
 	(**str).cf.subrstart=CBSUBRESULTSTART;
 	(**str).cf.subrend=CBSUBRESULTEND;
+	(**str).cf.searchstate=CBSTATELESS;
 #ifdef CBSETSTATEFUL
 	(**str).cf.searchstate=CBSTATEFUL;
-#elif CBSETSTATETOPOLOGY
+#endif
+#ifdef CBSETSTATETOPOLOGY
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
-#elif CBSETSTATELESS
+#endif
+#ifdef CBSETSTATELESS
 	(**str).cf.searchstate=CBSTATELESS;
-#elif CBSETSTATETREE
+#endif
+#ifdef CBSETSTATETREE
 	(**str).cf.searchstate=CBSTATETREE;
-#else
-	(**str).cf.searchstate=CBSTATELESS;
 #endif
 	(**str).cf.json=0;
 #ifdef CBSETJSON
@@ -378,9 +383,9 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err = CBSUCCESS;
 	err = cb_allocate_empty_cbfile(&(*str), fd);
-	if(err!=CBSUCCESS){ return err;}
+	if(err!=CBSUCCESS){ return err; }
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
-	if(err!=CBSUCCESS){ return err;}
+	if(err!=CBSUCCESS){ return err; }
 	if(*blk==NULL){
 	  err = cb_allocate_buffer(&(**str).blk, blklen);
 	}else{
@@ -388,15 +393,15 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	  if(err==-1){ return CBERRALLOC;}
 	  free( (*(**str).blk).buf );
 	  (*(**str).blk).buf = &(**blk);
-	  (*(**str).blk).buflen = blklen;
-	  (*(**str).blk).contentlen = blklen;
+	  (*(**str).blk).buflen = (long) blklen;
+	  (*(**str).blk).contentlen = (long) blklen;
 	}
 	if(err==-1){ return CBERRALLOC;}
 	return CBSUCCESS;
 }
 
 int  cb_allocate_buffer(cbuf **cbf, int bufsize){ 
-	int err=0;
+	int indx=0;
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if(cbf==NULL)
 	  return CBERRALLOC;
@@ -404,8 +409,8 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	if( (**cbf).buf == NULL )
 	  return CBERRALLOC;
 
-	for(err=0;err<bufsize;++err)
-	  (**cbf).buf[err]=' ';
+	for(indx=0;indx<bufsize;++indx)
+	  (**cbf).buf[indx]=' ';
 	(**cbf).buf[bufsize]='\0';
 	(**cbf).buflen=bufsize;
 	(**cbf).contentlen=0;
@@ -474,7 +479,8 @@ int  cb_free_name(cb_name **name){
 	  }
 	  free( (**name).namebuf );
 	  (**name).namebuf=NULL; (**name).namelen=0; (**name).buflen=0; // (**name).leafcount=0;
-	  free(*name); *name=NULL;
+	  /* Set last name to NULL */
+	  free(*name); *name=NULL; 
         }else
 	  return CBERRALLOC;
 	return err;
@@ -493,16 +499,33 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	return CBSUCCESS;
 }
 int  cb_empty_names(cbuf **buf){
+	int err=CBSUCCESS;
+	err = cb_empty_names_from_name( &(*buf), &( *(**buf).list.name ) );
+	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
+	return err;
+}
+int  cb_empty_names_from_name(cbuf **buf, cb_name *cbn){
+	int err=CBSUCCESS;
 	cb_name *name = NULL;
 	cb_name *nextname = NULL;
-	name = (**buf).list.name;
+	if( buf==NULL || *buf==NULL ){ return CBERRALLOC; }
+	name = cbn;
 	while(name != NULL){
 	  nextname = &(* (cb_name*) (*name).next);
+	  /* Free the name and all its leafs */
           cb_free_name(&name);
 	  name = &(* nextname);
 	}
 	free(name); free(nextname);
-	(**buf).list.namecount=0;
+	/* To be sure the name was not a leaf, count the names again. */
+	name = (**buf).list.name;
+	err = 0;
+	while(name != NULL){
+		nextname = &(* (cb_name*) (*name).next);
+		name = &(* nextname);
+		++err;
+	}
+	(**buf).list.namecount = err;
 	return CBSUCCESS;
 }
 
@@ -538,10 +561,10 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){ // 28.11.2013
 	    ++(*blk).index;
 	  }else if((**cbf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	    // read a block and return char
-	    sz = read((**cbf).fd, (*blk).buf, (ssize_t)(*blk).buflen);
-	    (*blk).contentlen = (int) sz;
+	    sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
+	    (*blk).contentlen = (long int) sz; // 6.12.2014
 	    if( 0 < (int) sz ){ // read more than zero bytes
-	      (*blk).contentlen = (int) sz;
+	      (*blk).contentlen = (long int) sz; // 6.12.2014
 	      (*blk).index = 0;
 	      *ch = (*blk).buf[(*blk).index];
 	      ++(*blk).index;
@@ -559,14 +582,25 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){ // 28.11.2013
 }
 
 int  cb_flush(CBFILE **cbs){
+	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
+	return cb_flush_to_offset( &(*cbs), -1 );
+}
+int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
 	int err=CBSUCCESS;
 	if(*cbs!=NULL){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
 	    if((**cbs).blk!=NULL){
-	      if((*(**cbs).blk).contentlen <= (*(**cbs).blk).buflen )
-	        err = (int) write((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).contentlen);
-	      else
-	        err = (int) write((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).buflen); // indeksi nollasta ?
+	      if((*(**cbs).blk).contentlen <= (*(**cbs).blk).buflen ){
+		if( offset < 0 ) // Append
+	          err = (int) write((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).contentlen);
+		else // Write (replace)
+	          err = (int) pwrite((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).contentlen, (off_t) offset );
+	      }else{
+		if( offset < 0 ) // Append
+	          err = (int) write((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).buflen);
+		else // Write (replace)
+	          err = (int) pwrite((**cbs).fd, (*(**cbs).blk).buf, (size_t) (*(**cbs).blk).buflen, (off_t) offset );
+	      }
 	      if(err<0){
 	        err = CBERRFILEWRITE ; 
 	      }else{
@@ -581,13 +615,13 @@ int  cb_flush(CBFILE **cbs){
 	return CBERRALLOC;
 }
 
-int  cb_write(CBFILE **cbs, unsigned char *buf, int size){ 
+int  cb_write(CBFILE **cbs, unsigned char *buf, long int size){ 
 	int err=0;
+	long int indx=0;
 	if(*cbs!=NULL && buf!=NULL){
 	  if((**cbs).blk!=NULL){
-	    for(err=0; err<size; ++err){
-	      //cb_put_ch(cbs,&buf[err]);
-	      cb_put_ch(cbs,buf[err]); // 12.8.2013
+	    for(indx=0; indx<size; ++indx){
+	      err = cb_put_ch(cbs,buf[indx]); 
 	    }
 	    err = cb_flush(cbs);
 	    return err;
@@ -680,7 +714,7 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){
 
 // Allocates new buffer (or a block if cblk)
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to){ 
-        int index=0;
+        long int index=0;
         if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
         *buf = (unsigned char *) malloc( sizeof(char)*( *size+1 ) );
         if(*buf==NULL){ fprintf(stderr, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }

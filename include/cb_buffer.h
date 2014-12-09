@@ -257,6 +257,8 @@ typedef struct cb_match {
 /*
  * Fifo ring structure */
 typedef struct cb_ring {
+	char fpadding;        // compiler warnings, pad to next storage size (32 bit)
+	char spadding;        // pad to next storage size (32 bit)
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
         int buflen;
@@ -293,12 +295,15 @@ typedef struct cb_conf{
 	unsigned long int   subrend;     // If CBSTATETREE and doubledelim is set, rend of every other openpairs (odd), subtrees delimiters 
 } cb_conf; 
 
+// signed to detect overflow
+
 typedef struct cb_name{
         unsigned char        *namebuf;        // name
-	int                   buflen;         // name+excess buffer space
+	int                   buflen;         // name+excess namebuffer space
         int                   namelen;        // name length
-        signed long long int  offset;         // offset from the beginning of data
-        int                   length;         // unknown (almost allways -1) (length of data), possibly empty, set after it's known
+        signed long int       offset;         // offset from the beginning of data 
+        signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
+        int                   length;         // length of names data (after reading '='), unknown (almost allways -1), possibly empty, set after it's known
         long int              matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
@@ -315,12 +320,12 @@ typedef struct cb_namelist{
 } cb_namelist;
 
 typedef struct cbuf{
-        unsigned char      *buf; 
-        long int            buflen;       // In bytes
-	long int            index;        // Cursor offset in bytes
-	long int            contentlen;   // Bytecount in numbers (first starts from 1), comment: 7.11.2009
-	cb_namelist         list;
-        int                 offsetrfc2822;   // offset of RFC-2822 header end with end characters (offset set at last new line character)
+        unsigned char           *buf;
+        long int                 buflen;          // In bytes
+	long int                 index;           // Cursor offset in bytes
+	long int                 contentlen;      // Bytecount in numbers (first starts from 1), comment: 7.11.2009
+	cb_namelist              list;
+        int                      offsetrfc2822;   // offset of RFC-2822 header end with end characters (offset set at last new line character)
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -447,9 +452,11 @@ int  cb_find_every_name(CBFILE **cbs);
  * stream content from next searches.
  */
 
-// Characters according to bytecount and encoding.
+/*
+ * Read or append characters according to bytecount and encoding. */
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes);
+
 // From unicode to and from utf-8
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
 int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
@@ -474,14 +481,16 @@ int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead);
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
 int  cb_put_ch(CBFILE **cbs, unsigned char ch); // *ch -> ch 12.8.2013
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf); // multibyte
-int  cb_write(CBFILE **cbs, unsigned char *buf, int size); // byte by byte
+int  cb_write(CBFILE **cbs, unsigned char *buf, long int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
+int  cb_flush_to_offset(CBFILE **cbs, signed long int offset); // helper function to able cb_write_to_offset
 
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
-int  cb_allocate_name(cb_name **cbn, unsigned int namelen);
+int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
 int  cb_empty_names(cbuf **buf); // frees names and zero namecount
+int  cb_empty_names_from_name(cbuf **buf, cb_name *cbn); // free names from name and count names to namecount (leafs are not counted)
 int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
@@ -556,11 +565,11 @@ unsigned char cb_reverse_char8_bits(unsigned char from); // 8 bits
 unsigned int  cb_from_ucs_to_host_byte_order(unsigned int chr); // Returns reversed 4-bytes chr if run time cpu endianness is LE, otherwice chr
 unsigned int  cb_from_host_byte_order_to_ucs(unsigned int chr); // The same
 
-int  cb_test_cpu_endianness();
+int  cb_test_cpu_endianness(void);
 
 /*
  * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
 int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
-int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen); 
+int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);

@@ -21,11 +21,12 @@
 #include "../include/cb_compare.h"    // utilities
 
 int  cb_compare_print_fullinfo(cb_match *mctl);
-int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl);
+int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int options, cb_match *ctl, int matchctl);
 
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
 	unsigned long int chr1=0x65, chr2=0x65;
-	int indx1=0, indx2=0, err1=CBSUCCESS, err2=CBSUCCESS;
+	int err1=CBSUCCESS, err2=CBSUCCESS;
+	int indx1=0, indx2=0;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
 	  return CBERRALLOC;
 
@@ -64,7 +65,6 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	  return CBNOTFOUND;
 	}
 
-	//if( len1==len2 )
 	if( len1==(len2-from2) ) // 31.7.2014
 	  return CBMATCH;
 	else if( (len2-from2)>len1 ) // 9.11.2013, 23.11.2013, 31.7.2014 	// else if( len2>len1 ) // 9.11.2013, 23.11.2013
@@ -79,7 +79,9 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
  * than name2. CBMATCHLENGTH returns if name1 is shorter than name2.
  */
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *mctl){
-	int err = CBSUCCESS, dfr = 0, indx = 0, mcount = 0;
+	int err = CBSUCCESS, mcount = 0;
+	int indx = 0;
+	int dfr = 0;
 	unsigned char stb[3] = { 0x20, 0x20, '\0' };
 	unsigned char *stbp = NULL;
 	cb_match newmctl;
@@ -105,7 +107,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 
 	  err = cb_get_matchctl( &(*cbs), &(*name1), len1, 0, &newmctl, (*mctl).matchctl ); // 13.4.2014
 	  if(err!=CBSUCCESS){ fprintf(stderr,"\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
-	  err = cb_compare_regexp( &(*name2), len2, 0, 0, &newmctl, &mcount);
+	  err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
 
 	  if(err>=CBERROR){ fprintf(stderr,"\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
 	}else if( (*mctl).matchctl==-7 || (*mctl).matchctl==-9 ){ // new 18.3.2014, not yet tested 18.3.2014
@@ -117,13 +119,14 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * to be NULL terminated.
 	   */
 	  if( (*mctl).re==NULL){	fprintf(stderr,"\nerror in cb_compare, -7: re was null.");  return CBERRALLOC; }
-	  err = cb_compare_regexp( &(*name2), len2, 0, 0, &(*mctl), &mcount);
+	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount);
 	  if(err>=CBERROR){ fprintf(stderr,"\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
 	}else if( (*mctl).matchctl==-6 ){ // %am%
-	  dfr = len2 - len1; // index of name2 to start searching
-	  if(dfr<0){
+	  if( len2 < len1 ){
+	    dfr = len1-len2; // if len2-len1 is negative
 	    err = CBNOTFOUND;
 	  }else{
+	    dfr = len2-len1;
 	    for(indx=0; ( indx<=dfr && err!=CBMATCH && err!=CBMATCHLENGTH ); indx+=4){ // %am%, greediness: compares dfr*len1 times per name
 	      if( (**cbs).cf.asciicaseinsensitive==1 && (len2-indx) > 0 ){
 	        err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, indx );
@@ -135,15 +138,18 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	    }
 	  }
 	}else if( (*mctl).matchctl==-5 ){ // %ame
-	  dfr = len2 - len1;
-	  if(dfr<0){
+	  if( len2 < len1 ){
+	    dfr = len1-len2; // as if len2-len1 is negative
 	    err = CBNOTFOUND;
-	  }else if( (**cbs).cf.asciicaseinsensitive==1 && (len2-dfr) > 0 ){
-	    err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, dfr );
-	  }else if( (len2-dfr) > 0 ){
-	    err = cb_compare_strict( &(*name1), len1, &(*name2), len2, dfr );
 	  }else{
-	    err = CBNOTFOUND;
+	    dfr = len2-len1;
+	    if( (**cbs).cf.asciicaseinsensitive==1 && (len2-dfr) > 0 ){
+	       err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, dfr );
+	    }else if( (len2-dfr) > 0 ){
+	      err = cb_compare_strict( &(*name1), len1, &(*name2), len2, dfr );
+	    }else{
+	      err = CBNOTFOUND;
+	    }
 	  }
 	}else if( (*mctl).matchctl==0 ){ // all
 	  stbp = &stb[0]; 
@@ -221,7 +227,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	return err; // other information
 }
 int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
-	signed int indx1=0, indx2=0, err=CBSUCCESS, num=0, cmp=0;
+	signed err=CBSUCCESS, cmp=0;
+	int indx1=0, indx2=0, num=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
 
@@ -304,12 +311,15 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, 
 	//err = cb_print_ucs_chrbuf( &(*pattern), patsize, patsize );
 	//fprintf(stderr,"] err %i, patsize %i.", err, patsize );
 
-	err2 = cb_compare_get_matchctl_host_byte_order( &hbpat, patsize, options, &(*ctl), matchctl);
+	/* hbpat has to be null terminated */
+	err2 = cb_compare_get_matchctl_host_byte_order( &hbpat, options, &(*ctl), matchctl);
 	free(hbpat);
 	return err2;
 }
-int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl){
-	const char *errptr = NULL; int errcode=0, erroffset=0; // , err=CBSUCCESS; 
+/*
+ * Pattern has to be null terminated. */
+int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int options, cb_match *ctl, int matchctl){
+	const char *errptr = NULL; int errcode=0, erroffset=0;
 	const char  errmsg[6] = {'e','r','r','o','r','\0'};	
 	PCRE_SPTR32 sptr = NULL; // PCRE_SPTR32 vastaa const unsigned int*
 	errptr = &errmsg[0];
@@ -378,7 +388,7 @@ int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsiz
  * Copies name2 to subject string block in host byte order (pcre32) and compares block by block
  * from start of name2 or from overlapsize to the end of block. Compares compiled regexp to 4-byte 
  * string name2 in blocks using pcre32. */
-int  cb_compare_regexp(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl, int *matchcount){
+int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *matchcount){
 	unsigned char *ucsdata = NULL;
 	int nameindx=0, bufindx=0;
 	unsigned long int chr = 0x20;
@@ -400,17 +410,17 @@ int  cb_compare_regexp(unsigned char **name2, int len2, int startoffset, int opt
 	/*
 	 * Block by block. (Strings searched may not overlap.) */
 	err = cb_get_ucs_chr(&chr, &(*name2), &nameindx, CBREGSUBJBLOCK );
-	while( chr!=EOF && nameindx<=len2 && bufindx<=len2 && err==CBSUCCESS){
+	while( chr!= (unsigned long int) EOF && nameindx<=len2 && bufindx<=len2 && err==CBSUCCESS ){
 	  //fprintf(stderr,"%c", (unsigned char) chr);
 	  if(chr!=0xFEFF)
 	    err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned int) chr), &ucsdata, &bufindx, CBREGSUBJBLOCK);
-	  if(bufindx>=(CBREGSUBJBLOCK-5) || chr==EOF || err==CBARRAYOUTOFBOUNDS || bufindx==len2 ){ // next block
+	  if(bufindx>=(CBREGSUBJBLOCK-5) || chr== (unsigned long int) EOF || err==CBARRAYOUTOFBOUNDS || bufindx==len2 ){ // next block
 	    if( chr!=(unsigned char)EOF ){
 	      opt = opt | PCRE_NOTEOL; // Subject string is not the end of a line
 	    }else{
 	      opt = opt & ~PCRE_NOTEOL; // Last block
 	    }
-	    terr = cb_compare_regexp_one_block(&ucsdata, bufindx, 0, 0, &(*mctl), &(*matchcount) );
+	    terr = cb_compare_regexp_one_block(&ucsdata, bufindx, 0, &(*mctl), &(*matchcount) );
 
             //fprintf(stderr,"\ncb_compare_regexp: block:[");
             //cb_print_ucs_chrbuf(&(*name2), len2, len2);
@@ -446,7 +456,7 @@ int  cb_compare_regexp(unsigned char **name2, int len2, int startoffset, int opt
 }
 /*
  * Compares compiled regexp to 4-byte string name2 using 32-bit functions. */
-int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl, int *matchcount){
+int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount){
 	int opt=0, err=CBSUCCESS, pcrerc=0;
         int groupcount=0;
         int ovec[OVECSIZE+1]; int ovecsize=OVECSIZE;

@@ -86,10 +86,11 @@ int  cb_fifo_set_endchr(cb_ring *cfi){
           return CBERRALLOC;
         if((*cfi).streamstop==-1)
 	  (*cfi).streamstop=(*cfi).ahead;
-	return CBSUCCESS;	
+	return CBSUCCESS;
 }
 int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){ // lisatty 2.9.2013, ei testattu viela erikseen
-        int err=CBSUCCESS, tmp1=0, tmp2=0; unsigned long int chrs=0;
+        int err=CBSUCCESS; unsigned long int chrs=0;
+	int tmp1=0, tmp2=0;
 	unsigned char *ptr = NULL;
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
@@ -223,15 +224,15 @@ int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int bufle
 	int cpyblk=0, indx=0;
 	if( bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
 	if(*bufindx >= countfromend)
-	  cpyblk=countfromend; // multiple of 4, usually the buffer is full before copying
+	  cpyblk = countfromend; // multiple of 4, usually the buffer is full before copying
 	else
-	  cpyblk=4; // multiple of 4, this case is not yet tested 17.3.2014
+	  cpyblk = 4; // multiple of 4, this case is not yet tested 17.3.2014
 	for(indx=0; indx<countfromend && indx<buflen && indx<=2147483646 && *bufindx<buflen; ){
 	  memmove( &( (*chrbuf)[indx] ), &( (*chrbuf)[*bufindx-cpyblk] ), (size_t) cpyblk ); // memmove is nondestructive when overlapping
-	  indx+=cpyblk;
+	  indx += cpyblk;
 	  *bufindx -= cpyblk;
 	}
-	if(indx>=countfromend)
+	if( indx >= countfromend )
 	  *bufindx = countfromend;
 	else
 	  *bufindx = indx;

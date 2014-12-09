@@ -367,6 +367,7 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	cb_print_ucs_chrbuf( &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
 	fprintf(stderr, "]\n Name length:  \t%i", (**nm).namelen);
 	fprintf(stderr, "\n Offset:       \t%lli", (**nm).offset);
+	fprintf(stderr, "\n Name offset:  \t%ld", (**nm).nameoffset);
 	fprintf(stderr, "\n Length set to:\t%i", (**nm).length);
 	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
 	fprintf(stderr, "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );

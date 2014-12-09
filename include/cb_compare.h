@@ -42,8 +42,8 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, 
 
 /*
  * Matches name2 in overlapping blocks. Converts name2 from 4-byte UCS form to host byte order. */
-int  cb_compare_regexp(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl, int *matchcount);
+int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *matchcount);
 
 /*
  * Match one line. Name2 has to be in host byte order (pcre32). */
-int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl, int *matchcount);
+int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount);
