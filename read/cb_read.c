@@ -21,7 +21,6 @@
 
 /*
  * To search a subtree, dot in name separates a subdomain. */
-#define CBDOTSEPARATOR       '.'
 
 /*
  * 1 or 4 -byte functions.
@@ -49,7 +48,7 @@ int  cb_find_every_name(CBFILE **cbs){
 int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength ){
 	/*
 	 * Allocate and copy current name to new ucsname */
-	int ret = CBSUCCESS, indx=0;
+	int ret = CBSUCCESS; int indx=0;
 	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC;
 	if( *ucsname!=NULL ) fprintf(stderr,"\ndebug: cb_get_current_name_ucs: *ucsname was not NULL.");
 

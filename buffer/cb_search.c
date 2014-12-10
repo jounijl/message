@@ -75,7 +75,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
              */
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
             if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTNAMES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
-              if( (**cbs).cf.type!=CBCFGFILE ) // When used as only buffer, stream case does not apply
+              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGWRITABLEFILE ) // When used as only buffer, stream case does not apply
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
                    * Leafs content was out of memorybuffer, setting
@@ -272,10 +272,10 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){
         /*
          * Do not save the name if it's out of buffer. cb_set_cursor finds
          * names from stream but can not use cb_names namelist if the names
-         * are out of buffer. When used as file (CBCFGFILE), filesize limits
-         * the list and this is not necessary.
+         * are out of buffer. When used as file (CBCFGFILE or CBCFGWRITABLEFILE),
+         * filesize limits the list and this is not necessary.
          */
-        if((**str).cf.type!=CBCFGFILE)
+        if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGWRITABLEFILE)
           if( (**cbn).offset >= ( (*(**str).cb).buflen-1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen-1 ) ) 
             return CBNAMEOUTOFBUF;
 
@@ -343,7 +343,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
-	        if( (**str).cf.type!=CBCFGFILE ) // When used as only buffer, stream case does not apply
+	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGWRITABLEFILE) // When used as only buffer, stream case does not apply
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
 	             * Do not return names in namechain if it's content is out of memorybuffer

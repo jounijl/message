@@ -95,7 +95,7 @@ int main (int argc, char **argv) {
         }
 
 	// Allocate buffer
-	err = cb_allocate_cbfile( &out, 1, bufsize, blksize);
+	err = cb_allocate_cbfile( &out, 1, bufsize, blksize, CBAPPEND);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&out, CBENC1BYTE); // default
 

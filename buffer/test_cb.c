@@ -35,7 +35,7 @@
 #include <sys/stat.h>  // mode_t, chmod at open
 
 
-#define NOTFOUND 	1000
+//#define NOTFOUND 	1000
 #define ERROR 		2000
 
 #define BUFSIZE 	16384
@@ -132,9 +132,9 @@ int main (int argc, char *argv[]) {
           --atoms;
 
 	// Allocation 
-        err = cb_allocate_cbfile(&in, 0, bufsize, blksize); 
+        err = cb_allocate_cbfile(&in, 0, bufsize, blksize, CBREAD); 
         if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
-        err = cb_allocate_cbfile(&out, 1, bufsize, blksize); 
+        err = cb_allocate_cbfile(&out, 1, bufsize, blksize, CBAPPEND); 
         if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 	// Allocate name list to save names to test with them
 	err = cb_allocate_buffer(&name_list, bufsize);

@@ -147,7 +147,7 @@ int main (int argc, char *argv[]) {
 	       * Last block. */
 	      opt = opt & ~PCRE_NOTEOL;
 	    }
-	    err = cb_compare_regexp_one_block(&chrbuf, bufindx, 0, 0, &mctl, &mcount);
+	    err = cb_compare_regexp_one_block(&chrbuf, bufindx, 0, &mctl, &mcount);
 	    //fprintf(stderr,"\n regexp_search main: after cb_compare_regexp,");
 	    if(err>=CBERROR )
 	      fprintf(stderr," error %i.", err);

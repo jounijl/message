@@ -110,7 +110,7 @@ int main (int argc, char **argv) {
 #endif 
 
 	// Allocate buffer
-	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
+	err = cb_allocate_cbfile( &in, 0, bufsize, blksize, CBREAD);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
 	cb_use_as_stream(&in);
