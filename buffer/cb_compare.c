@@ -291,7 +291,7 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, 
 
         /*
 	 * Pattern in host byte order */
-        hbpat = (unsigned char*) malloc( sizeof(char)*( patsize+1 ) ); // '\0' + argumentsize
+        hbpat = (unsigned char*) malloc( sizeof(char)*( (unsigned int) patsize+1 ) ); // '\0' + argumentsize
         if( hbpat==NULL ){ fprintf(stderr,"\ncb_compare_get_matchctl: allocation error, host byte pattern."); return CBERRALLOC; }
         memset( &(*hbpat), (int) 0x20, (size_t) patsize );
         hbpat[patsize]='\0';
@@ -361,7 +361,8 @@ int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int option
 	sage.
 */
 
-	sptr = (PCRE_SPTR32)  *pattern; // const
+	//sptr = (PCRE_SPTR32)  *pattern; // const
+	sptr = (* (PCRE_SPTR32*)  pattern); // const, 13.12.2014 (PCRE_SPTR32 = unsigned int*)
 
 	(*ctl).re = &(* (PSIZE) pcre32_compile2( sptr, options, &errcode, &errptr, &erroffset, NULL ) ); // PCRE_SPTR32 vastaa const unsigned int*, 29.5.2014, 16.6.2014
 
@@ -429,15 +430,15 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
             if(terr>=CBERROR )
               fprintf(stderr," error %i.", terr);
             if(terr>=CBNEGATION && terr<CBERROR){
-              fprintf(stderr," err %i.", terr);
+              ; // fprintf(stderr," err %i.", terr);
             }else if(terr==CBMATCH){
-              fprintf(stderr," match, %i.", terr);
+              ; // fprintf(stderr," match, %i.", terr);
             }else if(terr==CBMATCHGROUP){
-              fprintf(stderr," match group, %i.", terr);
+              ; // fprintf(stderr," match group, %i.", terr);
             }else if(terr==CBMATCHMULTIPLE){
-              fprintf(stderr," multiple matches, %i.", terr);
+              ; // fprintf(stderr," multiple matches, %i.", terr);
             }else
-              fprintf(stderr," %i.", terr);
+              ; // fprintf(stderr," %i.", terr);
 	    if(terr==CBMATCH || terr==CBMATCHMULTIPLE || terr==CBMATCHGROUP){
 	      free(ucsdata);
 	      return terr; // at least one match was found, return
@@ -472,7 +473,11 @@ int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffse
 
 pcre_match_another:
         // 3. const PCRE_SPTR32 subject
-        pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, ( (PCRE_SPTR32) *name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
+        //pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, ( (PCRE_SPTR32) *name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
+	// 13.12.2014
+        //pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, &(* (PCRE_SPTR32) name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
+	// -> ja takaisin ja viela -> (oikea tulos:)
+        pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, (* (PCRE_SPTR32*) name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
 
         //fprintf(stderr,"\ncb_compare_regexp_one_block: block:[");
         //cb_print_ucs_chrbuf(&(*name2), len2, len2);

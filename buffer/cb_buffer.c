@@ -118,9 +118,10 @@
 
 int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
 int  cb_set_type(CBFILE **buf, char type);
-int  cb_allocate_empty_cbfile(CBFILE **str, int fd, char mode);
+int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
 int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
 int  cb_print_leaves_inner(cb_name **cbn);
+int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset);
 
 /*
  * Debug
@@ -181,7 +182,7 @@ int  cb_print_name(cb_name **cbn){
         //fprintf(stderr, " nameoffset [%lli]\n", (**cbn).nameoffset);
         fprintf(stderr, " nameoffset [%li]\n", (**cbn).nameoffset);
         fprintf(stderr, " matchcount [%li]", (**cbn).matchcount);
-        fprintf(stderr, " first found [%li]", (**cbn).firsttimefound);
+        fprintf(stderr, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
         fprintf(stderr, " last used [%li]\n", (**cbn).lasttimeused);
         return err;
 }
@@ -246,7 +247,7 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
 	if(*cbn==NULL)
 	  return CBERRALLOC;
-	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*(namelen+1) ); // 7.12.2013
+	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL)
 	  return CBERRALLOC;
 	for(indx=0;indx<namelen && indx<CBNAMEBUFLEN;++indx) // 7.12.2013
@@ -255,7 +256,8 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	(**cbn).buflen=namelen; // 7.12.2013
 	(**cbn).namelen=0;
 	(**cbn).offset=0; 
-	(**cbn).length=0;
+	//(**cbn).length=0;
+	(**cbn).length=-1; // 11.12.2014
 	(**cbn).matchcount=0;
 	(**cbn).firsttimefound=-1;
 	(**cbn).lasttimeused=-1;
@@ -291,7 +293,10 @@ int  cb_set_bypass(CBFILE **str, unsigned long int bypass){ // bypass , new - ad
 }
 int  cb_set_search_state(CBFILE **str, char state){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
-	(**str).cf.searchstate=state;
+	if( state==CBSTATETREE || state==CBSTATELESS || state==CBSTATEFUL || state==CBSTATETOPOLOGY )
+		(**str).cf.searchstate = (**str).cf.searchstate;
+	else
+		fprintf(stderr, "\nState not known.");
 	return CBSUCCESS;
 }
 int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart){ // sublist value start
@@ -305,20 +310,17 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
-int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize, char mode){
+int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 	unsigned char *blk = NULL; 
-	return cb_allocate_cbfile_from_blk(str, fd, bufsize, &blk, blocksize, mode);
+	return cb_allocate_cbfile_from_blk(str, fd, bufsize, &blk, blocksize);
 }
 
-int  cb_allocate_empty_cbfile(CBFILE **str, int fd, char mode){ 
+int  cb_allocate_empty_cbfile(CBFILE **str, int fd){ 
 	int err = CBSUCCESS;
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
 	if(*str==NULL)
 	  return CBERRALLOC;
 	(**str).cb = NULL; (**str).blk = NULL;
-	(**str).cf.type=CBREAD;
-	if( mode==CBREAD || mode==CBAPPEND || mode==CBWRITE )
-	   (**str).cf.mode=mode;
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
@@ -383,9 +385,9 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd, char mode){
 	return err;
 }
 
-int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen, char mode){ 
+int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err = CBSUCCESS;
-	err = cb_allocate_empty_cbfile(&(*str), fd, mode);
+	err = cb_allocate_empty_cbfile(&(*str), fd);
 	if(err!=CBSUCCESS){ return err; }
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
 	if(err!=CBSUCCESS){ return err; }
@@ -408,7 +410,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if(cbf==NULL)
 	  return CBERRALLOC;
-	(**cbf).buf = (unsigned char *) malloc(sizeof(char)*(bufsize+1));
+	(**cbf).buf = (unsigned char *) malloc(sizeof(char)*( (unsigned int) bufsize+1));
 	if( (**cbf).buf == NULL )
 	  return CBERRALLOC;
 
@@ -502,8 +504,8 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	return CBSUCCESS;
 }
 /*
- * Used only in WRITE -mode to clear the block before writing in between
- * with offset and after. 
+ * Used only with CBCFGWRITABLEFILE (seekable) to clear the block before 
+ * writing in between with offset and after. 
  */
 int  cb_empty_block(CBFILE **buf){
 	if(buf==NULL || *buf==NULL || (**buf).blk==NULL ){ return CBERRALLOC; }
@@ -558,7 +560,8 @@ int  cb_use_as_stream(CBFILE **buf){
 int  cb_set_type(CBFILE **buf, char type){ // 20.8.2013
 	if(buf!=NULL){
 	  if((*buf)!=NULL){
-	    (**buf).cf.type=type; // 20.8.2013
+	    fprintf(stderr,"\nSetting type to %i.", (int) type);
+	    (**buf).cf.type = type; // 20.8.2013
 	    return CBSUCCESS;
 	  }
 	}
@@ -577,9 +580,6 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	if( offset > 0 && (**cbf).cf.type!=CBCFGWRITABLEFILE ){
 		fprintf(stderr,"\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGWRITABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
-	}
-	if( (**cbf).cf.mode != CBREAD && (**cbf).cf.type!=CBCFGWRITABLEFILE ){
-		fprintf(stderr,"\ncb_get_char_read_offset_block: reading mode %i type %i CBFILE.", (**cbf).cf.mode, (**cbf).cf.type ); // return CBOPERATIONNOTALLOWED;
 	}
 
 	if(blk!=NULL){
@@ -625,11 +625,10 @@ int  cb_flush(CBFILE **cbs){
 	return cb_flush_to_offset( &(*cbs), -1 );
 }
 int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
-	int err=CBSUCCESS, lerr=CBSUCCESS;
+	int err=CBSUCCESS;
+	long long int lerr=CBSUCCESS;
 	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
-	if( (**cbs).cf.mode != CBAPPEND && ! ( (**cbs).cf.mode == CBWRITE && (**cbs).cf.type==CBCFGWRITABLEFILE ) ){
-		fprintf(stderr,"\ncb_get_char_read_offset_block: writing to mode %i type %i CBFILE.", (**cbs).cf.mode, (**cbs).cf.type ); // return CBOPERATIONNOTALLOWED;
-	}
+
 	if( *cbs!=NULL ){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
 	    if((**cbs).blk!=NULL){
@@ -691,6 +690,10 @@ int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf){
 	return cb_write( &(*cbs), &(*(*cbf).buf), (*cbf).contentlen); // 10.12.2014
 }
 
+/*
+ * This is append only function. Block has to be used individually to
+ * write in arbitrary location in a file (with offset). 
+ */
 int  cb_put_ch(CBFILE **cbs, unsigned char ch){ // 12.8.2013
 	int err=CBSUCCESS;
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
@@ -774,7 +777,7 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to){ 
         long int index=0;
         if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
-        *buf = (unsigned char *) malloc( sizeof(char)*( *size+1 ) );
+        *buf = (unsigned char *) malloc( sizeof(char)*( (unsigned long int)  *size+1 ) );
         if(*buf==NULL){ fprintf(stderr, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
         (*buf)[(*size)] = '\0';
         for(index=0;(index<(*to-*from) && index<(*size) && (index+*from)<(*cbs).contentlen); ++index){

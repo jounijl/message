@@ -76,10 +76,10 @@ int main (int argc, char **argv) {
 #endif 
 
 	// Allocate buffers
-	err = cb_allocate_cbfile( &in, 0, bufsize, blksize, CBREAD);
+	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&in, CBENC4BYTE);
-	err = cb_allocate_cbfile( &out, 1, bufsize, blksize, CBAPPEND);
+	err = cb_allocate_cbfile( &out, 1, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&out, CBENCUTF8);
 

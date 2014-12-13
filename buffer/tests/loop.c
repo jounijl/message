@@ -71,12 +71,12 @@ int main (int argc, char *argv[]) {
         }
 
         // Allocate input buffer
-        err1 = cb_allocate_cbfile(&in, fd, BUFSIZE, BLKSIZE, CBREAD); 
+        err1 = cb_allocate_cbfile(&in, fd, BUFSIZE, BLKSIZE); 
         if(err1!=CBSUCCESS){ fprintf(stderr,"\tloop: error at cb_allocate_cbfile: in, err=%i.", err1); return CBERRALLOC;}
         cb_set_encoding(&in, CBENC1BYTE); // one byte encoding
 
         // Allocate output buffer
-        err1 = cb_allocate_cbfile(&out, 1, BUFSIZE, BLKSIZE, CBAPPEND); 
+        err1 = cb_allocate_cbfile(&out, 1, BUFSIZE, BLKSIZE); 
         if(err1!=CBSUCCESS){ fprintf(stderr,"\tloop: error at cb_allocate_cbfile: out, err=%i.", err1); return CBERRALLOC;}
         cb_set_encoding(&out, CBENC1BYTE); // one byte encoding
 

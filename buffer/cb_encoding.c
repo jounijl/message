@@ -656,17 +656,17 @@ unsigned int  cb_reverse_int16_bits(unsigned int from){
  * 1  2  4  8  16 32 64 128
  */
 unsigned char  cb_reverse_char8_bits(unsigned char from){
-	unsigned char new=0;
-	new = new | (from & 0x01)<<7;
-	new = new | (from & 0x02)<<5;
-	new = new | (from & 0x04)<<3;
-	new = new | (from & 0x08)<<1;
+	unsigned int new = 0x0000, ifrom = (unsigned int) from;
+	new = new | (ifrom & 0x01)<<7;
+	new = new | (ifrom & 0x02)<<5;
+	new = new | (ifrom & 0x04)<<3;
+	new = new | (ifrom & 0x08)<<1;
 
-	new = new | (from & 0x10)>>1; // 16
-	new = new | (from & 0x20)>>3; // 32
-	new = new | (from & 0x40)>>5; // 64
-	new = new | (from & 0x80)>>7; // 128
-	return new;
+	new = new | (ifrom & 0x10)>>1; // 16
+	new = new | (ifrom & 0x20)>>3; // 32
+	new = new | (ifrom & 0x40)>>5; // 64
+	new = new | (ifrom & 0x80)>>7; // 128
+	return (unsigned char) new;
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;

@@ -27,26 +27,46 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "../../include/cb_buffer.h"
+#include "../../read/cb_read.h"
 
 /*
  * Finds all names once with cb_find_every_name and prints them.
  *
  */
 
-int main(int argc, char **argv);
 
-int main(int argc, char **argv) {
+int main(void);
+
+int main(void) {
 	int err = CBSUCCESS;
 	CBFILE *in = NULL;
 
-	err = cb_allocate_cbfile(&in, 0, 2048, 512, CBREAD);
+	err = cb_allocate_cbfile(&in, 0, 2048, 512);
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+	// Tests: cat testi.txt | $0
+	// cat testi.txt | tr -c -d "&" | wc -c # 53
+	// cat testi.txt | tr -c -d "=" | wc -c # 48
+	//cb_set_search_state( &in, CBSTATETREE ); // lists, something missing
+	//cb_set_search_state( &in, CBSTATELESS ); // lists 48
+	//cb_set_search_state( &in, CBSTATEFUL ); // lists 40 (something is missing)
+
+	cb_set_search_state( &in, CBSTATETOPOLOGY ); // error
+
+	// Returns:
+	// cb_search.c: "Value read, openpairs 0 ocoffset 1"
+	// return CBVALUEEND;
 
 	cb_set_encoding(&in, 1);
 
 	err = cb_find_every_name(&in);
+	if( err==CBVALUEEND ){
+		fprintf(stderr,"\n Returning VALUEEND (method %i)", (*in).cf.searchmethod );
+		if( (*in).cf.searchmethod==CBSTATETOPOLOGY || (*in).cf.searchmethod==CBSTATETREE ){
+			fprintf(stderr,", possible start and endchar mismatch.");
+		}
+	}
 	if(err>=CBNEGATION && err!=CBNOTFOUND)
-	  fprintf(stderr,"cb_get_next_name_ucs: err=%i.", err);
+	  fprintf(stderr,"\ncb_find_every_name: err=%i.", err);
 
 	cb_print_names(&in);
 

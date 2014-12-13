@@ -526,7 +526,7 @@ int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelen
 	int chrbufindx=0;
 	unsigned char *ucsname = NULL; 
 	bufsize = *namelength; bufsize = bufsize*4;
-	ucsname = (unsigned char*) malloc( sizeof(char)*( 1 + bufsize ) );
+	ucsname = (unsigned char*) malloc( sizeof(char)*( (unsigned int) bufsize + 1 ) );
 	if( ucsname==NULL ){ return CBERRALLOC; }
 	ucsname[bufsize]='\0';
 	for( indx=0; indx<*namelength && err==CBSUCCESS; ++indx ){
@@ -748,9 +748,9 @@ cb_set_cursor_reset_name_index:
 	        }
 	      }
 	    }else if( ocoffset!=0 && openpairs==(ocoffset+1) ){ // 13.12.2013, order ocoffset name from name1.name2.name3
-	    /*
-	     * Leaf (openpairs==(ocoffset+1) if ocoffset > 0)
-	     */
+	      /*
+	       * Leaf (openpairs==(ocoffset+1) if ocoffset > 0)
+	       */
 	      //fprintf(stderr,"\nLEAF COMPARE");
 	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
 	      if( cis == CBMATCH ){ // 9.11.2013
@@ -768,7 +768,10 @@ cb_set_cursor_reset_name_index:
 	        }
 	      }
 	    }else{
-	      fprintf(stderr,"\ncb_set_cursor_ucs: error: not leaf nor name, reseting charbuf.");
+	      /*
+	       * Mismatch */
+	      // Debug (or verbose error messages)
+	      //fprintf(stderr,"\ncb_set_cursor_ucs: error: not leaf nor name, reseting charbuf, namecount %ld.", (*(**cbs).cb).list.namecount );
 	    }
 	    /*
 	     * No match. Reset charbuf to search next name. 

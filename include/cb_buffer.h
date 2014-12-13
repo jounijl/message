@@ -102,12 +102,6 @@
  */
 
 /*
- * Modes of operation: stream functions (original) and one seekable function. */
-#define CBREAD               0        // 001
-#define CBAPPEND             1        // 010
-#define CBWRITE              2        // 100
-
-/*
  * Use options, changes functionality as below */
 #define CBCFGSTREAM          0   // Use as stream (namelist is bound by buffer)
 #define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
@@ -258,7 +252,8 @@
 #include "./cb_encoding.h"	// Encoding macros
 
 /* Pointer size */
-#define PSIZE                 int*
+//#define PSIZE                 int*
+#define PSIZE                 void*
 
 /*
  * Compare ctl */
@@ -287,20 +282,19 @@ typedef struct cb_ring {
 
 typedef struct cb_conf{
         char                type:4;                 // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
-	char                mode:4;                 // CBREAD or CBAPPEND. Extra functionality CBWRITE from external function calls.
         char                searchmethod:4;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-        char                unfold:4;               // Search names unfolding the text first, RFC 2822
-        char                asciicaseinsensitive:4; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        char                rfc2822headerend:4;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
-        char                removewsp:4;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        char                unfold:2;               // Search names unfolding the text first, RFC 2822
+        char                asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        char                rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
+        char                removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         char                removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 	char                removenamewsp:2;        // Remove white space characters inside name
-	char                leadnames:4;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
-	char                json:4;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	char                leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
+	char                json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	char                doubledelim:3;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	char                searchstate:5;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
-	char                firstpadding;
-	char                secondpadding;
+	//char                firstpadding;
+	//char                secondpadding;
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -416,44 +410,18 @@ int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelen
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *ctl);
 
+
 /*
+ *
  * If while reading a character, is found, that cb_set_cursor found a name
  * but one of the get_ch functions returned CBSTREAM after it, removes the
  * erroneus name from memorybuffer after reading it from the stream once.
  *
  * Sets namelegth to indicate that the names content is out of buffer.
  */
+
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
-
-/*
- * cb_read.c These use the base library:  (a library using the basic library),
- * to be relocated.
- */
-
-/*
- * 4.11.2013
- * Finds next unused name, first from the list and then after the cursors 
- * position. New 'ucsname' is allocated and the name is copied 4-bytes
- * per character. Length is bytelength. */
-int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
-
-/*
- * 30.11.2013. Allocates new ucsname and copies current name to it. */
-int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
-
-/*
- * 4.11.2013
- * To find every unused name to the list. Search reaches the end of the stream.
- * Buffer has to be larger than the data to use the names from the list. */
-int  cb_find_every_name(CBFILE **cbs); 
-
-/*
- * 30.11.2013. Finds a variable described by dot-separated namelist
- * name1.name2.name3 from the values of the previous variables. */
-//int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // this function is in cbsearch
-
-/* /cb_read.c */
 
 /*
  * One character at a time. Output flushes when the buffer is full.
@@ -502,7 +470,7 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, long int size); // byte by byte
 int  cb_flush(CBFILE **cbs);
 int  cb_flush_to_offset(CBFILE **cbs, signed long int offset); // helper function to able cb_write_to_offset
 
-int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize, char mode); // mode is one of CBREAD, CBAPPEND or CBWRITE
+int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize); 
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
@@ -532,7 +500,7 @@ int  cb_get_encoding(CBFILE **str, int *number);
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
-int  cb_use_as_seekable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between)
+int  cb_use_as_writable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
 int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
 int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_polysemantic_names(CBFILE **cbf); // multiple same names, default
@@ -588,7 +556,7 @@ int  cb_test_cpu_endianness(void);
 
 /*
  * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
-int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen, char mode); // mode is on of CBREAD, CBAPPEND or CBWRITE (prefer append)
+int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h> // strsep
 #include "../include/cb_buffer.h"
+#include "../read/cb_read.h"
 
 /*
  * To search a subtree, dot in name separates a subdomain. */
@@ -37,6 +38,7 @@ int  cb_find_every_name(CBFILE **cbs){
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
+	// int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl)
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
 }
@@ -50,12 +52,13 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 	 * Allocate and copy current name to new ucsname */
 	int ret = CBSUCCESS; int indx=0;
 	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC;
-	if( *ucsname!=NULL ) fprintf(stderr,"\ndebug: cb_get_current_name_ucs: *ucsname was not NULL.");
 
 	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current!=NULL ){
 	  if(ucsname==NULL)
 	    ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
-	  *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (*(*(**cbs).cb).list.current).namelen+1 ) );
+	  else if( *ucsname!=NULL ) 
+	    fprintf(stderr,"\ndebug: cb_get_current_name_ucs: *ucsname was not NULL.");
+	  *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
 	  if( ucsname==NULL ) { return CBERRALLOC; }
 	  (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
 	  for( indx=0; indx<(*(*(**cbs).cb).list.current).namelen ; ++indx)
@@ -78,8 +81,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	char searchmethod=0;
 	name = &chrs[0];
 
-	if( cbs==NULL || *cbs==NULL )
-	  return CBERRALLOC;
+	if( cbs==NULL || *cbs==NULL ){	  fprintf(stderr,"\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC;	}
 	//if( *ucsname!=NULL )
 	//  fprintf(stderr,"\ndebug, cb_get_next_name_ucs: *ucsname was not NULL.");
 
@@ -88,9 +90,11 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
 	(**cbs).cf.searchmethod = searchmethod;
 
-	free(*ucsname); ucsname = NULL;
+	free(*ucsname); // ucsname = NULL;
+	*ucsname = NULL; // 11.12.2014
 	if( ret==CBSUCCESS || ret==CBSTREAM ){ // returns only CBSUCCESS or CBSTREAM or error
 	  ret = cb_get_current_name( &(*cbs), &(*ucsname), &(*namelength) );
+	  fprintf(stderr,"\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret);
 	}
 /*
  * TMP

@@ -64,7 +64,7 @@ int write_ucs_5B( int count ) {
         int bcount=3, strdbytes=5, err=0;
 
 	fd = fcntl(STDOUT_FILENO, F_DUPFD, 0); 
-        err = cb_allocate_cbfile(&out, fd, 0, 512, CBAPPEND); // stdout
+        err = cb_allocate_cbfile(&out, fd, 0, 512); // stdout
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
         while ( ch = read(0, &(*str), (size_t) 1 ) && count > 0 ){
@@ -107,7 +107,7 @@ int write_ucs_2B( int count ) {
         int bcount=5, strdbytes=0, err=0;
 
 	fd = fcntl(STDOUT_FILENO, F_DUPFD, 0); 
-        err = cb_allocate_cbfile(&out, fd, 0, 512, CBAPPEND); 
+        err = cb_allocate_cbfile(&out, fd, 0, 512); 
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
         while ( ch = read(0, &(*str), (size_t) 1 ) && count > 0 ){

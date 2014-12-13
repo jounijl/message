@@ -95,7 +95,7 @@ int main (int argc, char **argv) {
         }
 
 	// Allocate buffer
-	err = cb_allocate_cbfile( &out, 1, bufsize, blksize, CBAPPEND);
+	err = cb_allocate_cbfile( &out, 1, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&out, CBENC1BYTE); // default
 
@@ -126,7 +126,7 @@ int main (int argc, char **argv) {
 	  }
           u = get_option( argv[i], argv[i+1], 'e', &value); // output encoding number ( from cb_encoding.h )
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
-            outputenc = (int) strtol(value,&str_err,10); 
+            outputenc = (char) strtol(value,&str_err,10); 
             if(outputenc==0 && errno==EINVAL)
               outputenc = CBENC1BYTE;
             cb_set_encoding(&out, outputenc);

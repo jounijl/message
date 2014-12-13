@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 	int bcount=0, strdbytes=0;
 	CBFILE *in = NULL;
 
-	err = cb_allocate_cbfile(&in, 0, 2048, 512, CBREAD);
+	err = cb_allocate_cbfile(&in, 0, 2048, 512);
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
 	//cb_set_encoding(&in, 0);

@@ -49,13 +49,14 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
 void usage ( char *progname[] );
 
 int main (int argc, char **argv) {
-	int i=-1,u=0,y=0,namearraylen=0, atoms=0,fromend=0, err=CBSUCCESS;
+	int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
+	unsigned int namearraylen=0, y=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
 	char list=0, inputenc=CBENC1BYTE, tree=0;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
-	unsigned char chr = ' ', chprev = ' ';
+	unsigned int chr = ' ', chprev = ' ';
 	unsigned long int endchr = ENDCHR;
 
 /*	fprintf(stderr,"main: argc=%i", argc );
@@ -84,7 +85,7 @@ int main (int argc, char **argv) {
         if ( atoms >= 2 ){
 	  namelen = (int) strlen( argv[fromend] );
 	  namebuflen = NAMEBUFLEN; // 4 * namelen;
-	  name = (unsigned char *) malloc( sizeof(unsigned char)*( namebuflen + 1 ) );
+	  name = (unsigned char *) malloc( sizeof(unsigned char)*( (unsigned int) namebuflen + 1 ) );
 	  if(name==NULL){ fprintf(stderr,"\nerror in malloc, name was null"); exit(CBERRALLOC); }
 	  name[ namelen*4 ] = '\0';
 	  u = 0;
@@ -110,7 +111,7 @@ int main (int argc, char **argv) {
 #endif 
 
 	// Allocate buffer
-	err = cb_allocate_cbfile( &in, 0, bufsize, blksize, CBREAD);
+	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
 	cb_use_as_stream(&in);
@@ -149,7 +150,7 @@ int main (int argc, char **argv) {
 	  }
           u = get_option( argv[i], argv[i+1], 'i', &value); // input encoding number ( from cb_encoding.h )
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
-            inputenc = (int) strtol(value,&str_err,10); 
+            inputenc = (char) strtol(value,&str_err,10); 
             if(inputenc==0 && errno==EINVAL)
               inputenc = CBENC1BYTE;
             cb_set_encoding(&in, inputenc);
@@ -210,8 +211,8 @@ int main (int argc, char **argv) {
 	    err = search_and_print_name(&in, &name, (namelen*4), tree );
 	  else{ // list of names
 	    if(namearray!=NULL){
-	      memset( &(*name), (int) 0x20, namebuflen );
-	      namearraylen = strnlen( &(*namearray), namebuflen );
+	      memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
+	      namearraylen = (unsigned int) strnlen( &(*namearray), (unsigned int) namebuflen );
 	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
 	      for(y=0; y<namearraylen && y<10000; ++y ){ // (if first char in name is sp, possibly prints "null name")
 	        chprev = chr;
@@ -224,7 +225,7 @@ int main (int argc, char **argv) {
 	          name[ namelen*4 ] = '\0';
 	          err = search_and_print_name(&in, &name, namelen, tree );
 	          namelen = 0; u = 0;
-	          memset( &(*name), (int) 0x20, namebuflen );
+	          memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
 	        }
 	      }
 	    }
@@ -234,7 +235,7 @@ int main (int argc, char **argv) {
 	// Debug:
 	//cb_print_names(&in);
 
-	memset( &(*name), (int) 0x20, namebuflen );
+	memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
 	name[namebuflen] = '\0';
 	cb_free_cbfile(&in);
 	free( name );
@@ -310,7 +311,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	      if(tree==0){
 	        err = cb_set_cursor_match_length_ucs( &(*in), &(*name), &namelength, 0, -2 ); // nam%
 	      }else{
-	        err = search_and_print_tree( &(*in), &(*name), namelength, -2 ); 
+	        err = search_and_print_tree( &(*in), &(*name), namelength, -2 );
 	      }
 	    }else{
 	      if(tree==0){
@@ -366,7 +367,7 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	fprintf(stderr, "\n Name:         \t[");
 	cb_print_ucs_chrbuf( &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
 	fprintf(stderr, "]\n Name length:  \t%i", (**nm).namelen);
-	fprintf(stderr, "\n Offset:       \t%lli", (**nm).offset);
+	fprintf(stderr, "\n Offset:       \t%li", (**nm).offset);
 	fprintf(stderr, "\n Name offset:  \t%ld", (**nm).nameoffset);
 	fprintf(stderr, "\n Length set to:\t%i", (**nm).length);
 	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
@@ -419,7 +420,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
         if( dotname==NULL || *dotname==NULL ) return CBERRALLOC;
 
         /* Allocate new name to hold the name */
-        ucsname = (unsigned char *) malloc( sizeof(char)*( namelen+1 ) );       
+        ucsname = (unsigned char *) malloc( sizeof(char)*( (unsigned int) namelen+1 ) );
         if( ucsname == NULL ) { return CBERRALLOC; }
         ucsname[namelen] = '\0';
 

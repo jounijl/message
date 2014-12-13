@@ -178,7 +178,7 @@ int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
  */
 int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
         int index=0, err=CBSUCCESS;
-        unsigned long int chr=0;
+        unsigned long int chr=0x20; // 11.12.2014
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
         for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
            err = cb_get_ucs_chr(&chr, &(*chrbuf), &index, buflen);
@@ -209,7 +209,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
 
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int buflen){
         static unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
-        if( bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
+        if( chr==NULL || bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
         if( *bufindx>(buflen-4) ){               return CBARRAYOUTOFBOUNDS; }
         *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1; 
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
