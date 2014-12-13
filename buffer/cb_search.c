@@ -584,6 +584,11 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
 
+	if(*ucsname==NULL || namelength==NULL ){ // 13.12.2014
+	  fprintf(stderr,"\ncb_set_cursor_match_length_ucs_matchctl: allocation error, ucsname or length was null.");
+	  return CBERRALLOC;
+	}
+
 	if( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) // Search next matching leaf
 	  openpairs = ocoffset; // 12.12.2013
 
