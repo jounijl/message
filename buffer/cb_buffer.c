@@ -470,13 +470,14 @@ int  cb_free_name(cb_name **name){
 	cb_name *nextname = NULL;
 
         if(name!=NULL && *name!=NULL){
-	  leaf = &(* (cb_name*) (**name).leaf);
+	  leaf = &(* (cb_name*) (**name).leaf );
 	  while( leaf!=NULL ){
-	    nextleaf = &(* (cb_name*) (*leaf).leaf);
-	    next = &(* (cb_name*) (*leaf).next);
-            cb_free_name(&leaf);
+	    nextleaf = &(* (cb_name*) (*leaf).leaf );
+	    next = &(* (cb_name*) (*leaf).next );
+            cb_free_name( &leaf );
 	    while( next!=NULL ){
-	      nextname = &(* (cb_name*) (*next).next);
+	      nextname = &(* (cb_name*) (*next).next );
+	      cb_free_name( &next ); // 14.12.2014, nexts leafs
 	      free( (*next).namebuf ); free(next);
 	      next = &(* nextname);
 	    }
@@ -515,30 +516,36 @@ int  cb_empty_block(CBFILE **buf){
 }
 int  cb_empty_names(cbuf **buf){
 	int err=CBSUCCESS;
-	err = cb_empty_names_from_name( &(*buf), &( *(**buf).list.name ) );
+	err = cb_empty_names_from_name( &(*buf), &( (**buf).list.name ) );
+	cb_free_name( &( (**buf).list.name ) );
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
+	(**buf).list.name = NULL;
 	return err;
 }
-int  cb_empty_names_from_name(cbuf **buf, cb_name *cbn){
+int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 	int err=CBSUCCESS;
 	cb_name *name = NULL;
 	cb_name *nextname = NULL;
-	if( buf==NULL || *buf==NULL ){ return CBERRALLOC; }
-	name = cbn;
-	while(name != NULL){
-	  nextname = &(* (cb_name*) (*name).next);
-	  /* Free the name and all its leafs */
-          cb_free_name(&name);
-	  name = &(* nextname);
-	}
-	free(name); free(nextname);
-	/* To be sure the name was not a leaf, count the names again. */
-	name = (**buf).list.name;
-	err = 0;
+	if( buf==NULL || *buf==NULL || cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
+
+	name = &(* (cb_name*) (**cbn).next);
 	while(name != NULL){
 		nextname = &(* (cb_name*) (*name).next);
+		cb_free_name(&name); // frees leafs
 		name = &(* nextname);
-		++err;
+	}
+	(**cbn).next = NULL;
+	(**cbn).leaf = NULL;
+
+	/* Update namecount. */
+	err = 0;
+	if( (**buf).list.name!=NULL ){
+		name = &(* (cb_name*) (**buf).list.name);
+		while(name != NULL){
+			nextname = &(* (cb_name*) (*name).next);
+			name = &(* nextname);
+			++err;
+		}
 	}
 	(**buf).list.namecount = err;
 	return CBSUCCESS;
@@ -557,11 +564,10 @@ int  cb_use_as_file(CBFILE **buf){
 int  cb_use_as_stream(CBFILE **buf){
         return cb_set_type(&(*buf), (char) CBCFGSTREAM);
 }
-int  cb_set_type(CBFILE **buf, char type){ // 20.8.2013
+int  cb_set_type(CBFILE **buf, char type){
 	if(buf!=NULL){
 	  if((*buf)!=NULL){
-	    fprintf(stderr,"\nSetting type to %i.", (int) type);
-	    (**buf).cf.type = type; // 20.8.2013
+	    (**buf).cf.type = type;
 	    return CBSUCCESS;
 	  }
 	}
