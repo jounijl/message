@@ -23,7 +23,7 @@
 //#include "../include/cb_compare.h"
 
 
-int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs);
+int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset);
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs); // 13.12.2013
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
@@ -263,7 +263,7 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
 	return ret;
 }
 
-int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){ 
+int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ 
         int err=0; 
 
         if(cbn==NULL || *cbn==NULL || str==NULL || *str==NULL || (**str).cb==NULL )
@@ -291,13 +291,31 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs){
 	    return err;
 	  }
 
-	  // Previous names length
+	  /*                                  +--- length ------+
+	   *                                  |                 |
+	   *         &    # comment \n   name1=                 &     name2=
+	   *         |                        |                 |     |    |
+	   *    1nameoffset                1offset          2nameoffset   2offset
+	   *         +---- 1namearealength ---+--- 1contentlen -+     +----+ 2namelen
+	   *  
+ 	   *            namearealength = 1offset - 1nameoffset;
+ 	   *            1contentlength = 2nameoffset - 1offset = length
+	   * 14.12.2014
+	   */
+	  // Previous names contents length
           if( (*(**str).cb).list.namecount>=1 ){
-	    if((**str).ahd.bytesahead>=0)
-              (*(*(**str).cb).list.current).length = ( (*(**str).cb).index - (**str).ahd.bytesahead ) - (*(*(**str).cb).list.current).offset;
-	    else
-              (*(*(**str).cb).list.current).length = (*(**str).cb).index - (*(*(**str).cb).list.current).offset; // if signed ahead (for some reason) is negative
+	    //if((**str).ahd.bytesahead>=0){
+	    if( openpairs==0 && ocoffset==0 ) // to list (longest length)
+	    	(*(*(**str).cb).list.current).length = (**cbn).nameoffset - (*(*(**str).cb).list.current).offset; // 14.12.2014
+	    else if( openpairs==0 && ocoffset>0 )  // from leaf to leaf in list
+	        (*(*(**str).cb).list.currentleaf).length = (**cbn).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
+	    else if( openpairs==1 && ocoffset==0 ) // from name to it's leaf
+		;
+	    else if( openpairs>0 && ocoffset>0 ) // from leaf to it's leaf
+	        ;
 	  }
+
+(**cbn).nameoffset;
 
 	  // Add name 
           (*(**str).cb).list.last    = &(* (cb_name*) (*(*(**str).cb).list.last).next );
@@ -705,7 +723,7 @@ cb_set_cursor_reset_name_index:
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index, nameoffset); // 7.12.2013, 6.12.2014
 	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ fprintf(stderr, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
 	      if(buferr!=CBNAMEOUTOFBUF){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
-	        buferr = cb_put_name(&(*cbs), &fname, openpairs); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
+	        buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
 	        if( buferr==CBADDEDNAME || buferr==CBADDEDLEAF || buferr==CBADDEDNEXTTOLEAF){
 	          buferr = CBSUCCESS;
 	        }
