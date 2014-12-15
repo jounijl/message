@@ -24,7 +24,7 @@
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset);
-int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs); // 13.12.2013
+int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset);
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 16.3.2014, 23.3.2014
@@ -75,7 +75,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
              */
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
             if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTNAMES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
-              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGWRITABLEFILE ) // When used as only buffer, stream case does not apply
+              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE ) // When used as only buffer, stream case does not apply
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
                    * Leafs content was out of memorybuffer, setting
@@ -183,7 +183,7 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 
 /*
  * Put leaf in 'current' name -tree and update 'currentleaf'. */
-int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
+int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 
 	/*
 	 *  openpairs=1  openpairs=2  openpairs=3  openpairs=2  openpairs=1  openpairs=0
@@ -233,6 +233,26 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs){
 	(*newleaf).next = NULL;
 	(*newleaf).leaf = NULL;
 
+	/* 
+	 * Update previous leafs length */
+	if( (*(**str).cb).list.currentleaf!=NULL ){
+          if( (*(**str).cb).list.namecount>=1 && (**leaf).nameoffset>=(*(*(**str).cb).list.currentleaf).offset && (**leaf).nameoffset<0x7FFFFFFF ){
+	    if( openpairs==0 && ocoffset==0 ){ // to list (longest length)
+	    	;
+	    }else if( openpairs==0 && ocoffset>0 ){  // from leaf to it's name in list
+	        (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
+	    }else if( openpairs==1 && ocoffset==0 ){ // from name to it's leaf
+	    	;
+	    }else if( openpairs>0 && ocoffset>0 ){ // from leaf to it's name or leaf
+		if( openpairs-ocoffset == 0 ) // list
+	          (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
+		else // leaf
+		  ;
+	    }
+	  }
+	}
+
+
 	/*
 	 * Add to leaf or to next name in list. */
 	if( !(lastleaf==NULL && leafcount==1) ){ // First leaf
@@ -272,10 +292,10 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){
         /*
          * Do not save the name if it's out of buffer. cb_set_cursor finds
          * names from stream but can not use cb_names namelist if the names
-         * are out of buffer. When used as file (CBCFGFILE or CBCFGWRITABLEFILE),
+         * are out of buffer. When used as file (CBCFGFILE or CBCFGSEEKABLEFILE),
          * filesize limits the list and this is not necessary.
          */
-        if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGWRITABLEFILE)
+        if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE)
           if( (**cbn).offset >= ( (*(**str).cb).buflen-1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen-1 ) ) 
             return CBNAMEOUTOFBUF;
 
@@ -287,7 +307,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){
 	  // Add leaf or name to a leaf, 2.12.2013
 	  if(openpairs>1){ // first '=' is openpairs==1 (used only in CBSTATETREE)
 	    //err = cb_put_leaf( &(*(**str).cb).list.current, &(*cbn), openpairs); // openpairs chooses between *next and *leaf
-	    err = cb_put_leaf( &(*str), &(*cbn), openpairs); // openpairs chooses between *next and *leaf
+	    err = cb_put_leaf( &(*str), &(*cbn), openpairs, ocoffset); // openpairs chooses between *next and *leaf
 	    return err;
 	  }
 
@@ -303,19 +323,16 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){
 	   * 14.12.2014
 	   */
 	  // Previous names contents length
-          if( (*(**str).cb).list.namecount>=1 ){
-	    //if((**str).ahd.bytesahead>=0){
+           if( (*(**str).cb).list.namecount>=1 && (**cbn).nameoffset>=(*(*(**str).cb).list.current).offset && (**cbn).nameoffset<0x7FFFFFFF ){
 	    if( openpairs==0 && ocoffset==0 ) // to list (longest length)
 	    	(*(*(**str).cb).list.current).length = (**cbn).nameoffset - (*(*(**str).cb).list.current).offset; // 14.12.2014
-	    else if( openpairs==0 && ocoffset>0 )  // from leaf to leaf in list
+	    else if( openpairs==0 && ocoffset>0 )  // from leaf to it's next leaf in list
 	        (*(*(**str).cb).list.currentleaf).length = (**cbn).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
 	    else if( openpairs==1 && ocoffset==0 ) // from name to it's leaf
 		;
 	    else if( openpairs>0 && ocoffset>0 ) // from leaf to it's leaf
 	        ;
 	  }
-
-(**cbn).nameoffset;
 
 	  // Add name 
           (*(**str).cb).list.last    = &(* (cb_name*) (*(*(**str).cb).list.last).next );
@@ -361,7 +378,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
-	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGWRITABLEFILE) // When used as only buffer, stream case does not apply
+	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // When used as only buffer, stream case does not apply
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
 	             * Do not return names in namechain if it's content is out of memorybuffer
@@ -455,6 +472,10 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  *chroffset = (*(**cbs).cb).index - 1; // 2.12.2013
+	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
+	    *chroffset = (*(**cbs).cb).readlength - 1; // overall length to seek file
+	  if( (*(**cbs).cb).index == 0 )
+	    *chroffset = 0; // 15.12.2014
 	  return err;
 	}
 	return CBERROR;
@@ -518,11 +539,20 @@ cb_get_chr_unfold_try_another:
 	  }
 	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // Correct offset
 
+	  // 15.12.2014, seekable addition to offset
+	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
+	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek file to
+
 	  //fprintf(stderr,"\nchr: [%c] chroffset:%i buffers offset:%i.", (int) *chr, (int) *chroffset, (int) ((**cbs).cb->index-1));
 	  return err;
 	}else if( (**cbs).ahd.ahead > 0){ // return previously read character
 	  err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes );
 	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // 2.12.2013
+
+	  // 15.12.2014, seekable addition to offset
+	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
+	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek file
+
 	  //fprintf(stderr,"\nchr: [%c], from ring, offset:%i , offset:%i.", (int) *chr, (int) *chroffset, (int) ((**cbs).cb->index-1));
 	  if(err>=CBNEGATION){
 	    fprintf(stderr,"\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
@@ -621,12 +651,26 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).list.current).length+(*(*(**cbs).cb).list.current).offset ) ){
 	    ret = CBSUCCESS;
 	    goto cb_set_cursor_ucs_return;
-	  }else
+	  }else{
+	    /* Found name but it's length is over the buffer length. */
+	    /*
+	     * Stream case CBCFGSTREAM. Used also in CBCFGFILE (unseekable). CBCFGBUFFER just in case. */
 	    fprintf(stderr,"\ncb_set_cursor: Found name but it's length is over the buffer length.\n");
+	    /*
+	     * 15.12.2014: matchcount prevents matching again. If seekable file is in use,
+	     * file can be seeked to old position. In this case, found names offset is returned
+	     * even if it's out of buffers boundary. 
+	     */
+	    if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+	       ret = CBSUCCESS;
+	       goto cb_set_cursor_ucs_return; // palautuva offset on kuitenkin edelleen vain puskurin kokoinen <-- viela, virhe
+	    }
+	  }
 	}else if(err==CBNAMEOUTOFBUF){
 	  //fprintf(stderr,"\ncb_set_cursor: Found old name out of cache and stream is allready passed by,\n");
 	  //fprintf(stderr,"\n               set cursor as stream and beginning to search the same name again.\n");
 	  // but search again the same name; return CBNAMEOUTOFBUF;
+	  /* 15.12.2014: cb_set_to_name return CBSUCCESS if CBCFGFILE or CBCFGSEEKABLEFILE */
 	  ;
 	}
 
@@ -851,8 +895,13 @@ cb_set_cursor_reset_name_index:
             }
 
 	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;
+	  /*
+	   * cb_search_get_chr returns maximum bufsize offset */
 	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
-	    
+	   
+	  // Debug:
+	  fprintf(stderr,"[%li]",chroffset);
+
 	}
 
 cb_set_cursor_ucs_return:
@@ -959,6 +1008,7 @@ int  cb_automatic_encoding_detection(CBFILE **cbs){
 int  cb_remove_name_from_stream(CBFILE **cbs){
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || (*(**cbs).cb).list.current==NULL )
 	  return CBERRALLOC;
-	(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
+	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE ) // 15.12.2014
+		(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
 	return CBSUCCESS;
 }
