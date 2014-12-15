@@ -46,6 +46,7 @@
 #define CBLESSTHAN            36
 #define CBOPERATIONNOTALLOWED 37    // seek was asked and CBFILE was not set as seekable
 #define CBLENGTHNOTSET        38    // length of content was not known
+#define CBNOFIT               39    // tried to write to too small space (characters left over)
 
 #define CBERROR	              40
 #define CBERRALLOC            41
@@ -107,7 +108,7 @@
 #define CBCFGBUFFER          1   // Use only as buffer (fd is not used at all)
 #define CBCFGFILE            2   // Use as file (namelist is bound by file),
                                  // cb_reinit_buffer empties names but does not seek, use: lseek((**cbf).fd if needed
-#define CBCFGWRITABLEFILE    3   // Use as file capable of seeking the cursor position - buffer is partly truncated and block is emptied after every offset read or write
+#define CBCFGSEEKABLEFILE    3   // Use as file capable of seeking the cursor position - buffer is partly truncated and block is emptied after every offset read or write
 
 
 /*
@@ -312,9 +313,9 @@ typedef struct cb_name{
         unsigned char        *namebuf;        // name
 	int                   buflen;         // name+excess namebuffer space
         int                   namelen;        // name length
-        signed long int       offset;         // offset from the beginning of data 
+        signed long int       offset;         // offset from the beginning of data (to '=')
         signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
-        int                   length;         // length of names data (after reading '='), unknown (almost allways -1), possibly empty, set after it's known
+        int                   length;         // length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
         long int              matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
@@ -333,8 +334,9 @@ typedef struct cb_namelist{
 typedef struct cbuf{
         unsigned char           *buf;
         long int                 buflen;          // In bytes
-	long int                 index;           // Cursor offset in bytes
+	long int                 index;           // Cursor offset in bytes (in buffer)
 	long int                 contentlen;      // Bytecount in numbers (first starts from 1), comment: 7.11.2009
+	long int		 readlength; 	  // Overall read length in bytes (from stream), 15.12.2014 Late addition: useful with seekable files (useless when appending or reading).
 	cb_namelist              list;
         int                      offsetrfc2822;   // offset of RFC-2822 header end with end characters (offset set at last new line character)
 } cbuf;
@@ -475,7 +477,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
 int  cb_empty_names(cbuf **buf); // frees names and zero namecount
-int  cb_empty_names_from_name(cbuf **buf, cb_name *cbn); // free names from name and count names to namecount (leafs are not counted)
+int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn); // free names from name and count names to namecount (leafs are not counted)
 int  cb_empty_block(CBFILE **buf);
 int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
@@ -500,10 +502,10 @@ int  cb_get_encoding(CBFILE **str, int *number);
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
-int  cb_use_as_writable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
-int  cb_use_as_stream(CBFILE **buf); // namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
+int  cb_use_as_seekable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
+int  cb_use_as_stream(CBFILE **buf); // Namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
 int  cb_set_to_unique_names(CBFILE **cbf);
-int  cb_set_to_polysemantic_names(CBFILE **cbf); // multiple same names, default
+int  cb_set_to_polysemantic_names(CBFILE **cbf); // Multiple same names, default
 
 /*
  * Helper queues and queue structures 

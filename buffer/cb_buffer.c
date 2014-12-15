@@ -505,7 +505,7 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	return CBSUCCESS;
 }
 /*
- * Used only with CBCFGWRITABLEFILE (seekable) to clear the block before 
+ * Used only with CBCFGSEEKABLEFILE (seekable) to clear the block before 
  * writing in between with offset and after. 
  */
 int  cb_empty_block(CBFILE **buf){
@@ -554,9 +554,9 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 int  cb_use_as_buffer(CBFILE **buf){
         return cb_set_type(&(*buf), (char) CBCFGBUFFER);
 }
-int  cb_use_as_writable_file(CBFILE **buf){
+int  cb_use_as_seekable_file(CBFILE **buf){
 	cb_use_as_file( &(*buf) );
-	return cb_set_type(&(*buf), (char) CBCFGWRITABLEFILE);
+	return cb_set_type(&(*buf), (char) CBCFGSEEKABLEFILE);
 }
 int  cb_use_as_file(CBFILE **buf){
         return cb_set_type(&(*buf), (char) CBCFGFILE);
@@ -583,8 +583,8 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	cblk *blk = NULL; 
 	blk = (**cbf).blk;
 	if( cbf==NULL || *cbf==NULL || ch==NULL ){ return CBERRALLOC; }
-	if( offset > 0 && (**cbf).cf.type!=CBCFGWRITABLEFILE ){
-		fprintf(stderr,"\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGWRITABLEFILE is not set).");
+	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
+		fprintf(stderr,"\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	}
 
@@ -602,9 +602,12 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	     * contentlength has to be set to current offset after every
 	     * write.
 	     */
-	    if( (**cbf).cf.type==CBCFGWRITABLEFILE ){
-	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, (*(**cbf).cb).index ); // read again from index
-	    }else{
+	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset<0 ){ // seekable file
+	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, (*(**cbf).cb).readlength ); // read again from absolute end (long long)
+	    }else if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
+	       /* Dangerous: internal use only. Block has to be emptied after use. */
+	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, offset ); // read block has to be emptied after use
+	    }else{ // stream
 	       sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
 	    }
 	    (*blk).contentlen = (long int) sz; // 6.12.2014
@@ -639,8 +642,8 @@ int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
 	    if((**cbs).blk!=NULL){
 	      if((*(**cbs).blk).contentlen <= (*(**cbs).blk).buflen ){
-	        if( offset > 0 && (**cbs).cf.type!=CBCFGWRITABLEFILE ){
-			fprintf(stderr,"\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGWRITABLEFILE is not set).");
+	        if( offset > 0 && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){
+			fprintf(stderr,"\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
 			return CBOPERATIONNOTALLOWED;
 		}
 		if( offset < 0 ){ // Append (usual)
@@ -722,7 +725,7 @@ cb_put_ch_put:
 
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return it until end of buffer
 	unsigned char chr=' '; int err=0; 
-	if( cbs!=NULL && *cbs!=NULL ){
+	if( cbs!=NULL && *cbs!=NULL ){ 
 
 	  if( (*(**cbs).cb).index < (*(**cbs).cb).contentlen){
 	     ++(*(**cbs).cb).index;
@@ -738,6 +741,7 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	    if( chr != (unsigned char) EOF ){
 	      (*(**cbs).cb).buf[(*(**cbs).cb).contentlen] = chr;
 	      ++(*(**cbs).cb).contentlen;
+	      ++(*(**cbs).cb).readlength; // 15.12.2014
 	      (*(**cbs).cb).index = (*(**cbs).cb).contentlen;
 	      *ch = chr;
 	      return CBSUCCESS;
@@ -750,6 +754,8 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	    *ch=chr;
 	    if( chr == (unsigned char) EOF )
 	      return CBSTREAMEND;
+	    if( readlength < 0x7FFFFFFF ) // long, 32 bit
+	      ++(*(**cbs).cb).readlength; // 15.12.2014
 	    if((*(**cbs).cb).contentlen > (*(**cbs).cb).buflen )
 	      return CBSTREAM;
 	    return err; // at edge of buffer and stream
