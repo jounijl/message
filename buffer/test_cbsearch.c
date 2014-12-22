@@ -114,9 +114,14 @@ int main (int argc, char **argv) {
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
-	cb_use_as_stream(&in);
+	//cb_use_as_stream(&in);
+	//cb_use_as_file(&in);
+	cb_use_as_seekable_file(&in);
 	cb_set_encoding(&in, CBENC1BYTE);
+	cb_set_search_state(&in, CBSTATETREE);
 	(*in).cf.rfc2822headerend=0;
+	(*in).cf.leadnames=1;
+	//(*in).cf.leadnames=0;
 
 	/*
 	 * Rest of the fields in between start ( ./progname ) and end ( <name> )
@@ -328,7 +333,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	  nameptr = &(*(*(**in).cb).list.current);
 	else
 	  nameptr = &(*(*(**in).cb).list.currentleaf);
-	if( err==CBSUCCESS || err==CBSTREAM ){
+	if( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ){
 	  //nameptr = &(*(*(**in).cb).list.current);
 	  //fprintf(stderr, "\n cbsearch, printing name:");
 	  print_name(&(*in), &nameptr );
@@ -346,6 +351,8 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	}
 	if(err==CBSTREAM){
 	  fprintf(stderr, "\n Stream.\n");
+	}else if(err==CBFILESTREAM){
+	  fprintf(stderr, "\n Filestream.\n");
 	}else if(err==CBSTREAMEND){
 	  fprintf(stderr, "\n Stream end.\n");
 	}
@@ -410,7 +417,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
         int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
         int                  ret = CBNEGATION;
         char           namecount = 0;
-        char     origsearchstate = 1;
+        unsigned char  origsearchstate = 1;
         unsigned   char *ucsname = NULL;
         cb_name       *firstname = NULL;
         unsigned long int    chr = 0x20;
@@ -436,7 +443,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
           if( chr == (unsigned long int) '.' || indx>=namelen ){ // Name
 
             err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
-            if( err==CBSUCCESS || err==CBSTREAM ){ // Debug
+            if( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ){ // Debug
               firstname = &(*(*(**cbs).cb).list.current);
               leaf = &(*(*(**cbs).cb).list.currentleaf);
               if(namecount==0){
@@ -459,7 +466,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
 	      fprintf(stderr,"\" not found.");
 	    }
 
-            if(err!=CBSUCCESS && err!=CBSTREAM)
+            if(err!=CBSUCCESS && err!=CBSTREAM && err!=CBFILESTREAM)
               ret = CBNOTFOUND;
             else
               ret = err;
@@ -470,7 +477,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
         }
         (**cbs).cf.searchstate = origsearchstate;
         free(ucsname);
-        if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
+        if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
           return ret;
         else // Name was not searched through or no match (cursor is somewhere in value)
           return CBNOTFOUND;

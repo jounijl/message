@@ -18,10 +18,7 @@
 #include <stdlib.h>
 #include <string.h> // strsep
 #include "../include/cb_buffer.h"
-#include "../read/cb_read.h"
-
-/*
- * To search a subtree, dot in name separates a subdomain. */
+#include "../include/cb_read.h"
 
 /*
  * 1 or 4 -byte functions.
@@ -31,7 +28,7 @@ int  cb_find_every_name(CBFILE **cbs){
 	unsigned char *name = NULL;
 	unsigned char  chrs[2]  = { 0x20, '\0' };
 	int namelength = 0;
-	char searchmethod=0;
+	unsigned char searchmethod=0;
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
 	name = &chrs[0];
@@ -78,7 +75,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	unsigned char *name = NULL;
 	unsigned char  chrs[2] = { 0x20, '\0' };
 	int namelen = 0;
-	char searchmethod=0;
+	unsigned char searchmethod=0;
 	name = &chrs[0];
 
 	if( cbs==NULL || *cbs==NULL ){	  fprintf(stderr,"\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC;	}
@@ -90,26 +87,105 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
 	(**cbs).cf.searchmethod = searchmethod;
 
+	//fprintf(stderr,"\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i.", ret );
+
 	free(*ucsname); // ucsname = NULL;
 	*ucsname = NULL; // 11.12.2014
-	if( ret==CBSUCCESS || ret==CBSTREAM ){ // returns only CBSUCCESS or CBSTREAM or error
+	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM){ // returns only CBSUCCESS or CBSTREAM or error
 	  ret = cb_get_current_name( &(*cbs), &(*ucsname), &(*namelength) );
-	  fprintf(stderr,"\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret);
+	  //fprintf(stderr,"\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret );
 	}
-/*
- * TMP
- * Palauttaa:
- * joko CBSUCCESS tai CBSTREAM tai virhe:
- * CBERRALLOC,
- * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM
- */
+
+	/* May return CB2822HEADEREND if it was set */
+
 	return ret;
 }
 
 
-//int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl){
-// Oli virhe:
-// sz = read((**cbf).fd, (*blk).buf, (ssize_t)(*blk).buflen);
-// =>
-// CBSTREAMEND, dup ? kaksi samalla listalla
+/*
+ * Content
+ */
 
+int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+        int len = MAXCONTENTLEN;
+        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.current==NULL || clength==NULL ){ return CBERRALLOC; }
+        if( (*(*(**cbf).cb).list.current).length >= 0 )
+                len = (*(*(**cbf).cb).list.current).length;
+        return cb_get_content( &(*cbf), &(*(**cbf).cb).list.current, &(*ucscontent), &(*clength), len );
+}
+int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+        int len = MAXCONTENTLEN;
+        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ return CBERRALLOC; }
+        if( (*(*(**cbf).cb).list.currentleaf).length >= 0 )
+                len = (*(*(**cbf).cb).list.currentleaf).length;
+        return cb_get_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len );
+}
+
+/*
+ * ucscontent is allocated and copied from current index from rstart '=' to rend '&'
+ * cb_name:s length to maximum of maxlength.
+ * 
+ * If cn_name:s length is not set, allocates maxlength size buffer with *clength content.
+ */
+int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
+        int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
+        unsigned long int chr = 0x20, chprev = 0x20;
+        int openpairs=1; char found=0;
+        int maxlen = maxlength;
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ fprintf(stderr,"\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ fprintf(stderr,"\ncb_get_content: cn was null."); return CBERRALLOC; }
+        
+        if(ucscontent==NULL)
+                ucscontent = (unsigned char**) malloc( sizeof( PSIZE ) ); // pointer size
+                
+        /*
+         * Count length */
+        if( (**cn).length > 0 ) // Length from previous count
+                maxlen = (**cn).length;
+        // Otherwice allocates maxlength buffer
+        
+        /*
+         * Allocate buffer */
+        *ucscontent = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) maxlen+2 ) );
+        if( ucscontent==NULL ) {
+                fprintf( stderr, "\ncb_get_content: malloc returned null.");
+                return CBERRALLOC;
+        }
+        memset( &(**ucscontent), 0x20, (unsigned int) maxlen+1 );
+        (*ucscontent)[ maxlen+1 ] = '\0';
+        *clength = maxlen;
+        
+        /*      
+         * Copy contents and update length */
+        ucsbufindx=0;
+        chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
+        for(maxlen=0 ; maxlen<maxlength && err<CBERROR; ++maxlen ){
+                chprev = chr;
+                err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
+                if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rstart )
+                        ++openpairs;
+                if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rend )
+                        --openpairs;
+               if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
+                        chr = (**cbf).cf.rstart; // any chr not bypass
+                if( openpairs<=0 && ( (**cbf).cf.searchstate==CBSTATETREE || (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ){
+                        maxlen=maxlength; // stop
+                        found=1;
+                        continue;
+                }else if( ( (**cbf).cf.searchstate==CBSTATELESS || (**cbf).cf.searchstate==CBSTATEFUL ) &&
+                            ( chr==(**cbf).cf.rend && chprev!=(**cbf).cf.bypass ) ){
+                        maxlen=maxlength; // stop
+                        found=1;
+                        continue;
+                }
+                if( err<CBERROR && ! ( chr==(**cbf).cf.rend && chprev!=(**cbf).cf.bypass ) )
+                        err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+        }
+        *clength = ucsbufindx;
+        if( found==1 && (**cn).length<0 && err<CBNEGATION){
+                (**cn).length = ucsbufindx/4;
+                //fprintf(stderr,"\ncb_get_content: updated length to %i ucs bytecount, %i character count (remainder %d).", ucsbufindx, (**cn).length, (ucsbufindx%4) );
+        }
+                
+        return CBSUCCESS;
+}

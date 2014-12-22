@@ -20,7 +20,6 @@
 #include <string.h> // memset
 #include <time.h>   // time (timestamp in cb_set_cursor)
 #include "../include/cb_buffer.h"
-//#include "../include/cb_compare.h"
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset);
@@ -29,7 +28,7 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); //
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 16.3.2014, 23.3.2014
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
-int  cb_set_search_method(CBFILE **buf, char method); // CBSEARCH*
+int  cb_set_search_method(CBFILE **buf, unsigned char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
@@ -211,6 +210,10 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 
 	if( str==NULL || *str==NULL || (**str).cb==NULL || leaf==NULL || *leaf==NULL) return CBERRALLOC;
 
+	//fprintf(stderr,"\ncb_put_leaf: openpairs=%i ocoffset=%i [", openpairs, ocoffset);
+	//cb_print_ucs_chrbuf( &(**leaf).namebuf, (**leaf).namelen, (**leaf).buflen );
+	//fprintf(stderr,"]");
+
 	/*
 	 * Find last leaf */
 	leafcount = openpairs;
@@ -235,18 +238,25 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 
 	/* 
 	 * Update previous leafs length */
-	if( (*(**str).cb).list.currentleaf!=NULL ){
-          if( (*(**str).cb).list.namecount>=1 && (**leaf).nameoffset>=(*(*(**str).cb).list.currentleaf).offset && (**leaf).nameoffset<0x7FFFFFFF ){
-	    if( openpairs==0 && ocoffset==0 ){ // to list (longest length)
+	//fprintf(stderr,"\ncb_put_leaf: Update previous leafs length: new leafs nameoffset %li openpairs %i ocoffset %i .", (**leaf).nameoffset, openpairs, ocoffset );
+	if( (*(**str).cb).list.last!=NULL && (*(**str).cb).list.currentleaf!=NULL && (**leaf).nameoffset>=(*(*(**str).cb).list.last).offset){ // Is in last name in list
+	  //fprintf(stderr,"\nUpdate previous leafs length: currentleafs offset %li ", (*(*(**str).cb).list.currentleaf).offset );
+	  // Presuming the currentleaf is the last leaf (and certainly is after last name)
+          if( (*(**str).cb).list.namecount>=1 && (**leaf).nameoffset>=(2+(*(*(**str).cb).list.currentleaf).offset) && (**leaf).nameoffset<0x7FFFFFFF ){
+	    if( openpairs==1 && ocoffset==0 ){ // to list (longest length)
+	    	//fprintf(stderr,"\ncb_put_leaf: 1");
+		;
+	    }else if( openpairs==1 && ocoffset>0 ){  // from leaf to it's name in list
+	    	//fprintf(stderr,"\ncb_put_leaf: 2");
+	        (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2; // 2: '=' and '&'
+	    }else if( openpairs==2 && ocoffset==0 ){ // from name to it's leaf
+	    	//fprintf(stderr,"\ncb_put_leaf: 3");
 	    	;
-	    }else if( openpairs==0 && ocoffset>0 ){  // from leaf to it's name in list
-	        (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
-	    }else if( openpairs==1 && ocoffset==0 ){ // from name to it's leaf
-	    	;
-	    }else if( openpairs>0 && ocoffset>0 ){ // from leaf to it's name or leaf
-		if( openpairs-ocoffset == 0 ) // list
-	          (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
-		else // leaf
+	    }else if( openpairs>1 && ocoffset>0 ){ // from leaf to it's name or leaf
+	    	//fprintf(stderr,"\ncb_put_leaf: 4");
+		if( openpairs-ocoffset == 0 ) // to leafs list ( ! intiseven( openpairs ) )
+	          (*(*(**str).cb).list.currentleaf).length = (**leaf).nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2;
+		else // to leafs leaf
 		  ;
 	    }
 	  }
@@ -283,11 +293,15 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 	return ret;
 }
 
-int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ 
+int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ // ocoffset late, 12/2014
         int err=0; 
 
         if(cbn==NULL || *cbn==NULL || str==NULL || *str==NULL || (**str).cb==NULL )
           return CBERRALLOC;
+
+	//fprintf(stderr,"\ncb_put_name: openpairs=%i ocoffset=%i [", openpairs, ocoffset);
+	//cb_print_ucs_chrbuf( &(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen );
+	//fprintf(stderr,"]");
 
         /*
          * Do not save the name if it's out of buffer. cb_set_cursor finds
@@ -323,15 +337,27 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){
 	   * 14.12.2014
 	   */
 	  // Previous names contents length
-           if( (*(**str).cb).list.namecount>=1 && (**cbn).nameoffset>=(*(*(**str).cb).list.current).offset && (**cbn).nameoffset<0x7FFFFFFF ){
-	    if( openpairs==0 && ocoffset==0 ) // to list (longest length)
-	    	(*(*(**str).cb).list.current).length = (**cbn).nameoffset - (*(*(**str).cb).list.current).offset; // 14.12.2014
-	    else if( openpairs==0 && ocoffset>0 )  // from leaf to it's next leaf in list
-	        (*(*(**str).cb).list.currentleaf).length = (**cbn).nameoffset - (*(*(**str).cb).list.currentleaf).offset;
-	    else if( openpairs==1 && ocoffset==0 ) // from name to it's leaf
-		;
-	    else if( openpairs>0 && ocoffset>0 ) // from leaf to it's leaf
-	        ;
+	  //fprintf(stderr,"\ncb_put_name: Update previous names length: new names nameoffset %li openpairs %i ocoffset %i.", (**cbn).nameoffset, openpairs, ocoffset );
+	  if( (*(**str).cb).list.last!=NULL ){
+	    //fprintf(stderr,"\nUpdate previous names length: last names offset %li ", (*(*(**str).cb).list.last).offset );
+            if( (*(**str).cb).list.namecount>=1 && (**cbn).nameoffset>=( (*(*(**str).cb).list.last).offset + 2 ) && (**cbn).nameoffset<0x7FFFFFFF ){
+	      if( openpairs==0 && ocoffset==0 ){ // to list (longest length)
+	         (*(*(**str).cb).list.last).length = (**cbn).nameoffset - (*(*(**str).cb).list.last).offset - 2;
+	    	 //fprintf(stderr,"\ncb_put_name: 1 length=%i", (*(*(**str).cb).list.last).length );
+	      }else if( openpairs==0 && ocoffset==1 && (*(**str).cb).list.currentleaf!=NULL ){ // from leaf to it's next leaf in list
+		  if( (*(*(**str).cb).list.currentleaf).offset >= (*(*(**str).cb).list.last).offset ) // is lasts leaf
+		    if( (**cbn).nameoffset >= ( (*(*(**str).cb).list.currentleaf).offset + 2 ) ) // leaf is after this leaf
+	              (*(*(**str).cb).list.currentleaf).length = (**cbn).nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2; // 2: '=' and '&'
+	            // since read pointer is allways at read position, leaf can be added without knowing if one leaf is missing in between
+	    	  //fprintf(stderr,"\ncb_put_name: 2 length=%i", (*(*(**str).cb).list.last).length );
+	      }else if( openpairs==1 && ocoffset==0 ){ // from name to it's leaf
+	          //fprintf(stderr,"\ncb_put_name: 3" );
+		  ;
+	      }else if( openpairs>1 && ocoffset>=0 ){ // from leaf to it's leaf
+		  //fprintf(stderr,"\ncb_put_name: 4" );
+	          ;
+	      }
+	    }
 	  }
 
 	  // Add name 
@@ -341,9 +367,9 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){
           (*(**str).cb).list.current = &(*(*(**str).cb).list.last);
           (*(**str).cb).list.currentleaf = &(*(*(**str).cb).list.last);
           ++(*(**str).cb).list.namecount;
-          //if( (*(**str).cb).contentlen >= (*(**str).cb).buflen )
-          if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
-            (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
+	  if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
+            if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
+              (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
         }else{
           err = cb_allocate_name( &(*(**str).cb).list.name, (**cbn).namelen ); if(err!=CBSUCCESS){ return err; } // 7.12.2013
           (*(**str).cb).list.last    = &(* (cb_name*) (*(**str).cb).list.name); // last
@@ -406,14 +432,14 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 }
 
 int  cb_set_to_polysemantic_names(CBFILE **cbf){
-	return cb_set_search_method(&(*cbf), (char) CBSEARCHNEXTNAMES);
+	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
 }
 
 int  cb_set_to_unique_names(CBFILE **cbf){
-	return cb_set_search_method(&(*cbf), (char) CBSEARCHUNIQUENAMES);
+	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
 }
 
-int  cb_set_search_method(CBFILE **cbf, char method){
+int  cb_set_search_method(CBFILE **cbf, unsigned char method){
 	if(cbf!=NULL){
 	  if((*cbf)!=NULL){
 	    (**cbf).cf.searchmethod=method; 
@@ -450,8 +476,12 @@ int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){
         if( (*(**cbf).cb).contentlen < 0 )
           (*(**cbf).cb).contentlen=0;
 
-	if( (*(**cbf).cb).contentlen>=(*(**cbf).cb).buflen || (*(**cbf).cb).index>=(*(**cbf).cb).buflen )
-	  err = CBSTREAM;
+	if( (*(**cbf).cb).contentlen>=(*(**cbf).cb).buflen || (*(**cbf).cb).index>=(*(**cbf).cb).buflen ){
+	  if( (**cbf).cf.type==CBCFGSEEKABLEFILE )
+	    err = CBFILESTREAM;
+	  else
+	    err = CBSTREAM;
+	}
 
 	// Empty readahead
         (*cfi).ahead=0;
@@ -471,11 +501,12 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	  return cb_get_chr_unfold( &(*cbs), &(*chr), &(*chroffset) );
 	else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
+	  // Stream, buffer, file
 	  *chroffset = (*(**cbs).cb).index - 1; // 2.12.2013
-	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
-	    *chroffset = (*(**cbs).cb).readlength - 1; // overall length to seek file
-	  if( (*(**cbs).cb).index == 0 )
-	    *chroffset = 0; // 15.12.2014
+	  // Seekable file
+	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE )
+	    if( (*(**cbs).cb).readlength>=0 ) // overflow
+	      *chroffset = (*(**cbs).cb).readlength - 1;
 	  return err;
 	}
 	return CBERROR;
@@ -491,14 +522,14 @@ int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset
 
 	if( (**cbs).ahd.ahead == 0){
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	  if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+	  if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
 	  if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
 
 cb_get_chr_unfold_try_another:
 	  if( WSP( *chr ) && err<CBNEGATION ){
 	    cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
 	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	    if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+	    if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
 	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
 	    if( WSP( *chr ) && err<CBNEGATION ){
 	      cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp );
@@ -510,13 +541,13 @@ cb_get_chr_unfold_try_another:
 	  }else if( CR( *chr ) && err<CBNEGATION ){
 	    cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
 	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	    if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+	    if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
 	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
 
 	    if( LF( *chr ) && err<CBNEGATION ){ 
 	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
 	      err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	      if(err==CBSTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+	      if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
 	      if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
 
 	      if( WSP( *chr ) && err<CBNEGATION ){
@@ -537,21 +568,29 @@ cb_get_chr_unfold_try_another:
             //fprintf(stderr,"\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
 	    //cb_fifo_print_counters(&(**cbs).ahd);
 	  }
+	  // Stream, file, buffer
 	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // Correct offset
 
-	  // 15.12.2014, seekable addition to offset
-	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
-	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek file to
+	  // Seekable file
+	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+	    if( *chroffset < 0 ) // overflow
+	      *chroffset = 0;
+	  }
 
 	  //fprintf(stderr,"\nchr: [%c] chroffset:%i buffers offset:%i.", (int) *chr, (int) *chroffset, (int) ((**cbs).cb->index-1));
 	  return err;
 	}else if( (**cbs).ahd.ahead > 0){ // return previously read character
 	  err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes );
+	  // Stream, file, buffer
 	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // 2.12.2013
 
-	  // 15.12.2014, seekable addition to offset
-	  if( (*(**cbs).cb).index >= (*(**cbs).cb).contentlen && (**cbs).cf.type==CBCFGSEEKABLEFILE && (*(**cbs).cb).readlength>=0 )
-	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek file
+	  // Seekable file
+	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+	    if( *chroffset < 0 ) // overflow
+	      *chroffset = 0;
+	  }
 
 	  //fprintf(stderr,"\nchr: [%c], from ring, offset:%i , offset:%i.", (int) *chr, (int) *chroffset, (int) ((**cbs).cb->index-1));
 	  if(err>=CBNEGATION){
@@ -720,9 +759,8 @@ cb_set_cursor_reset_name_index:
 	 * bypassed with '\' and only if the name is found, it's put to the index,
 	 * name offset can be set here (to test after 6.12.2014). Programmer 
 	 * should leave the cursor where the data ends, at '&'. */
-	//nameoffset = (*(**cbs).cb).index;
 	nameoffset = chroffset;
-	//fprintf(stderr,"\nset_cursor: nameoffset %d", nameoffset);
+	//fprintf(stderr,"\nset_cursor: nameoffset %li", nameoffset);
 
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
 
@@ -772,15 +810,18 @@ cb_set_cursor_reset_name_index:
 	          buferr = CBSUCCESS;
 	        }
 	      }
-	      if( ! ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){
-	        if( (**cbs).cf.leadnames==1 )              // From '=' to '=' and from '&' to '=',
+	      //if( ! ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){
+	      if( (**cbs).cf.searchstate!=CBSTATETREE && (**cbs).cf.searchstate!=CBSTATETOPOLOGY ){
+	        if( (**cbs).cf.leadnames==1 ){              // From '=' to '=' and from '&' to '=',
+		  //fprintf(stderr,"\nHERE (**cbs).cf.searchstate=0x%.2X compared to 0x%.2X and 0x%.2X", (**cbs).cf.searchstate, CBSTATETREE, CBSTATETOPOLOGY);
 	          goto cb_set_cursor_reset_name_index;     // not just from '&' to '=', 8.12.2013.
+		}
 	      }else{
 	        if( openpairs>(ocoffset+1) && (**cbs).cf.searchstate==CBSTATETREE ) // reset charbuf index if second rstart or more from ocoffset
 	          goto cb_set_cursor_reset_name_index;
 	        if( openpairs>1 && (**cbs).cf.searchstate==CBSTATETOPOLOGY ) // reset charbuf index if second rstart or more
-	          goto cb_set_cursor_reset_name_index; 
-	        else if( ocoffset!=0 && openpairs!=(ocoffset+1) ) 
+	          goto cb_set_cursor_reset_name_index;
+	        else if( ocoffset!=0 && openpairs!=(ocoffset+1) )
 	          goto cb_set_cursor_reset_name_index;
 	        else if( openpairs<(ocoffset+1) || openpairs<1 )
 	          fprintf(stderr, "\ncb_set_cursor_ucs: error, openpairs<(ocoffset+1) || openpairs<1, %i<%i.", openpairs, (ocoffset+1));
@@ -795,7 +836,7 @@ cb_set_cursor_reset_name_index:
 	      fprintf(stderr, "\ncb_set_cursor: name was out of memory buffer.\n");
 	    }
 	    /*
-	     * Name (openpairs==1) 
+	     * Name (openpairs==1)
 	     */
 	    if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
 	      //fprintf(stderr,"\nNAME COMPARE");
@@ -807,6 +848,10 @@ cb_set_cursor_reset_name_index:
 	        if(err==CBSTREAM){
 	          //fprintf(stderr,"\nName found from stream.");
 	          ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
+	          goto cb_set_cursor_ucs_return;
+	        }else if(err==CBFILESTREAM){
+	          //fprintf(stderr,"\nName found from file stream (seekable).");
+	          ret = CBFILESTREAM; // cursor set, preferably the first time
 	          goto cb_set_cursor_ucs_return;
 	        }else{
 	          //fprintf(stderr,"\nName found from buffer.");
@@ -827,6 +872,10 @@ cb_set_cursor_reset_name_index:
 	        if(err==CBSTREAM){
 	          //fprintf(stderr,"\nLeaf found from stream.");
 	          ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
+	          goto cb_set_cursor_ucs_return;
+	        }else if(err==CBFILESTREAM){
+	          //fprintf(stderr,"\nLeaf found from stream.");
+	          ret = CBFILESTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
 	          goto cb_set_cursor_ucs_return;
 	        }else{
 	          //fprintf(stderr,"\nLeaf found from buffer.");
@@ -898,9 +947,9 @@ cb_set_cursor_reset_name_index:
 	  /*
 	   * cb_search_get_chr returns maximum bufsize offset */
 	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
-	   
+
 	  // Debug:
-	  fprintf(stderr,"[%li]",chroffset);
+	  //fprintf(stderr,"[%li]",chroffset);
 
 	}
 
@@ -908,7 +957,7 @@ cb_set_cursor_ucs_return:
 	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
         cb_free_name(&fname); // fname on kaksi kertaa, put_name kopioi sen uudelleen
 	fname = NULL; // lisays
-	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBMATCH || ret==CBMATCHLENGTH) // match* on turha, aina stream tai success
+	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM || ret==CBMATCH || ret==CBMATCHLENGTH ) // match* on turha, aina stream tai success
 	  if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current!=NULL ){
 	    if( (*(*(**cbs).cb).list.current).lasttimeused == -1 )
 	      (*(*(**cbs).cb).list.current).lasttimeused = (*(*(**cbs).cb).list.current).firsttimefound; // first time found
@@ -1008,7 +1057,7 @@ int  cb_automatic_encoding_detection(CBFILE **cbs){
 int  cb_remove_name_from_stream(CBFILE **cbs){
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || (*(**cbs).cb).list.current==NULL )
 	  return CBERRALLOC;
-	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE ) // 15.12.2014
+	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE )
 		(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
 	return CBSUCCESS;
 }

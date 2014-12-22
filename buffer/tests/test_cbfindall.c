@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "../../include/cb_buffer.h"
-#include "../../read/cb_read.h"
+#include "../../include/cb_read.h"
 
 /*
  * Finds all names once with cb_find_every_name and prints them.
