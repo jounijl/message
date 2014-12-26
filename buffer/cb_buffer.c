@@ -121,7 +121,7 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
 int  cb_set_type(CBFILE **buf, unsigned char type);
 int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
 int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
-int  cb_print_leaves_inner(cb_name **cbn);
+int  cb_print_leaves_inner(cb_name **cbn, char priority);
 int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset);
 int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
@@ -131,123 +131,121 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset);
  * Debug
  */
 
-int cb_print_conf(CBFILE **str){
-	if(str==NULL || *str==NULL){ fprintf(stderr," null."); return CBERRALLOC; }
-	fprintf(stderr,"\ntype:            \t0x%.2X", (**str).cf.type);
-	fprintf(stderr,"\nsearchmethod:    \t0x%.2X", (**str).cf.searchmethod);
-	fprintf(stderr,"\nunfold:          \t0x%.2X", (**str).cf.unfold);
-	fprintf(stderr,"\nasciicaseinsensitive: \t0x%.2X", (**str).cf.asciicaseinsensitive);
-	fprintf(stderr,"\nrfc2822headerend: \t0x%.2X", (**str).cf.rfc2822headerend);
-	fprintf(stderr,"\nremovewsp:        \t0x%.2X", (**str).cf.removewsp);
-	fprintf(stderr,"\nremovecrlf:       \t0x%.2X", (**str).cf.removecrlf);
-	fprintf(stderr,"\nremovenamewsp:    \t0x%.2X", (**str).cf.removenamewsp);
-	fprintf(stderr,"\nleadnames:        \t0x%.2X", (**str).cf.leadnames);
-	fprintf(stderr,"\njson:             \t0x%.2X", (**str).cf.json);
-	fprintf(stderr,"\ndoubledelim:      \t0x%.2X", (**str).cf.doubledelim);
-	fprintf(stderr,"\nsearchstate:      \t0x%.2X\n", (**str).cf.searchstate);
+int cb_print_conf(CBFILE **str, char priority){
+	if(str==NULL || *str==NULL){ cb_log(&(*str), CBLOGALERT, "\ncb_print_conf: str was null."); return CBERRALLOC; }
+	cb_log(&(*str), priority, "\ntype:            \t0x%.2X", (**str).cf.type);
+	cb_log(&(*str), priority, "\nsearchmethod:    \t0x%.2X", (**str).cf.searchmethod);
+	cb_log(&(*str), priority, "\nunfold:          \t0x%.2X", (**str).cf.unfold);
+	cb_log(&(*str), priority, "\nasciicaseinsensitive: \t0x%.2X", (**str).cf.asciicaseinsensitive);
+	cb_log(&(*str), priority, "\nrfc2822headerend: \t0x%.2X", (**str).cf.rfc2822headerend);
+	cb_log(&(*str), priority, "\nremovewsp:        \t0x%.2X", (**str).cf.removewsp);
+	cb_log(&(*str), priority, "\nremovecrlf:       \t0x%.2X", (**str).cf.removecrlf);
+	cb_log(&(*str), priority, "\nremovenamewsp:    \t0x%.2X", (**str).cf.removenamewsp);
+	cb_log(&(*str), priority, "\nleadnames:        \t0x%.2X", (**str).cf.leadnames);
+	cb_log(&(*str), priority, "\njson:             \t0x%.2X", (**str).cf.json);
+	cb_log(&(*str), priority, "\ndoubledelim:      \t0x%.2X", (**str).cf.doubledelim);
+	cb_log(&(*str), priority, "\nsearchstate:      \t0x%.2X\n", (**str).cf.searchstate);
 	return CBSUCCESS;
 }
 
-int  cb_print_leaves(cb_name **cbn){ 
+int  cb_print_leaves(cb_name **cbn, char priority){ 
 	cb_name *ptr = NULL;
 	if(cbn==NULL || *cbn==NULL)
 	  return CBERRALLOC;
 	ptr = &(* (cb_name*) (**cbn).leaf);
-	return cb_print_leaves_inner( &ptr );
+	return cb_print_leaves_inner( &ptr, priority );
 }
-int  cb_print_leaves_inner(cb_name **cbn){ 
+int  cb_print_leaves_inner(cb_name **cbn, char priority){ 
 	int err = CBSUCCESS;
 	cb_name *iter = NULL, *leaf = NULL;
-	if(cbn==NULL || *cbn==NULL){ fprintf(stderr," null."); return CBSUCCESS; }
+	if(cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, "\ncb_print_leaves_inner: cbn was null."); return CBSUCCESS; }
 
 	iter = &(**cbn);
-	if(iter==NULL){ fprintf(stderr," null."); return CBSUCCESS; }
+	if(iter==NULL){ cb_clog( CBLOGINFO, "\ncb_print_leaves_inner: iter was null."); return CBSUCCESS; }
         if( iter!=NULL ){ // Name
 	  // Self
 	  if(iter!=NULL){
 	    if((*iter).namelen!=0){
-	      fprintf(stderr,"\"");
-	      cb_print_ucs_chrbuf( &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
-	      fprintf(stderr,"\"");
+	      cb_clog( priority, "\"");
+	      cb_print_ucs_chrbuf( priority, &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
+	      cb_clog( priority, "\"");
 	      if( (*iter).leaf==NULL && (*iter).next!=NULL)
-	        fprintf(stderr,",");
+	        cb_clog( priority, ",");
 	      else if( (*iter).leaf!=NULL)
-	        fprintf(stderr,":");
+	        cb_clog( priority, ":");
 	    }
 	  }
 	  // Left
 	  if( (*iter).leaf != NULL ){
 	    leaf = &(* (cb_name*) (*iter).leaf);
-	    fprintf(stderr,"{");
-	    err = cb_print_leaves_inner( &leaf ); // LEFT
-	    fprintf(stderr,"}");
+	    cb_clog( priority, "{");
+	    err = cb_print_leaves_inner( &leaf, priority ); // LEFT
+	    cb_clog( priority, "}");
 	  }
 	  // Right
 	  if( (*iter).next != NULL ){
 	    leaf = &(* (cb_name*) (*iter).next);
-	    err = cb_print_leaves_inner( &leaf ); // RIGHT
+	    err = cb_print_leaves_inner( &leaf, priority ); // RIGHT
 	  }
 	}
 	return err;
 }
 
-int  cb_print_name(cb_name **cbn){ 
+int  cb_print_name(cb_name **cbn, char priority){ 
 	int err=CBSUCCESS;
 	if( cbn==NULL || *cbn==NULL) return CBERRALLOC;
 
-        fprintf(stderr, " name [" );
+        cb_clog( priority, " name [" );
 	if( (**cbn).namebuf!=NULL && (**cbn).buflen>0 )
-          cb_print_ucs_chrbuf(&(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen);
-        //fprintf(stderr, "] offset [%lli] length [%i]", (**cbn).offset, (**cbn).length);
-        fprintf(stderr, "] offset [%li] length [%i]", (**cbn).offset, (**cbn).length); // 6.12.2014
-        //fprintf(stderr, " nameoffset [%lli]\n", (**cbn).nameoffset);
-        fprintf(stderr, " nameoffset [%li]\n", (**cbn).nameoffset);
-        fprintf(stderr, " matchcount [%li]", (**cbn).matchcount);
-        fprintf(stderr, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
-        fprintf(stderr, " last used [%li]\n", (**cbn).lasttimeused);
+          cb_print_ucs_chrbuf( priority, &(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen);
+        cb_clog( priority, "] offset [%li] length [%i]", (**cbn).offset, (**cbn).length); // 6.12.2014
+        cb_clog( priority, " nameoffset [%li]\n", (**cbn).nameoffset);
+        cb_clog( priority, " matchcount [%li]", (**cbn).matchcount);
+        cb_clog( priority, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
+        cb_clog( priority, " last used [%li]\n", (**cbn).lasttimeused);
         return err;
 }
-int  cb_print_names(CBFILE **str){ 
+int  cb_print_names(CBFILE **str, char priority){ 
 	cb_name *iter = NULL; int names=0;
-	fprintf(stderr, "\n cb_print_names: \n");
+	cb_log( &(*str), priority, "\n cb_print_names: \n");
 	if(str!=NULL){
 	  if( *str !=NULL){
             iter = &(*(*(**str).cb).list.name);
             if(iter!=NULL){
               do{
 	        ++names;
-	        fprintf(stderr, " [%i/%li]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
+	        cb_log( &(*str), priority, " [%i/%li]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
 	        if(iter!=NULL)
-	          cb_print_name( &iter);
+	          cb_print_name( &iter, priority);
 	        if( (**str).cf.searchstate==CBSTATETREE ){
-	          fprintf(stderr, "         tree: ");
-	          cb_print_leaves( &iter );
-	          fprintf(stderr, "\n");
+	          cb_log( &(*str), priority, "         tree: ");
+	          cb_print_leaves( &iter, priority );
+	          cb_log( &(*str), priority, "\n");
 	        }
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
               return CBSUCCESS;
 	    }else{
-	      fprintf(stderr, "\n namelist was empty");
+	      cb_log( &(*str), priority, "\n namelist was empty");
 	    }
 	  }else{
-	    fprintf(stderr, "\n *str was null "); 
+	    cb_log( &(*str), priority, "\n *str was null "); 
 	  }
 	}else{
-	  fprintf(stderr, "\n str was null "); 
+	  cb_log( &(*str), priority, "\n str was null "); 
 	}
         return CBERRALLOC;
 }
 // Debug
-void cb_print_counters(CBFILE **cbf){
+void cb_print_counters(CBFILE **cbf, char priority){
         if(cbf!=NULL && *cbf!=NULL){
-          fprintf(stderr, "\nnamecount:%li \t index:%li \t contentlen:%li \t  buflen:%li ", \
+          cb_log( &(*cbf), priority, "\nnamecount:%li \t index:%li \t contentlen:%li \t  buflen:%li ", \
 	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
-	  fprintf(stderr, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
-	  if( (*(**cbf).cb).list.name==NULL ){  fprintf(stderr, "name was null, \t");  }else{  fprintf(stderr, "name was not null, \t"); }
-	  if( (*(**cbf).cb).list.last==NULL ){  fprintf(stderr, "last was null, \t");  }else{  fprintf(stderr, "last was not null, \t"); }
-	  if( (*(**cbf).cb).list.current==NULL ){  fprintf(stderr, "\ncurrent was null, \t");  }else{  fprintf(stderr, "\ncurrent was not null, \t"); }
-	  if( (*(**cbf).cb).list.currentleaf==NULL ){  fprintf(stderr, "currentleaf was null, \t");  }else{  fprintf(stderr, "currentleaf was not null, \t"); }
+	  cb_log( &(*cbf), priority, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
+	  if( (*(**cbf).cb).list.name==NULL ){  cb_log( &(*cbf), priority, "name was null, \t");  }else{  cb_log( &(*cbf), priority, "name was not null, \t"); }
+	  if( (*(**cbf).cb).list.last==NULL ){  cb_log( &(*cbf), priority, "last was null, \t");  }else{  cb_log( &(*cbf), priority, "last was not null, \t"); }
+	  if( (*(**cbf).cb).list.current==NULL ){  cb_log( &(*cbf), priority, "\ncurrent was null, \t");  }else{  cb_log( &(*cbf), priority, "\ncurrent was not null, \t"); }
+	  if( (*(**cbf).cb).list.currentleaf==NULL ){  cb_log( &(*cbf), priority, "currentleaf was null, \t");  }else{  cb_log( &(*cbf), priority, "currentleaf was not null, \t"); }
 	}
 }
 
@@ -324,7 +322,7 @@ int  cb_set_search_state(CBFILE **str, unsigned char state){
 	if( state==CBSTATETREE || state==CBSTATELESS || state==CBSTATEFUL || state==CBSTATETOPOLOGY )
 		(**str).cf.searchstate = state;
 	else
-		fprintf(stderr, "\nState not known.");
+		cb_log( &(*str), CBLOGWARNING, "\nState not known.");
 	return CBSUCCESS;
 }
 int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart){ // sublist value start
@@ -354,6 +352,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
 	//(**str).cf.doubledelim=1; // default
 	(**str).cf.doubledelim=0; // test
+	(**str).cf.logpriority=CBLOGDEBUG; // 
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
 #ifdef CB2822MESSAGE
@@ -570,7 +569,7 @@ int  cb_empty_block(CBFILE **buf, char reading ){
 	(*(**buf).blk).contentlen = 0;
 	(*(**buf).blk).index = 0;
 	if( lerr==-1 ){
-	  fprintf(stderr,"\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
+	  cb_log( &(*buf), CBLOGALERT, "\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
 	  return CBERRFILEOP;
 	}
 	return CBSUCCESS;
@@ -645,7 +644,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	blk = (**cbf).blk;
 	if( cbf==NULL || *cbf==NULL || ch==NULL ){ return CBERRALLOC; }
 	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-		fprintf(stderr,"\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
+		cb_log( &(*cbf), CBLOGERR, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	}
 
@@ -710,7 +709,7 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	  }
 	}
 	if(err<0){
-	  fprintf(stderr,"\ncb_flush_cbfile_to_offset: errno %i .", errno);
+	  cb_clog( CBLOGINFO, "\ncb_flush_cbfile_to_offset: errno %i .", errno);
 	  err = CBERRFILEWRITE ; 
 	}else{
 	  err = CBSUCCESS;
@@ -725,7 +724,7 @@ int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
 	    if((**cbs).blk!=NULL){
 	      if( offset > 0 && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){
-		fprintf(stderr,"\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
+		cb_log( &(*cbs), CBLOGERR, "\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	      }
 	      return cb_flush_cbfile_to_offset( &(**cbs).blk, (**cbs).fd, offset);
@@ -855,7 +854,7 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long in
         long int index=0;
         if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
         *buf = (unsigned char *) malloc( sizeof(char)*( (unsigned long int)  *size+1 ) );
-        if(*buf==NULL){ fprintf(stderr, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
+        if(*buf==NULL){ cb_clog( CBLOGALERT, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
         (*buf)[(*size)] = '\0';
         for(index=0;(index<(*to-*from) && index<(*size) && (index+*from)<(*cbs).contentlen); ++index){
           (*buf)[index] = (*cbs).buf[index+*from];
@@ -869,7 +868,7 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long in
  * responsibility of the user. Buffer is swapped temporarily and function is 
  * not atomic.
  */
-int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, signed long int offset, signed long int offsetlimit){
+int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *byteswritten, signed long int offset, signed long int offsetlimit){
 	int index=0, charcount=0; int err = CBSUCCESS;
 	int bufindx=0, bytecount=0, storedsize=0;
 	unsigned long int chr = 0x20;
@@ -880,54 +879,55 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, signe
 	unsigned char *ubf = NULL;
 	long int offindex = offset, contentlen = 0;
 
-	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC; }
+	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || byteswritten==NULL ){ return CBERRALLOC; }
 	if( ucsbuf==NULL || *ucsbuf==NULL ){ return CBERRALLOC; }
 	if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-	  fprintf(stderr, "\ncb_write_to_offset: attempt to write to unseekable file, type %i. Returning CBOPERATIONNOTALLOWED .", (**cbf).cf.type );
+	  cb_log( &(*cbf), CBLOGALERT, "\ncb_write_to_offset: attempt to write to unseekable file, type %i. Returning CBOPERATIONNOTALLOWED .", (**cbf).cf.type );
 	  return CBOPERATIONNOTALLOWED;
 	}
+	*byteswritten=0;
 
 	cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
 
 	/* Replace block with small write block */
-	cb = &cbdata;
-	buf[CBSEEKABLEWRITESIZE]='\0';
-	ubf = &buf[0];
-	cb_init_buffer_from_blk( &cb, &ubf, CBSEEKABLEWRITESIZE);
 	origcb = &(*(**cbf).blk);
-	(**cbf).blk = &(*cb);
+	if( (*(**cbf).blk).buflen < CBSEEKABLEWRITESIZE || (*(**cbf).blk).contentlen!=0 ){ // swap block if it is not flushed or smaller
+		cb = &cbdata;
+		buf[CBSEEKABLEWRITESIZE]='\0';
+		ubf = &buf[0];
+		cb_init_buffer_from_blk( &cb, &ubf, CBSEEKABLEWRITESIZE);
+		(**cbf).blk = &(*cb);
+	}
 
-	//fprintf(stderr,"\ncb_write_to_offset: data size %i, offset %li, offsetlimit %li, ", ucssize, offset, offsetlimit );
-	//fprintf(stderr,"blocksize %li .", (*(**cbf).blk).buflen );
-	//fprintf(stderr,"\ncb_write_to_offset: writing from %li size %i characters (r: %i) %i bytes [", offset, (ucssize/4), (ucssize%4), ucssize);
-	//cb_print_ucs_chrbuf( &(*ucsbuf), ucssize, ucssize);
-	//fprintf(stderr,"] :\n");
+	//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_write_to_offset: data size %i, offset %li, offsetlimit %li, ", ucssize, offset, offsetlimit );
+	//cb_log( &(*cbf), CBLOGDEBUG, "blocksize %li .", (*(**cbf).blk).buflen );
+	//cb_log( &(*cbf), CBLOGDEBUG, ,"\ncb_write_to_offset: writing from %li size %i characters (r: %i) %i bytes [", offset, (ucssize/4), (ucssize%4), ucssize);
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsbuf), ucssize, ucssize);
+	//cb_log( &(*cbf), CBLOGDEBUG, "] :\n");
         
 	// Write block length and flush to offset
 	while( ucssize>=0 && bufindx<ucssize && err<CBERROR && err!=CBNOFIT ){
 	  // Flush full block
-	  if( index >= (*(**cbf).blk).buflen-6 && (*(**cbf).blk).buflen>=6 && index>=CBSEEKABLEWRITESIZE){ // minus longest known bytecount of character
+	  if( index >= (*(**cbf).blk).buflen-6 && (*(**cbf).blk).buflen>=6 ){ // minus longest known bytecount of character
 	    contentlen = (*(**cbf).blk).contentlen;
-	    //fprintf(stderr,"\ncb_write_to_offset: flush");
 	    cb_flush_to_offset( &(*cbf), (offindex+1) );
 	    offindex += contentlen;
 	  }
 	  // Write to block
 	  err = cb_get_ucs_chr( &chr, &(*ucsbuf), &bufindx, ucssize);
 	  ++charcount;
-	  //fprintf(stderr,"\ncb_write_to_offset: [%c]", (unsigned char) chr );
 	  cb_put_chr( &(*cbf), chr, &bytecount, &storedsize );
 	  index += storedsize;
-	  //fprintf(stderr,"(%i)(o:%ld)", index, offindex);
+	  *byteswritten += storedsize;
 	  if( offindex >= offsetlimit || index+offset >= offsetlimit )
 	    err = CBNOFIT;
 	}
 	// Flush the rest
-	//fprintf(stderr,"\ncb_write_to_offset: flush .");
+	contentlen = (*(**cbf).blk).contentlen;
 	err = cb_flush_to_offset( &(*cbf), (offindex+1) ); // does not update filepointer
-	//fprintf(stderr,"\ncb_write_to_offset: wrote to %li %i characters stored size %i .", offindex, charcount, index);
+	offindex += contentlen;
 
-	// Return the original block
+	// Return the original block (if it was swapped)
 	(**cbf).blk = &(*origcb);
 
 	// Return and error check
@@ -935,3 +935,90 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, signe
 	  return CBNOFIT;
         return CBSUCCESS;
 }
+
+/*
+ * Storage data of one character is stored in stg and it's size to stgsize. */
+int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **stg, int *stgsize){
+        int err = CBSUCCESS;
+        int bcount=0;
+        cbuf *origcb = NULL;
+        cbuf *cb = NULL;
+        cbuf  cbdata;
+        unsigned char buf[6+1]; // longest known character+1
+        unsigned char *ubf = NULL;
+        
+        if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC; }
+        if( stg==NULL ){ return CBERRALLOC; }
+        
+        cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+        
+        // Replace block with small write block
+        cb = &cbdata;
+        buf[6]='\0';
+        ubf = &buf[0];
+        cb_init_buffer_from_blk( &cb, &ubf, 6);
+        
+        origcb = &(*(**cbf).blk);
+        (**cbf).blk = &(*cb);
+        
+        // Write character
+        err = cb_put_chr( &(*cbf), ucschr, &bcount, &(*stgsize) );
+
+        // Return the original block
+        (**cbf).blk = &(*origcb);
+        
+        if(err>=CBNEGATION){
+                *stgsize = 0;
+                return err;
+        }
+
+        // Allocate and copy characterarray
+        *stg = (unsigned char*) malloc( (size_t) sizeof( char )*( (unsigned int) (*stgsize) + 1 ) );
+        if(*stg==NULL){ return CBERRALLOC; }
+        (*stg)[*stgsize] = '\0';
+        for( bcount=(*stgsize-1) ; bcount>=0; --bcount){
+          (*stg)[bcount] = buf[bcount];
+        }
+        
+        return CBSUCCESS;
+}
+
+
+/*
+ * Fills with chr:s from offset to offsetlimit. If not even at end, does not fill. */
+int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signed long int offsetlimit){
+        int err=CBSUCCESS, bcount=0;
+        unsigned char *cdata = NULL;
+
+        if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
+        if( offset<0 || offsetlimit<0 ){
+                cb_log( &(*cbf), CBLOGERR, "\ncb_erase: warning, a parameter was negative.");
+                return CBOVERFLOW;
+        }
+
+        cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: erasing from %li to limit %li (bytes in buffer).", offset, offsetlimit );
+ 
+        if( (**cbf).cf.type!=CBCFGSEEKABLEFILE )
+                if( (*(**cbf).cb).index >= (*(**cbf).cb).contentlen || (*(**cbf).cb).readlength>=(*(**cbf).cb).contentlen )
+                        cb_log( &(*cbf), CBLOGWARNING, "\ncb_erase: warning, attempting to erase a stream.");
+          
+        /*
+         * Character size. (Slow and consuming.) */
+        err = cb_character_size( &(*cbf), chr, &cdata, &bcount);
+        if( err!=CBSUCCESS || cdata==NULL || bcount==0 ){ return err; }
+
+	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: charactersize %i .", bcount );
+          
+        /*
+         * Write (( offsetlimit-offset/bcount )) characters and remainder. */
+	err=0;
+        while( err>=0 && offset <= ( offsetlimit - (bcount-1) ) ){
+		cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: writing %i to %li .", bcount, offset );
+                err = (int) pwrite( (**cbf).fd, &(*cdata), (size_t) bcount, (off_t) offset );
+                offset+=bcount;
+        }
+
+	free(cdata);                
+        return err;
+}
+

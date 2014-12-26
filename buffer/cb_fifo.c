@@ -20,29 +20,29 @@
 #include "../include/cb_buffer.h"
 
 // Debug
-int  cb_fifo_print_buffer(cb_ring *cfi){
+int  cb_fifo_print_buffer(cb_ring *cfi, char priority){
         int i=0, err=0, chrsize=0; unsigned long int chr = ' ';
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
         for( i = (*cfi).ahead; i > 0; i-=4 ){
           err = cb_fifo_get_chr(&(*cfi), &chr, &chrsize);
-          fprintf(stderr,"%c", (int) chr);
+          cb_clog( priority, "%c", (int) chr);
           err = cb_fifo_put_chr(&(*cfi), chr, chrsize);
         }
 	return err;
 }
 // Debug
-int  cb_fifo_print_counters(cb_ring *cfi){
+int  cb_fifo_print_counters(cb_ring *cfi, char priority){
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
-        fprintf(stderr,"\nahead:          %i", (*cfi).ahead );
-        fprintf(stderr,"\nbytesahead:     %i", (*cfi).bytesahead );
-        fprintf(stderr,"\nbuflen:         %i", (*cfi).buflen );
-        fprintf(stderr,"\nsizeslen:       %i", (*cfi).sizeslen );
-        fprintf(stderr,"\nfirst:          %i", (*cfi).first );
-        fprintf(stderr,"\nlast:           %i", (*cfi).last );
-        fprintf(stderr,"\nstreamstart:    %i", (*cfi).streamstart );
-        fprintf(stderr,"\nstreamstop:     %i", (*cfi).streamstop );
+        cb_clog( priority, "\nahead:          %i", (*cfi).ahead );
+        cb_clog( priority, "\nbytesahead:     %i", (*cfi).bytesahead );
+        cb_clog( priority, "\nbuflen:         %i", (*cfi).buflen );
+        cb_clog( priority, "\nsizeslen:       %i", (*cfi).sizeslen );
+        cb_clog( priority, "\nfirst:          %i", (*cfi).first );
+        cb_clog( priority, "\nlast:           %i", (*cfi).last );
+        cb_clog( priority, "\nstreamstart:    %i", (*cfi).streamstart );
+        cb_clog( priority, "\nstreamstop:     %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
 
@@ -176,20 +176,20 @@ int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
 /*
  * 4-byte characterbuffer. 
  */
-int cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen){
+int cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int buflen){
         int index=0, err=CBSUCCESS;
         unsigned long int chr=0x20; // 11.12.2014
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
         for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
            err = cb_get_ucs_chr(&chr, &(*chrbuf), &index, buflen);
 	   if( chr==0x0000 && err==CBSUCCESS ){ // null terminator
-             fprintf(stderr, "(null)");
+             cb_clog( priority, "(null)");
 	   }else if(err!=CBSUCCESS){
-	     fprintf(stderr, "(err %i)", err);
+	     cb_clog( priority, "(err %i)", err);
 	   }else{
-             fprintf(stderr, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
-             //fprintf(stderr, "(0x%lx)", chr ); // 8.6.2014
-             //fprintf(stderr, "(%#x)", (unsigned int) chr ); // 10.6.2014
+             cb_clog( priority, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
+             //cb_clog( priority, "(0x%lx)", chr ); // 8.6.2014
+             //cb_clog( priority, "(%#x)", (unsigned int) chr ); // 10.6.2014
 	   }
         }
         return CBSUCCESS;
@@ -203,7 +203,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
         (*chrbuf)[*bufindx+2] = (unsigned char) (chr>>8);
         (*chrbuf)[*bufindx+3] = (unsigned char) chr;
         *bufindx+=4;
-        //fprintf(stderr, "chrbuf put: [%lx]", chr);
+        //cb_clog( CBLOGDEBUG, "chrbuf put: [%lx]", chr);
         return CBSUCCESS;
 }
 
@@ -215,7 +215,7 @@ int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *bufindx+=1;
-        //fprintf(stderr, "[%lx]", *chr);
+        //cb_clog( CBLOGDEBUG, "[%lx]", *chr);
         return CBSUCCESS;
 } 
 

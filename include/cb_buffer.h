@@ -65,6 +65,20 @@
 #define CBOVERFLOW            54
 
 /*
+ * Log priorities (log verbosity).
+ */
+#define CBLOGEMERG             1
+#define CBLOGALERT             2
+#define CBLOGCRIT              3
+#define CBLOGERR               4
+#define CBLOGWARNING           5
+#define CBLOGNOTICE            6
+#define CBLOGINFO              7
+#define CBLOGDEBUG             8
+
+#define CBDEFAULTLOGPRIORITY   8
+
+/*
  * Default values (multiple of 4)
  */
 #define CBNAMEBUFLEN        1024
@@ -291,10 +305,11 @@ typedef struct cb_conf{
         unsigned char       removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         unsigned char       removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible)
 	unsigned char       removenamewsp:2;        // Remove white space characters inside name
-	unsigned char       leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value;
-	unsigned char       json:2;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
-	unsigned char       doubledelim:2;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	unsigned char       searchstate:6;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
+	unsigned char       leadnames:2;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
+	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
+	unsigned char       logpriority:4;          // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -314,7 +329,7 @@ typedef struct cb_name{
         int                   namelen;        // name length
         signed long int       offset;         // offset from the beginning of data (to '=')
         signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
-        int                   length;         // length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
+        int                   length;         // character count, length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
         signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
@@ -452,8 +467,10 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes);
 
 /*
- * Write to offset if file is seekable. (Block is replaced, not atomic function). */
-int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, signed long int offset, signed long int offsetlimit);
+ * Write to offset if file is seekable. (Block is replaced, these are not atomic functions). */
+int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *byteswritten, signed long int offset, signed long int offsetlimit);
+int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **stg, int *stgsize); // character after writing (to erase), slow and uses a lot of memory
+int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signed long int offsetlimit); // If not even at end, does not fill last missing characters
 
 // From unicode to and from utf-8
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
@@ -473,7 +490,7 @@ int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset
  * Decreases readahead from CBFILE:s length information and zeros
  * readahead counters.
  */
-int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead); 
+int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead);
 
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);
@@ -524,7 +541,7 @@ int  cb_set_to_polysemantic_names(CBFILE **cbf); // Multiple same names, default
 // 4-byte character array
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
 int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int  cb_print_ucs_chrbuf(unsigned char **chrbuf, int namelen, int buflen);
+int  cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int buflen);
 int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int chrcount ); // copies chrcount or less characters to use as a new 4-byte block
 
 // 4-byte fifo, without buffer or it's size
@@ -536,15 +553,19 @@ int  cb_fifo_set_stream(cb_ring *cfi); // all get operations return CBSTREAM aft
 int  cb_fifo_set_endchr(cb_ring *cfi); // all get operations return CBSTREAMEND after this
 
 // Debug
-int  cb_fifo_print_buffer(cb_ring *cfi);
-int  cb_fifo_print_counters(cb_ring *cfi);
+int  cb_fifo_print_buffer(cb_ring *cfi, char priority);
+int  cb_fifo_print_counters(cb_ring *cfi, char priority);
 
 // Debug
-int  cb_print_name(cb_name **cbn);
-int  cb_print_names(CBFILE **str);
-int  cb_print_leaves(cb_name **cbn); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
-void cb_print_counters(CBFILE **str);
-int  cb_print_conf(CBFILE **str);
+int  cb_print_name(cb_name **cbn, char priority);
+int  cb_print_names(CBFILE **str, char priority);
+int  cb_print_leaves(cb_name **cbn, char priority); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
+void cb_print_counters(CBFILE **str, char priority);
+int  cb_print_conf(CBFILE **str, char priority);
+
+// Log writing (as in fprintf)
+int  cb_log( CBFILE **cbn, char priority, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+int  cb_clog( char priority, const char * restrict format, ... ) __attribute__ ((format (printf, 2, 3))); 
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013

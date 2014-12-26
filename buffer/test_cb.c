@@ -141,6 +141,12 @@ int main (int argc, char *argv[]) {
 	memset(&(*infile), ' ', (size_t) FILENAMELEN); infile[FILENAMELEN+5]='\0';
 	memset(&(*outfile), ' ', (size_t) FILENAMELEN+4); outfile[FILENAMELEN+6]='\0';
 
+	// Test offset in reading 13.12.2014:
+	cb_use_as_seekable_file(&in);
+
+	// Test offset in appending 13.12.2014:
+	cb_use_as_seekable_file(&out);
+
 	//
 	// Every filename
 	for(indx=4; indx<atoms; ++indx){
@@ -195,7 +201,7 @@ int main (int argc, char *argv[]) {
 		   fprintf(stderr,"\ttest: Error, in was null or nonexnamelen was 0.\n"); 
        		}
 		fprintf(stderr,"\nFirst run, names are:\n"); 
-		err = cb_print_names(&in);
+		err = cb_print_names(&in, CBLOGDEBUG);
 		if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: cb_print_names returned %lli.", err ); }
 		(*in).cb = &(*name_list_ptr); 
 
@@ -266,9 +272,10 @@ int main (int argc, char *argv[]) {
 
 				fromend++;
 				fprintf(stderr," [%li/%li] setting cursor to name [", ((*name_list).list.namecount-fromend+1), (*name_list).list.namecount );
-				err = cb_print_ucs_chrbuf( &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
+				err = cb_print_ucs_chrbuf( CBLOGDEBUG, &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
 				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %lli.", err); }
-				fprintf(stderr,"], length %i.\n", (*nameptr).namelen);
+				fprintf(stderr,"], length %i, [%li/", (*nameptr).namelen, (*nameptr).nameoffset);
+				fprintf(stderr,"%li/%i].\n", (*nameptr).offset, (*nameptr).length);
 			        err = cb_set_cursor_ucs( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
 				if(err==CBNOTFOUND){
 			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
@@ -276,7 +283,7 @@ int main (int argc, char *argv[]) {
 			           fprintf(stderr,"\ttest: cb_set_cursor, %lli.\n", err ); }
 				if(err==CBSTREAMEND || err>CBERROR){
 			           fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err );
-				}else if(err==CBSUCCESS || err==CBSTREAM){
+				}else if(err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM){
 				   //if(err==CBSTREAM){ 
 				   //   err = cb_remove_name_from_stream(&in); // This should not necessary, get_chr is not used
 			           //   if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }
@@ -320,7 +327,7 @@ int main (int argc, char *argv[]) {
 				       }else if(err<CBERROR){
 				         err = cb_put_chr(&out, chr, &encbytes, &strdbytes );
 				       }
-				       if( err!=CBSUCCESS && err!=CBSTREAM ){
+				       if( err!=CBSUCCESS && err!=CBSTREAM && err!=CBFILESTREAM ){
 				         fprintf(stderr,"\ttest: encbytes=%d strdbytes=%d cb_get_chr cb_put_chr err=%lli.\n", encbytes, strdbytes, err ); }
 				       fprintf(stderr,"%lc", (int) chr ); // %C
 				       prevchr = chr;

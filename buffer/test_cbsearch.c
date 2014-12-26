@@ -106,7 +106,7 @@ int main (int argc, char **argv) {
 
 #ifdef DEBUG
 	fprintf(stderr,"\nDebug: name (namelen:%i, namebuflen:%i):", namelen, namebuflen);
-	cb_print_ucs_chrbuf(&name, (namelen*4), namebuflen);
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &name, (namelen*4), namebuflen);
 	//fprintf(stderr,"\nDebug: argv[fromend]: %s", argv[fromend]);
 #endif 
 
@@ -196,7 +196,7 @@ int main (int argc, char **argv) {
 	// Debug
 	if( name!=NULL )
 	  fprintf(stderr,"\nDebug: Searching [");
-	cb_print_ucs_chrbuf(&name, (namelen*4), namebuflen);
+	cb_print_ucs_chrbuf(CBLOGDEBUG, &name, (namelen*4), namebuflen);
 	if(in!=NULL)
 	fprintf(stderr,"] count [%i] buffer size [%i] block size [%i] encoding [%i]", count, bufsize, blksize, inputenc );
 	if(in!=NULL)
@@ -238,7 +238,7 @@ int main (int argc, char **argv) {
 	}
 
 	// Debug:
-	//cb_print_names(&in);
+	//cb_print_names(&in, CBLOGDEBUG);
 
 	memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
 	name[namebuflen] = '\0';
@@ -338,14 +338,14 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	  //fprintf(stderr, "\n cbsearch, printing name:");
 	  print_name(&(*in), &nameptr );
 	  fprintf(stderr, " cbsearch, printing leaves:");
-	  cb_print_leaves( &nameptr );
+	  cb_print_leaves( &nameptr, CBLOGDEBUG );
 	}
 	if(err==CB2822HEADEREND ){
 	  fprintf(stderr, "\n Header end. \n");
 	}
 	if( tree==0 && ( err==CBNOTFOUND || err==CB2822HEADEREND ) ){
 	  fprintf(stderr, "\n Name \"");
-	  cb_print_ucs_chrbuf( &(*name), namelength, namelength );
+	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
 	  return err;
 	}
@@ -372,7 +372,7 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	chrprev=(**cbf).cf.bypass+4; chr=(**cbf).cf.rend+4;
 
 	fprintf(stderr, "\n Name:         \t[");
-	cb_print_ucs_chrbuf( &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
 	fprintf(stderr, "]\n Name length:  \t%i", (**nm).namelen);
 	fprintf(stderr, "\n Offset:       \t%li", (**nm).offset);
 	fprintf(stderr, "\n Name offset:  \t%ld", (**nm).nameoffset);
@@ -448,21 +448,21 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
               leaf = &(*(*(**cbs).cb).list.currentleaf);
               if(namecount==0){
                 fprintf(stderr,"\nFound \"");
-	        cb_print_ucs_chrbuf( &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
+	        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
 	        fprintf(stderr,"\", (from list)");
                 fprintf(stderr," leaves from currentleaf: ");
                 leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);
-                cb_print_leaves( &leaf );
+                cb_print_leaves( &leaf, CBLOGDEBUG );
               }else{
                 fprintf(stderr,"\nFound leaf (currentleaf) \"");
-	        cb_print_ucs_chrbuf( &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
+	        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
 	        fprintf(stderr,"\" (from tree).");
                 fprintf(stderr," leaves from currentleaf: ");
-                cb_print_leaves( &leaf );
+                cb_print_leaves( &leaf, CBLOGDEBUG );
 	      }
             }else{
 	      fprintf(stderr,"\n\"");
-	      cb_print_ucs_chrbuf( &ucsname, undx, undx );
+	      cb_print_ucs_chrbuf( CBLOGDEBUG, &ucsname, undx, undx );
 	      fprintf(stderr,"\" not found.");
 	    }
 
