@@ -54,7 +54,7 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 	  if(ucsname==NULL)
 	    ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
 	  else if( *ucsname!=NULL ) 
-	    fprintf(stderr,"\ndebug: cb_get_current_name_ucs: *ucsname was not NULL.");
+	    cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
 	  *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
 	  if( ucsname==NULL ) { return CBERRALLOC; }
 	  (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
@@ -78,22 +78,19 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	unsigned char searchmethod=0;
 	name = &chrs[0];
 
-	if( cbs==NULL || *cbs==NULL ){	  fprintf(stderr,"\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC;	}
-	//if( *ucsname!=NULL )
-	//  fprintf(stderr,"\ndebug, cb_get_next_name_ucs: *ucsname was not NULL.");
+	if( cbs==NULL || *cbs==NULL ){	  cb_log( &(*cbs), CBLOGALERT, "\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC; }
+	if( *ucsname!=NULL )
+	  cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_next_name_ucs: debug, cb_get_next_name_ucs: *ucsname was not NULL.");
 
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
 	(**cbs).cf.searchmethod = searchmethod;
 
-	//fprintf(stderr,"\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i.", ret );
-
 	free(*ucsname); // ucsname = NULL;
 	*ucsname = NULL; // 11.12.2014
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM){ // returns only CBSUCCESS or CBSTREAM or error
 	  ret = cb_get_current_name( &(*cbs), &(*ucsname), &(*namelength) );
-	  //fprintf(stderr,"\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret );
 	}
 
 	/* May return CB2822HEADEREND if it was set */
@@ -131,9 +128,9 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
         int openpairs=1; char found=0;
-        int maxlen = maxlength;
-        if( cbf==NULL || *cbf==NULL || clength==NULL ){ fprintf(stderr,"\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
-        if( cn==NULL || *cn==NULL ){ fprintf(stderr,"\ncb_get_content: cn was null."); return CBERRALLOC; }
+        int maxlen = maxlength, lindx=0; // lindx 14.2.2015
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
         
         if(ucscontent==NULL)
                 ucscontent = (unsigned char**) malloc( sizeof( PSIZE ) ); // pointer size
@@ -148,43 +145,50 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
          * Allocate buffer */
         *ucscontent = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) maxlen+2 ) );
         if( ucscontent==NULL ) {
-                fprintf( stderr, "\ncb_get_content: malloc returned null.");
+                cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: malloc returned null.");
                 return CBERRALLOC;
         }
         memset( &(**ucscontent), 0x20, (unsigned int) maxlen+1 );
         (*ucscontent)[ maxlen+1 ] = '\0';
         *clength = maxlen;
-        
-        /*      
+
+        /*
          * Copy contents and update length */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-        for(maxlen=0 ; maxlen<maxlength && err<CBERROR; ++maxlen ){
+        //for(maxlen=0 ; maxlen<maxlength && err<CBERROR; ++maxlen ){
+        for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
+
                 if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rstart )
                         ++openpairs;
                 if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rend )
                         --openpairs;
-               if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
-                        chr = (**cbf).cf.rstart; // any chr not bypass
                 if( openpairs<=0 && ( (**cbf).cf.searchstate==CBSTATETREE || (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ){
-                        maxlen=maxlength; // stop
+                        //maxlen=maxlength; // stop
+                        lindx=maxlength; // stop
                         found=1;
                         continue;
                 }else if( ( (**cbf).cf.searchstate==CBSTATELESS || (**cbf).cf.searchstate==CBSTATEFUL ) &&
                             ( chr==(**cbf).cf.rend && chprev!=(**cbf).cf.bypass ) ){
-                        maxlen=maxlength; // stop
+                        //maxlen=maxlength; // stop
+                        lindx=maxlength; // stop
                         found=1;
                         continue;
                 }
-                if( err<CBERROR && ! ( chr==(**cbf).cf.rend && chprev!=(**cbf).cf.bypass ) )
+                if( err<CBERROR )
                         err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+                if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
+                        chr = (**cbf).cf.rstart; // any chr not bypass
         }
         *clength = ucsbufindx;
+
+	if(ucsbufindx<maxlen) // 14.2.2015, terminating '\0'
+	  (*ucscontent)[ucsbufindx+1]='\0';
+
         if( found==1 && (**cn).length<0 && err<CBNEGATION){
                 (**cn).length = ucsbufindx/4;
-                //fprintf(stderr,"\ncb_get_content: updated length to %i ucs bytecount, %i character count (remainder %d).", ucsbufindx, (**cn).length, (ucsbufindx%4) );
         }
                 
         return CBSUCCESS;

@@ -865,8 +865,8 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long in
 
 /*
  * Content of list may change in writing. Updating the namelist is in the
- * responsibility of the user. Buffer is swapped temporarily and function is 
- * not atomic.
+ * responsibility of the user. Buffer is swapped temporarily and function can
+ * not be threaded unless it is used atomically.
  */
 int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *byteswritten, signed long int offset, signed long int offsetlimit){
 	int index=0, charcount=0; int err = CBSUCCESS;
@@ -1020,5 +1020,51 @@ int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signe
 
 	free(cdata);                
         return err;
+}
+
+/*
+ * Seek to beginning of file and renew all buffers and namelist. 
+ * For example to reread a configuration file.
+ */
+int  cb_reread_file( CBFILE **cbf ){
+        return cb_reread_new_file( &(*cbf), -1 );
+}
+
+/*
+ * Renews to new filedescriptor. Does not close old. */
+int  cb_reread_new_file( CBFILE **cbf, int newfd ){
+        int err2=CBSUCCESS;
+	long long int err=CBSUCCESS;
+        if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
+        if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
+          cb_log( &(*cbf), CBLOGWARNING, "\ncb_seek: warning, trying to seek an unseekable file.");
+          return CBOPERATIONNOTALLOWED;
+        }
+        // Remove readahead
+        err2 = cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+	if( err2>=CBNEGATION ){
+	  cb_clog( CBLOGNOTICE, "\ncb_reread_file: could not remove ahead offset, %i.", err2);
+	  if( err2>=CBERROR )
+	    cb_clog( CBLOGWARNING, "\ncb_reread_file: Error %i.", err2);
+	}
+
+        // Do not close old filedescriptor to use it's file elsewhere (for example in child processes), even if new descriptor was given
+        if( newfd>=0 ){
+          (**cbf).fd = newfd; // attach new stream (for example old file was renamed and new file replaced old)
+        }
+        
+        // Seek filedescriptor
+        err = lseek( (**cbf).fd, (off_t) 0, SEEK_SET );
+        if(err<0){
+          cb_clog( CBLOGNOTICE, "\ncb_reread_file: could not seek new file descriptor, lseek errno %i .", errno );
+          err2=CBERRFILEOP;
+        }else{
+        
+          // Deallocate previous CBFILE:s buffers (without closing filedescriptor)
+          err2 = cb_reinit_buffer(&(**cbf).cb); // free names, reset buffer
+          err2 = cb_reinit_buffer(&(**cbf).blk); // reset block
+          return err2;
+        }
+        return err2;
 }
 

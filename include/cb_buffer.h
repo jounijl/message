@@ -47,6 +47,7 @@
 #define CBLESSTHAN            36
 #define CBOPERATIONNOTALLOWED 37    // seek was asked and CBFILE was not set as seekable
 #define CBNOFIT               38    // tried to write to too small space (characters left over)
+#define CBNOTJSON             39
 
 #define CBERROR	              40
 #define CBERRALLOC            41
@@ -425,8 +426,8 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  *
  * Returns on success: CBSUCCESS, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
  * CB2822HEADEREND of it was set.
- * May return: CBNOTFOUND, CBVALUEEND
- * Possible errors: CBERRALLOC
+ * May return: CBNOTFOUND, CBVALUEEND, CBSTREAMEND
+ * Possible errors: CBERRALLOC, CBOPERATIONNOTALLOWED (offsets)
  * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM
  *
  */
@@ -467,10 +468,13 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes);
 
 /*
- * Write to offset if file is seekable. (Block is replaced, these are not atomic functions). */
+ * Write to offset if file is seekable. (Block is replaced if it's smaller or not empty. These are not atomic functions). */
 int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *byteswritten, signed long int offset, signed long int offsetlimit);
 int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **stg, int *stgsize); // character after writing (to erase), slow and uses a lot of memory
 int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signed long int offsetlimit); // If not even at end, does not fill last missing characters
+int  cb_reread_file( CBFILE **cbf ); // 16.2.2015
+int  cb_reread_new_file( CBFILE **cbf, int newfd ); // 16.2.2015
+
 
 // From unicode to and from utf-8
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );
