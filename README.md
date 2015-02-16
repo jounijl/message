@@ -2,6 +2,10 @@
 
 Reader reads valuepairs location in a buffer to a linked list. At least four differend methods are used. Methods can be compiled with macro defines in different object files or by configuring (in structure cb_conf) during runtime.
 
+###### Default operation
+
+Read or append.
+
 ###### Encodings
 
 UCS encoding is used (4 bytes) both in flow control characters and in the value names. Possible transfer encodings are: UTF-8, UTF-16 and UTF-32. 
@@ -14,7 +18,7 @@ At least two search methods can be used. Either unique names in stream or polyse
 
 ###### File types
 
-CBFILE can be used as a stream (primary use), as a file or as a buffer. These are minor changes in namelist size and in use of file descriptors.
+CBFILE can be used as a stream (primary use), as a file or as a buffer. These are minor changes in namelist size and in use of the file descriptors.
 
 ###### Data
 
