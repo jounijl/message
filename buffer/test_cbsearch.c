@@ -455,12 +455,6 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
             err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
           if( chr == (unsigned long int) '.' || indx>=namelen ){ // Name
 
-	    /*
-	     * JSON presearch if opencount increased. Remove empty name first. */
-	    //if( (**cbs).cf.json==1 ){ // every increasing namecount
-	    //  err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, 0 );
-	      // Check if it's empty (missing)
-	    //}
             err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
             if( ( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ) && (*(**cbs).cb).list.current!=NULL && (*(**cbs).cb).list.currentleaf!=NULL ){ // Debug
               firstname = &(*(*(**cbs).cb).list.current);

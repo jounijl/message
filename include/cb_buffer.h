@@ -533,7 +533,7 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
 int  cb_get_encoding(CBFILE **str, int *number); 
 
-int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, rstart, rend, substart and subrend
+int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, jsonnamecheck, rstart, rend, substart, subrend, cstart, cend, UTF-8 and CBSTATETREE.
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize

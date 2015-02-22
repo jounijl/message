@@ -214,7 +214,7 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 	 *   
 	 *
 	 *   rstart    ':'
-	 *   rend      ','       2->1 ; rend->subrend          1) Colon problem:
+	 *   rend      ','                                     1) Colon problem:
 	 *   subrstart '{'                                           "na:me"  "va:lue"
 	 *   subrend   '}'                                     2) Comma problem:
 	 *   cstart    '['                                           "va,lue"

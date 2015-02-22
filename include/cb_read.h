@@ -33,3 +33,7 @@ int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clen
 int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
 
+/*
+ * 17.2.2015 get pointer to the current name in list.
+ */
+//int  cb_get_current_pointer( CBFILE **cbf, cb_name **cn );

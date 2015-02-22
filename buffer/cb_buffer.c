@@ -111,6 +111,7 @@
        muutoin aina alkuperaisessa muodossa.
  - encodingbytes on mahdollista valita erikseen ja ohjelma voi jaada tilaan jossa
    se ei lue merkkeja oikein jos: pelkka alustus ja err = cb_set_encodingbytes(&cbf, 0);
+ - test_cb namelist is in error 22.2.2015
 
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
@@ -451,7 +452,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.leadnames=1; // important
 #endif
 	(**str).cf.json=0;
-	(**str).cf.jsonnamecheck=1;
+	(**str).cf.jsonnamecheck=0;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
 	(**str).cf.jsonnamecheck=1;
