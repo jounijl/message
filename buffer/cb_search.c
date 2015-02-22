@@ -33,6 +33,7 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
+int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.2.2015
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
@@ -185,23 +186,43 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 
 	/*
-	 *  openpairs=1  openpairs=2  openpairs=3  openpairs=2  openpairs=1  openpairs=0
-	 *  atvalue=1    atvalue=1    atvalue=1    atvalue=1    atvalue=1    atvalue=0
-	 *      |            |             |           |            |            |
-	 * name=     subname=     subname2= value      &            &            & name2=
-	 *      |--------- subsearch -------------------------------------------->
+	 *  openpairs=1  openpairs=2  openpairs=3  openpairs=2    openpairs=1  openpairs=0
+	 *  atvalue=1    atvalue=1    atvalue=1    atvalue=1      atvalue=1    atvalue=0
+	 *      |            |             |           |              |            |
+	 * name=     subname=     subname2= value      &              &            & name2=
+	 *      |--------- subsearch ---------------------------------------------->
 	 * 
-	 * JSON:
-	 *  openpairs=1 openpairs=2     openpairs=4              openpairs=2     openpairs=0
-	 *      |           | openpairs=3   |       (openpairs=3 )   | (openpairs=1) |
-	 *      |           |     |         |            |           |      |        |
-	 *      {    subname:     { subname2: value     (,)          }     (,)       }, (name2): {
-	 *      |---------------------------- subsearch ----------------------------->
-	 * To json compatibility:
-	 *   - Empty names should be allowed (object in value has 2 openpairs count with empty name)
-	 *   - If previous openpairs was even, an even separator decreases openpairs count twice
-	 *   - Valuestrings between ":s, arrays in between "[" and "]", strings false|true|null
-	 *     and numbers are read elsewhere
+	 *
+	 * JSON pre 19.2.2015:
+	 *  openpairs=1 openpairs=2     openpairs=4               openpairs=2     openpairs=0
+	 *      |           | openpairs=3   |       (openpairs=3 )    | (openpairs=1) |
+	 *      |           |     |         |            |            |      |        |
+	 *      {    subname:     { subname2: value     (,)           }     (,)       }, (name2): {
+	 *      |---------------------------- subsearch ------------------------------>
+	 *
+	 *
+	 *   Valuestrings between ":s, arrays in between "[" and "]", strings false|true|null
+	 *   and numbers are read elsewhere
+	 *
+	 *
+	 * Comment to replace array:
+	 *     {    subname:     { subname2: [ value, value2, value3 ] }     (,)       }, (name2): {
+	 *
+	 *
+	 *     0         1  1         2       1         2         1 0         1 1         2        1 0         1          0 
+	 *     {  subname:  { subname2: value , subname3: value3  } , subname4: { subname5: value5 } , subname6: value6   } 
+	 *   
+	 *
+	 *   rstart    ':'
+	 *   rend      ','       2->1 ; rend->subrend          1) Colon problem:
+	 *   subrstart '{'                                           "na:me"  "va:lue"
+	 *   subrend   '}'                                     2) Comma problem:
+	 *   cstart    '['                                           "va,lue"
+	 *   cend      ']'
+	 *                                                     Solution: char injsonquotes; // from " to "
+	 *
+	 * 	RFC-7159 , JSON
+	 * 	RFC-4627 , JSON
 	 */
 
 	int leafcount=0, err=CBSUCCESS, ret=CBSUCCESS;
@@ -648,6 +669,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0; 
+	char injsonquotes = 0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL;
@@ -691,8 +713,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	     */
 	    if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
 	       ret = CBSUCCESS;
-	       goto cb_set_cursor_ucs_return; // palautuva offset on kuitenkin edelleen vain puskurin kokoinen <-- viela, virhe
-	    }
+	       goto cb_set_cursor_ucs_return; // palautuva offset oli kuitenkin viela puskurin kokoinen
+	    }                                 // returning offset was still the size of a buffer
 	  }
 	}else if(err==CBNAMEOUTOFBUF){
 	  //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_set_cursor: Found old name out of cache and stream is allready passed by,\n");
@@ -735,6 +757,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	// Allocate new name
 cb_set_cursor_reset_name_index:
 	index=0;
+	injsonquotes=0;
 
 	// Search for new name
 	// ...& - ignore and set to start
@@ -753,20 +776,43 @@ cb_set_cursor_reset_name_index:
 
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
 
-	  //cb_log( &(*cbs), CBLOGDEBUG, "[%c]", (int) chr );
+	  //cb_log( &(*cbs), CBLOGDEBUG, "\n[%c]", (int) chr );
+	  //cb_log( &(*cbs), CBLOGDEBUG, ", atvalue=%i, tovalue=%i, openpairs=%i, injsonquotes=%i", atvalue, tovalue, openpairs, injsonquotes );
 
 	  cb_automatic_encoding_detection( &(*cbs) ); // set encoding automatically if it's set
 
 	  tovalue=0;
+
 
 	  /*
 	   * Read until rstart '='
 	   */
 	  // doubledelim is not tested 8.12.2013
 	  if( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ){ // '=', save name
-	    if( ( chr==(**cbs).cf.rstart || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) ) && \
-	        chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
-	      //if(openpairs!=0){ // leaf
+
+	    /*
+	     * JSON quotes (is never reset by anything else). */
+	    if( chprev!=(**cbs).cf.bypass && chr==(unsigned long int)'\"' ){
+	      if( injsonquotes==0 ) // first quote
+	        ++injsonquotes;
+	      else if( injsonquotes==1 ) // second quote
+	        injsonquotes=2; // ready to save the name (or after value)
+	      else if( injsonquotes==2 ) // after second quote
+	        injsonquotes=0; // after the name (or value ended with '"')
+	    }
+
+	    // Second is JSON comma problem ("na:me") prevention in name 21.2.2015
+	    if(       (    ( chr==(**cbs).cf.rstart && (**cbs).cf.json!=1 ) \
+	                || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 ) \
+	                || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
+	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.doubledelim==1 && (**cbs).cf.json==1 && injsonquotes!=1 ) \
+	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
+	      if( ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) \
+			|| ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes==1 ) ){ // 21.2.2015 JSON
+		injsonquotes=0;
+	        tovalue=0;
+	        goto cb_set_cursor_reset_name_index; // update openpairs only from ':' (JSON rstart is ':')
+	      } // /21.2.2015
 	      if(openpairs>0){ // leaf, 13.12.2013
 	        ++openpairs;
 	        tovalue=0;
@@ -790,13 +836,40 @@ cb_set_cursor_reset_name_index:
 
 	    atvalue=1;
 
+
+	    //cb_clog( CBLOGDEBUG, "\n Going to save name from charbuf to fname." );
+	    //if( fname==NULL )
+	    //  cb_clog( CBLOGDEBUG, "\n fname is null." );
+	    //if( charbufptr==NULL )
+	    //  cb_clog( CBLOGDEBUG, "\n charbufptr is null." );
+
 	    if( buferr==CBSUCCESS ){
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index, nameoffset); // 7.12.2013, 6.12.2014
 	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ cb_log( &(*cbs), CBLOGNOTICE, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
-	      if(buferr!=CBNAMEOUTOFBUF){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
-	        buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
-	        if( buferr==CBADDEDNAME || buferr==CBADDEDLEAF || buferr==CBADDEDNEXTTOLEAF){
-	          buferr = CBSUCCESS;
+
+	      //cb_clog( CBLOGDEBUG, "\ncb_save_name_from_charbuf: %i .", buferr );
+
+	      //if(buferr!=CBNAMEOUTOFBUF ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
+	      if(buferr!=CBNAMEOUTOFBUF && fname!=NULL ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
+
+		//cb_clog( CBLOGDEBUG, "\n Openpairs=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, injsonquotes, (*(**cbs).cb).index );
+		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
+		//cb_clog( CBLOGDEBUG, "| ");
+
+		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes==2 && (**cbs).cf.jsonnamecheck!=1 ) || \
+				( injsonquotes==2 && (**cbs).cf.jsonnamecheck==1 && \
+				cb_check_json_name( &(*fname).namebuf, &(*fname).namelen )!=CBNOTJSON ) ) ) ){ // 19.2.2015
+	          buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
+
+
+		  //cb_clog( CBLOGDEBUG, "\n Put name |");
+		  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
+		  //cb_clog( CBLOGDEBUG, "|, openpairs=%i, injsonquotes=%i ", openpairs, injsonquotes );
+		  injsonquotes=0;
+
+	          if( buferr==CBADDEDNAME || buferr==CBADDEDLEAF || buferr==CBADDEDNEXTTOLEAF){
+	            buferr = CBSUCCESS;
+	          }
 	        }
 	      }
 	      if( (**cbs).cf.searchstate!=CBSTATETREE && (**cbs).cf.searchstate!=CBSTATETOPOLOGY ){
@@ -883,18 +956,27 @@ cb_set_cursor_reset_name_index:
 	      goto cb_set_cursor_reset_name_index; // 15.12.2013
 	    }else
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN); // write '='
-	  }else if( chprev!=(**cbs).cf.bypass && ( chr==(**cbs).cf.rend || \
-	            ( chr==(**cbs).cf.subrend && intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) ) ){
+
+	  }else if( chprev!=(**cbs).cf.bypass && ( ( chr==(**cbs).cf.rend && (**cbs).cf.json!=1 ) || \
+	                           ( chr==(**cbs).cf.rend && (**cbs).cf.json==1 && injsonquotes!=1 ) || \
+	                           ( (**cbs).cf.json!=1 && chr==(**cbs).cf.subrend && intiseven( openpairs ) && (**cbs).cf.doubledelim==1 ) || \
+	                           ( (**cbs).cf.json==1 && injsonquotes!=1 && chr==(**cbs).cf.subrend && (**cbs).cf.doubledelim==1 ) ) ){
+
 	      /*
 	       * '&', start a new name 
 	       */
 	      if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
-	        --openpairs; // reader must read similarly, with openpairs count or otherwice
-	        if( (**cbs).cf.json==1 && intiseven( openpairs ) && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
- 	          --openpairs; // If not ',' as should, remove last comma in list: a, b, c } , not yet tested 8.12.2013
-	        }
+	        if( (**cbs).cf.json==1 && chr==(**cbs).cf.subrend && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
+	          // (JSON rend is ',' subrend is '}' ) . If not ',' as should, remove last comma in list: a, b, c } 21.2.2015
+                  --openpairs;
+	          injsonquotes=0;
+	        }else{ // /21.2.2015
+	          --openpairs; // reader must read similarly, with openpairs count or otherwice
+		}
 	      }
-	      atvalue=0; cb_free_name(&fname); fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
+	      atvalue=0; 
+	      cb_free_name(&fname);
+	      fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
  	      goto cb_set_cursor_reset_name_index;
 	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){
 	      /*
@@ -936,6 +1018,9 @@ cb_set_cursor_reset_name_index:
 
 	}
 
+	//if(err==CBSTREAMEND) // 27.12.2014
+	//  ret = CBSTREAMEND;
+
 cb_set_cursor_ucs_return:
 	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
         cb_free_name(&fname); // fname on kaksi kertaa, put_name kopioi sen uudelleen
@@ -960,19 +1045,27 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 	int indx = 0;
 	char atname=0;
 
-	if( cbs==NULL || *cbs==NULL || fname==NULL || charbuf==NULL )
+	if( cbs==NULL || *cbs==NULL || fname==NULL || charbuf==NULL || *charbuf==NULL ){
+	  //cb_clog( CBLOGDEBUG, "\ncb_save_name_from_charbuf: parameter was NULL, CBERRALLOC.");
 	  return CBERRALLOC;
+	}
 
-	err = cb_allocate_name(&(*fname), (index+1) ); // moved here 7.12.2013 ( +1 is one over the needed size )
+	//cb_log( &(*cbs), CBLOGDEBUG, "\ncb_save_name_from_charbuf: before malloc size %i", (index+1) );
+	//if( fname==NULL )
+	//   cb_log( &(*cbs), CBLOGDEBUG, " fname was NULL");
+	//if( *fname==NULL )
+	//   cb_log( &(*cbs), CBLOGDEBUG, " *fname was NULL");
+	err = cb_allocate_name( &(*fname), (index+1) ); // moved here 7.12.2013 ( +1 is one over the needed size )
+	//cb_log( &(*cbs), CBLOGDEBUG, ".\ncb_save_name_from_charbuf: after malloc, %i .", err);
 	if(err!=CBSUCCESS){  return err; } // 30.8.2013
 
 	(**fname).namelen = index;
 	(**fname).offset = offset;
 	(**fname).nameoffset = nameoffset; // 6.12.2014
-	//cb_log( &(*cbs), CBLOGDEBUG, "\ncb_save_name_from_charbuf: setting nameoffset %d .", nameoffset);
+	//cb_log( &(*cbs), CBLOGDEBUG, "\ncb_save_name_from_charbuf: setting nameoffset %ld .", nameoffset);
 
 	//cb_log( &(*cbs), CBLOGDEBUG, "\n cb_save_name_from_charbuf: name [");
-	//cb_print_ucs_chrbuf(&(*charbuf), index, CBNAMEBUFLEN);
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*charbuf), index, CBNAMEBUFLEN);
 	//cb_log( &(*cbs), CBLOGDEBUG, "] index=%i, (**fname).buflen=%i cstart:[%c] cend:[%c] ", index, (**fname).buflen, (char) (**cbs).cf.cstart, (char) (**cbs).cf.cend);
 
         if(index<(**fname).buflen){ 
@@ -981,7 +1074,7 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 cb_save_name_ucs_removals: 
             buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
             if( buferr==CBSUCCESS ){
-              if( cmp==(**cbs).cf.cstart ){ // Comment
+              if( cmp==(**cbs).cf.cstart ){ // Comment (+ in case of JSON, cstart and cend is set to '[' and ']'. Reading of array to avoid extra commas.)
                 while( indx<index && cmp!=(**cbs).cf.cend && buferr==CBSUCCESS ){ // 2.9.2013
                   buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
                 }
@@ -993,8 +1086,8 @@ cb_save_name_ucs_removals:
 	      }
 	      if( (**cbs).cf.removecrlf==1 ){ // Removes every CR and LF characters between value and name, and in name
                 if( indx<index && ( CR( cmp ) || LF( cmp ) ) && buferr==CBSUCCESS ){
-	          goto cb_save_name_ucs_removals; 
-	        }                
+	          goto cb_save_name_ucs_removals;
+	        }
 	      }
 
               /* Write name */
@@ -1015,6 +1108,60 @@ cb_save_name_ucs_removals:
 
 	return err;
 }
+
+/*
+ * Colons may appear in valuestrings or names. If name starts with " and ends
+ * with " no colons can be in between. Names with colons are not found !!
+ * against the principle of JSON. http://www.json.org 
+ *
+ * This function checks that name has '"' at start and end. This way it was
+ * not cut in between name. This check is put before cb_put_name in
+ * cb_set_cursor.
+ *
+ * Colons should be programmed to be bypassed in searching the names in 
+ * namelist.
+ */
+int  cb_check_json_name( unsigned char **ucsname, int *namelength ){
+	int err=CBSUCCESS, indx=0;
+	unsigned long int chr=0x20, chprev=0x20;
+	if( ucsname==NULL || *ucsname==NULL || namelength==NULL ){ cb_clog( CBLOGDEBUG, "\ncb_check_json_name: name was null."); return CBERRALLOC; }
+                
+	/*
+	 * "String can have any UNICODE character except '"' or '\' or control characters", [json.org] 
+	 */
+
+	if(*namelength<2){
+	        cb_clog( CBLOGDEBUG, "\ncb_check_json_name: returning CBNOTJSON: ");
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
+	        cb_clog( CBLOGDEBUG, " name length was %i (double quotes do not fit in), returning.", *namelength );
+	        return CBNOTJSON;
+	}        
+	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, *namelength);
+	if( chr != (unsigned long int) '"' ){ // first quotation
+	        cb_clog( CBLOGDEBUG, "\ncb_check_json_name: returning CBNOTJSON: ");
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
+		cb_clog( CBLOGDEBUG, " first character was not quotation (length %d).", *namelength );
+	        return CBNOTJSON;
+	}
+
+	// Linear white spaces, CR and LF character were removed from name.
+	// Control characters are not checked
+	indx = *namelength-8;
+	err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, *namelength );
+	indx = *namelength-4;
+	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, *namelength );
+	if( chprev!= (unsigned long int) '\\' && chr == (unsigned long int) '"' ){
+          cb_clog( CBLOGDEBUG, "\ncb_check_json_name: |");
+	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
+          cb_clog( CBLOGDEBUG, "| returning success.");
+	  return CBSUCCESS; // second quotation
+	}
+	cb_clog( CBLOGDEBUG, "\ncb_check_json_name: returning CBNOTJSON: ");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
+	cb_clog( CBLOGDEBUG, " last character was not quotation (length %d).", *namelength );
+	return CBNOTJSON;
+}
+
 
 int  cb_automatic_encoding_detection(CBFILE **cbs){
 	int enctest=CBDEFAULTENCODING;

@@ -114,9 +114,9 @@ int main (int argc, char **argv) {
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
-	//cb_use_as_stream(&in);
+	cb_use_as_stream(&in);
 	//cb_use_as_file(&in);
-	cb_use_as_seekable_file(&in);
+	//cb_use_as_seekable_file(&in); // namelist is endless, memory increases
 	cb_set_encoding(&in, CBENC1BYTE);
 	cb_set_search_state(&in, CBSTATETREE);
 	(*in).cf.rfc2822headerend=0;
@@ -164,6 +164,12 @@ int main (int argc, char **argv) {
           u = get_option( argv[i], argv[i+1], 't', &value); // traverse the dotted (or primary key-) tree with cb_tree_set_cursor_ucs
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    tree = 1;
+            continue;
+          }
+          u = get_option( argv[i], argv[i+1], 'J', &value); // use JSON (in effect of t is set)
+          if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+	    tree = 1;
+	    cb_set_to_json( &in );
             continue;
           }
 	  u = get_option( argv[i], argv[i+1], 'e', &value); // end character
@@ -252,9 +258,9 @@ int main (int argc, char **argv) {
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
 	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] [-x]\\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] <name> \n\n");
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] <name> \n\n");
 	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [-x]\\\n");
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [-x]\\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [?<name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
@@ -266,7 +272,9 @@ void usage (char *progname[]){
         fprintf(stderr,"\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
         fprintf(stderr,"\t<count> is -1, search is endless. With -t the search include\n");
         fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
-	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'.\n\n");
+	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
+	fprintf(stderr,"\t -J switches to JSON format. JSON value is not printed\n");
+	fprintf(stderr,"\tcorrectly (21.2.2015).\n\n");
         fprintf(stderr,"\tExample 1:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
         fprintf(stderr,"\tExample 2:\n");
@@ -275,6 +283,10 @@ void usage (char *progname[]){
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 2 -b 1024 -l 512 -s \"name1 name4 %cknown unkno%c\"\n\n", '%', '%');
         fprintf(stderr,"\tExample 4:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c -1 -b 1024 -l 512 un_known\n\n");
+        fprintf(stderr,"\tExample 5:\n");
+        fprintf(stderr,"\t   cat json.txt | ./cbsearch -c -1 -b 1024 -l 512 -J -s \"\\\"glossary\\\".\\\"GlossDiv\\\".\\\"GlossList\\\".\\\"GlossEntry\\\".\\\"GlossDef\\\".\\\"GlossSeeAlso\\\"\" \n\n");
+        fprintf(stderr,"\tExample 6:\n");
+        fprintf(stderr,"\t   cat tree.txt | ./cbsearch -c -1 -b 1024 -l 512 -t -s \"\\\"name\\\".\\\"leaf1\\\".\\\"leaf2\\\"\" \n\n");
 }
 
 /*
@@ -288,7 +300,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	tmp[CBNAMEBUFLEN]  = '\0';
 	ptr = &(tmp[0]);
 
-	if( in==NULL || *in==NULL )
+	if( in==NULL || *in==NULL || name==NULL || *name==NULL )
 	  return CBERRALLOC;
 	if( name!=NULL && *name!=NULL && namelength>0 ){ // %ame nam% %am%
 	  if(tree<=-8){ // regular expression search
@@ -345,7 +357,8 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	}
 	if( tree==0 && ( err==CBNOTFOUND || err==CB2822HEADEREND ) ){
 	  fprintf(stderr, "\n Name \"");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelength, namelength );
+	  if( name!=NULL && *name!=NULL && namelength!=0 )
+	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelength, namelength );
 	  fprintf(stderr, "\" not found.\n");
 	  return err;
 	}
@@ -442,13 +455,20 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
             err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
           if( chr == (unsigned long int) '.' || indx>=namelen ){ // Name
 
+	    /*
+	     * JSON presearch if opencount increased. Remove empty name first. */
+	    //if( (**cbs).cf.json==1 ){ // every increasing namecount
+	    //  err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, 0 );
+	      // Check if it's empty (missing)
+	    //}
             err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
-            if( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ){ // Debug
+            if( ( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ) && (*(**cbs).cb).list.current!=NULL && (*(**cbs).cb).list.currentleaf!=NULL ){ // Debug
               firstname = &(*(*(**cbs).cb).list.current);
               leaf = &(*(*(**cbs).cb).list.currentleaf);
               if(namecount==0){
                 fprintf(stderr,"\nFound \"");
-	        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
+		if( firstname!=NULL && (*firstname).namebuf!=NULL && (*firstname).namelen>0 )
+	          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
 	        fprintf(stderr,"\", (from list)");
                 fprintf(stderr," leaves from currentleaf: ");
                 leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);

@@ -102,10 +102,10 @@
  x Laitetaanko jokaiseen ** mallociin myos pointerin allokointi
    x ei
  - json testi, joka toinen rstart ja rend, joka toinen subrstart ja subrend
- - dup pois
+ x dup pois
  - UTF-32, UTF-16 endianness
    - BE 32 / LE 32 on vaarinpain
- - voi tehda vertausfunktion viela leksikaalisen pienempi tai suurempi kuin vertaukselle
+ x voi tehda vertausfunktion viela leksikaalisen pienempi tai suurempi kuin vertaukselle
    - joka tavu muutetaan host byte muotoon, taman lisaksi regexp on ainoa missa tata kaytetaan
      - pcre:n pattern ja subject -funktioissa ainoastaan: "host byte order",
        muutoin aina alkuperaisessa muodossa.
@@ -158,7 +158,10 @@ int  cb_print_leaves(cb_name **cbn, char priority){
 int  cb_print_leaves_inner(cb_name **cbn, char priority){ 
 	int err = CBSUCCESS;
 	cb_name *iter = NULL, *leaf = NULL;
-	if(cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, "\ncb_print_leaves_inner: cbn was null."); return CBSUCCESS; }
+	if(cbn==NULL || *cbn==NULL){ 
+	  //cb_clog( CBLOGDEBUG, "\ncb_print_leaves_inner: cbn was null."); 
+	  return CBSUCCESS; 
+	}
 
 	iter = &(**cbn);
 	if(iter==NULL){ cb_clog( CBLOGINFO, "\ncb_print_leaves_inner: iter was null."); return CBSUCCESS; }
@@ -269,20 +272,31 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 }
 
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
-	int indx=0;
+	if( cbn==NULL ){
+	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: parameter cbn was null.");
+	  return CBERRALLOC;
+	}
 	*cbn = (cb_name*) malloc(sizeof(cb_name));
-	if(*cbn==NULL)
+	if( *cbn==NULL){
+	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
+	}
 	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
-	if((**cbn).namebuf==NULL)
+	if((**cbn).namebuf==NULL){
+	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc CBERRALLOC." );
 	  return CBERRALLOC;
-	for(indx=0;indx<namelen && indx<CBNAMEBUFLEN;++indx) // 7.12.2013
-	  (**cbn).namebuf[indx]=' ';
+	}
+
+	//for(indx=0;indx<namelen && indx<CBNAMEBUFLEN;++indx) // 7.12.2013
+	//  (**cbn).namebuf[indx]=' ';
+
+	memset( &(**cbn).namebuf[0], 0x20, (size_t) namelen ); // 22.2.2015
+
 	(**cbn).namebuf[namelen]='\0'; // 7.12.2013
 	(**cbn).buflen=namelen; // 7.12.2013
 	(**cbn).namelen=0;
 	(**cbn).offset=0; 
-	//(**cbn).length=0;
+	(**cbn).nameoffset=0;
 	(**cbn).length=-1; // 11.12.2014
 	(**cbn).matchcount=0;
 	(**cbn).firsttimefound=-1;
@@ -336,6 +350,41 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
+int  cb_set_to_json( CBFILE **str ){
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	/*
+	 * Tree structure of JSON is made with object curls. */
+	cb_set_rstart( &(*str), (unsigned long int) ':'  );
+	cb_set_rend( &(*str), (unsigned long int) ',' );
+	/*
+	 * Value from ':' to ',' or to '}' - arrays, (strings, numbers 
+	 * and literals) are considered here as a value. With setting
+	 * 'json=1', '}' changes value even if, ',' was missing. See ascii 
+	 * diagram in function cb_put_leaf . */
+	cb_set_subrstart( &(*str), (unsigned long int) '{' ); // object start
+	cb_set_subrend( &(*str), (unsigned long int) '}' ); // object end
+	(**str).cf.json = 1;
+	(**str).cf.jsonnamecheck = 1; // check name before saving it to list or tree
+	(**str).cf.doubledelim = 1; 
+	(**str).cf.removecrlf = 1; // remove cr and lf character between value and name
+	(**str).cf.removewsp = 1; // remove linear white space characters between value and name
+	// (**str).cf.leadnames = 1; // leadnames are not in effect in CBSTATETREE
+	/*
+	 * JSON is Unicode encoded. */
+	cb_set_encoding( &(*str), CBENCUTF8 );
+	/*
+	 * Arrays commas ',' are bypassed by setting array as a comment.
+	 * This way array value can be read later and it wont interfere
+	 * with values commas. */
+	cb_set_cstart( &(*str), (unsigned long int) '[' );
+	cb_set_cend( &(*str), (unsigned long int) ']' );
+	/*
+	 * Tree. */
+	cb_set_search_state( &(*str), CBSTATETREE );
+
+	return CBSUCCESS;
+}
+
 int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 	unsigned char *blk = NULL; 
 	return cb_allocate_cbfile_from_blk(str, fd, bufsize, &blk, blocksize);
@@ -358,10 +407,10 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #ifdef CB2822MESSAGE
 	(**str).cf.asciicaseinsensitive=1;
 	(**str).cf.unfold=1;
-	(**str).cf.removewsp=1; // test
-	(**str).cf.removecrlf=1; // test
-	//(**str).cf.removewsp=0; // default
-	//(**str).cf.removecrlf=0; // default
+	//(**str).cf.removewsp=1; // test
+	//(**str).cf.removecrlf=1; // test
+	(**str).cf.removewsp=0; // default
+	(**str).cf.removecrlf=0; // default
 	(**str).cf.rfc2822headerend=1; // default, stop at headerend
 	//(**str).cf.rstart=0x00003A; // ':', default
 	//(**str).cf.rend=0x00000A;   // LF, default
@@ -370,7 +419,6 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.searchstate=CBSTATEFUL;
 #else
 	(**str).cf.asciicaseinsensitive=0; // default
-	//(**str).cf.asciicaseinsensitive=1; // test
 	(**str).cf.unfold=0;
 	(**str).cf.removewsp=1;
 	(**str).cf.removecrlf=1;
@@ -403,8 +451,10 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.leadnames=1; // important
 #endif
 	(**str).cf.json=0;
+	(**str).cf.jsonnamecheck=1;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
+	(**str).cf.jsonnamecheck=1;
 #endif
 	//(**str).cf.leadnames=1; // test
 	(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
@@ -458,14 +508,14 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	  (**cbf).buf = &(**blk);
 	}
 
-	//for(indx=0;indx<blksize;++indx)
-	//  (**cbf).buf[indx]=' ';
-	memset( &(**cbf).buf[0], 0x20, (size_t) blksize );
+	memset( &(**cbf).buf[0], 0x20, (size_t) blksize ); // 21.2.2015 checked the place of memset is correct
 
 	(**cbf).buflen=blksize;
 	(**cbf).contentlen=0;
 	(**cbf).list.namecount=0;
 	(**cbf).index=0;
+	(**cbf).readlength=0; // 21.2.2015
+	(**cbf).maxlength=0; // 21.2.2015
         (**cbf).offsetrfc2822=0;
 	(**cbf).list.name=NULL;
 	(**cbf).list.current=NULL;
@@ -508,45 +558,48 @@ int  cb_free_buffer(cbuf **buf){
 }
 
 int  cb_free_name(cb_name **name){
-        int err=CBSUCCESS;
 	cb_name *leaf = NULL;
 	cb_name *next = NULL;
 	cb_name *nextleaf = NULL;
 	cb_name *nextname = NULL;
-
-        if(name!=NULL && *name!=NULL){
-	  leaf = &(* (cb_name*) (**name).leaf );
-	  while( leaf!=NULL ){
-	    nextleaf = &(* (cb_name*) (*leaf).leaf );
-	    next = &(* (cb_name*) (*leaf).next );
-            cb_free_name( &leaf );
-	    while( next!=NULL ){
-	      nextname = &(* (cb_name*) (*next).next );
-	      cb_free_name( &next ); // 14.12.2014, nexts leafs
-	      free( (*next).namebuf ); free(next);
-	      next = &(* nextname);
-	    }
-            leaf = &(* nextleaf);
-	  }
-	  free( (**name).namebuf );
-	  (**name).namebuf=NULL; (**name).namelen=0; (**name).buflen=0; // (**name).leafcount=0;
-	  /* Set last name to NULL */
-	  free(*name); *name=NULL; 
-        }else
+	
+	if( name==NULL || *name==NULL )
 	  return CBERRALLOC;
-	return err;
 
+	leaf = &(* (cb_name*) (**name).leaf );
+	while( leaf!=NULL ){
+	  nextleaf = &(* (cb_name*) (*leaf).leaf );
+	  next = &(* (cb_name*) (*leaf).next );
+	  while( next!=NULL ){
+	    nextname = &(* (cb_name*) (*next).next );
+	    cb_free_name( &next ); // 14.12.2014, nexts leafs
+	    next = &(* nextname);
+	  }
+          cb_free_name( &leaf );
+          leaf = &(* nextleaf);
+	}
+	free( (**name).namebuf );
+	(**name).namebuf=NULL; (**name).namelen=0; (**name).buflen=0;
+	(**name).next=NULL; (**name).leaf=NULL; // 21.2.2015
+	/* Set last name to NULL */
+	free(*name); *name=NULL; 
+	return CBSUCCESS;
 }
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
-	if(buf!=NULL && *buf!=NULL){
-	  (**buf).index=0;
-	  (**buf).contentlen=0;
-	  cb_empty_names(&(*buf));
-	}
-	(**buf).list.name=NULL; // 1.6.2013
+	if(buf==NULL || *buf==NULL)
+	  return CBERRALLOC;
+
+	(**buf).index=0;
+	(**buf).contentlen=0;
+	(**buf).readlength=0; // 21.2.2015
+	(**buf).maxlength=0; // 21.2.2015
+	(**buf).offsetrfc2822=0; // 21.2.2015
 	(**buf).list.current=NULL; // 1.6.2013
 	(**buf).list.currentleaf=NULL; // 11.12.2013
 	(**buf).list.last=NULL; // 1.6.2013
+	cb_empty_names(&(*buf));
+	(**buf).list.name=NULL; // 1.6.2013
+	(**buf).list.namecount=0; // 21.2.2015
 	return CBSUCCESS;
 }
 /*
@@ -576,10 +629,26 @@ int  cb_empty_block(CBFILE **buf, char reading ){
 }
 int  cb_empty_names(cbuf **buf){
 	int err=CBSUCCESS;
-	err = cb_empty_names_from_name( &(*buf), &( (**buf).list.name ) );
-	cb_free_name( &( (**buf).list.name ) );
+	if( buf==NULL || *buf==NULL )
+	  return CBERRALLOC;
+	(**buf).list.last = NULL; // 21.2.2015
+	(**buf).list.current = NULL; // 21.2.2015
+	(**buf).list.currentleaf = NULL; // 21.2.2015
+
+	//if( (**buf).list.name==NULL )
+	//  cb_clog( CBLOGWARNING, "\ncb_empty_names: list.name was null.");
+
+	if( (**buf).list.name!=NULL ){
+	  err = cb_empty_names_from_name( &(*buf), &( (**buf).list.name ) );
+	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, "\ncb_empty_names: cb_empty_names_from_name returned %i.", err ); }
+	}
+	if( (**buf).list.name!=NULL ){
+	  err = cb_free_name( &( (**buf).list.name ) );
+	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, "\ncb_empty_names: cb_free_name returned %i.", err ); }
+	}
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
 	(**buf).list.name = NULL;
+
 	return err;
 }
 int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
@@ -591,11 +660,15 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 	name = &(* (cb_name*) (**cbn).next);
 	while(name != NULL){
 		nextname = &(* (cb_name*) (*name).next);
-		cb_free_name(&name); // frees leafs
+		cb_free_name(&name); // frees leaves
 		name = &(* nextname);
 	}
 	(**cbn).next = NULL;
 	(**cbn).leaf = NULL;
+
+	(**buf).list.last = &(**cbn); // 21.2.2015
+	(**buf).list.current = NULL; // 21.2.2015
+	(**buf).list.currentleaf = NULL; // 21.2.2015
 
 	/* Update namecount. */
 	err = 0;
@@ -608,6 +681,7 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 		}
 	}
 	(**buf).list.namecount = err;
+
 	return CBSUCCESS;
 }
 
