@@ -13,7 +13,7 @@ cat tests/json.txt | ./cbsearch.CBSETSTATELESS -c 4 -b 2048 -l 512 -J -s \
 cat tests/json.txt | ./cbsearch.CBSETSTATELESS -c 4 -b 2048 -l 512 -J -s \
 "\"glossary\".\"GlossDiv\".\"GlossList\".\"GlossEntry\".\"GlossDef\".\"para\"" 2>&1
 
-# After array
+# After array, tree sloping downwards
 cat tests/json.txt | ./cbsearch.CBSETSTATELESS -c 4 -b 2048 -l 512 -J -s "\"glossary\".\"GlossDiv\".\"GlossList\".\"GlossEntry\".\"GlossSee\"" 2>&1
 
 

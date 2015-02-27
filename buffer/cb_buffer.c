@@ -63,7 +63,7 @@
  - Unfolding erikoismerkit pitaa verrata ohjausmerkkeihin ja tarkastaa 
  - Jokainen taulukko on vain taulukko ilman pointeria ensimmaiseen?
    x jokainen malloc tarkistettu < 11/2013
- - space/tab ei saa esiintya rfc2822:n nimissa, arvon lopetusmerkiksi?
+ x space/tab ei saa esiintya rfc2822:n nimissa, arvon lopetusmerkiksi?
    (viimeiset muutokset ja kommentit ovat huonoja)
  x CTL:ia ei saa poistaa, niita ei saa nimessa kuitenkaan olla (korkeintaan virheilmoitus)
    -> qualify name tms. johon kuuluvat muutkin maareet joita nimen tulee toteuttaa
@@ -111,7 +111,8 @@
        muutoin aina alkuperaisessa muodossa.
  - encodingbytes on mahdollista valita erikseen ja ohjelma voi jaada tilaan jossa
    se ei lue merkkeja oikein jos: pelkka alustus ja err = cb_set_encodingbytes(&cbf, 0);
- - test_cb namelist is in error 22.2.2015
+ x test_cb namelist is in error 22.2.2015 
+   x cb_free_name correct order
 
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
@@ -569,7 +570,7 @@ int  cb_free_name(cb_name **name){
 	if( leaf!=NULL )
            cb_free_name( &leaf ); // deepest leaf first, 27.2.2015
 	if( leaf!=NULL ){
-	   next = &(* (cb_name*) (*leaf).next );
+	   next = &(* (cb_name*) (**name).next );
 	   cb_free_name( &next ); // 14.12.2014, nexts leafs
 	}
 	free( (**name).namebuf );

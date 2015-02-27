@@ -673,7 +673,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0; 
-	char injsonquotes = 0;
+	char injsonquotes = 0, wasjsonsubrend=0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL;
@@ -811,8 +811,8 @@ cb_set_cursor_reset_name_index:
 	                || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
 	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.doubledelim==1 && (**cbs).cf.json==1 && injsonquotes!=1 ) \
 	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
-	      if( ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) \
-			|| ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes==1 ) ){ // 21.2.2015 JSON
+	      wasjsonsubrend=0;
+	      if( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) { // 21.2.2015 JSON
 		injsonquotes=0;
 	        tovalue=0;
 	        goto cb_set_cursor_reset_name_index; // update openpairs only from ':' (JSON rstart is ':')
@@ -856,9 +856,9 @@ cb_set_cursor_reset_name_index:
 	      //if(buferr!=CBNAMEOUTOFBUF ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	      if(buferr!=CBNAMEOUTOFBUF && fname!=NULL ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 
-		//cb_clog( CBLOGDEBUG, "\n Openpairs=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, injsonquotes, (*(**cbs).cb).index );
-		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
-		//cb_clog( CBLOGDEBUG, "| ");
+		cb_clog( CBLOGDEBUG, "\n Openpairs=%i, ocoffset=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, ocoffset, injsonquotes, (*(**cbs).cb).index );
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
+		cb_clog( CBLOGDEBUG, "| ");
 
 		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes==2 && (**cbs).cf.jsonnamecheck!=1 ) || \
 				( injsonquotes==2 && (**cbs).cf.jsonnamecheck==1 && \
@@ -967,15 +967,19 @@ cb_set_cursor_reset_name_index:
 	                           ( (**cbs).cf.json==1 && injsonquotes!=1 && chr==(**cbs).cf.subrend && (**cbs).cf.doubledelim==1 ) ) ){
 
 	      /*
-	       * '&', start a new name 
+	       * '&', start a new name, 27.2.2015: solution to '}' + ',' -> --openpairs once
 	       */
 	      if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
 	        if( (**cbs).cf.json==1 && chr==(**cbs).cf.subrend && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
 	          // (JSON rend is ',' subrend is '}' ) . If not ',' as should, remove last comma in list: a, b, c } 21.2.2015
                   --openpairs;
+		  wasjsonsubrend=1;
 	          injsonquotes=0;
 	        }else{ // /21.2.2015
-	          --openpairs; // reader must read similarly, with openpairs count or otherwice
+		  if( (**cbs).cf.json==1 && wasjsonsubrend==1)
+		    wasjsonsubrend=0;
+		  else
+	            --openpairs; // reader must read similarly, with openpairs count or otherwice
 		}
 	      }
 	      atvalue=0; 
@@ -987,8 +991,13 @@ cb_set_cursor_reset_name_index:
 	       * change \\ to one '\' 
 	       */
 	      chr=(**cbs).cf.bypass+1; // any char not '\'
-	  }else if( ( openpairs<0 || openpairs<ocoffset ) && \
-	            ((**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) ){
+	  }else if(     ( \
+			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && \
+		          ( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) \
+		        ) || ( \
+		          ( (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) ) ) && \
+		          ( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) \
+			) ){ // 27.2.2015: test JSON: TEST WAS: FAIL ( '}'+',' should be -1, not -2 ) , STILL HERE, AN ERROR
 	      /*
 	       * When reading inner name-value -pairs, read of outer value ended.
 	       */
@@ -1155,9 +1164,9 @@ int  cb_check_json_name( unsigned char **ucsname, int *namelength ){
 	indx = *namelength-4;
 	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, *namelength );
 	if( chprev!= (unsigned long int) '\\' && chr == (unsigned long int) '"' ){
-          cb_clog( CBLOGDEBUG, "\ncb_check_json_name: |");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
-          cb_clog( CBLOGDEBUG, "| returning success.");
+          //cb_clog( CBLOGDEBUG, "\ncb_check_json_name: |");
+	  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
+          //cb_clog( CBLOGDEBUG, "| returning success.");
 	  return CBSUCCESS; // second quotation
 	}
 	cb_clog( CBLOGDEBUG, "\ncb_check_json_name: returning CBNOTJSON: ");

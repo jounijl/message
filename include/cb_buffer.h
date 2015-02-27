@@ -469,12 +469,12 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes);
 
 /*
- * Write to offset if file is seekable. (Block is replaced if it's smaller or not empty. These are not atomic functions). */
+ * Write to offset if file is seekable. (Block is replaced if it's smaller or not empty.) These are not thread-safe without locks. */
 int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *byteswritten, signed long int offset, signed long int offsetlimit);
 int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **stg, int *stgsize); // character after writing (to erase), slow and uses a lot of memory
 int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signed long int offsetlimit); // If not even at end, does not fill last missing characters
 int  cb_reread_file( CBFILE **cbf ); // 16.2.2015
-int  cb_reread_new_file( CBFILE **cbf, int newfd ); // 16.2.2015
+int  cb_reread_new_file( CBFILE **cbf, int newfd ); // 16.2.2015 
 
 
 // From unicode to and from utf-8
@@ -516,6 +516,7 @@ int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
 int  cb_free_name(cb_name **name);
+int  cb_free_names_from(cb_name **cbn);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2

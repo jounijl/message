@@ -100,7 +100,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 
 
 /*
- * Content
+ * Content.
  */
 
 int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
@@ -193,10 +193,3 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
                 
         return CBSUCCESS;
 }
-//int  cb_get_current_pointer( CBFILE **cbf, cb_name **cn ){
-//        if( cbf==NULL || *cbf==NULL || cn==NULL || *cn==NULL){ 
-//		cb_log( &(*cbf), CBLOGALERT, "\ncb_get_current_pointer: cbf or cn was null."); return CBERRALLOC; 
-//	}
-//	(*cn) = &(*(*(**cbf).cb).list.current);
-//	return CBSUCCESS;
-//}
