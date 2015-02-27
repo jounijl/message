@@ -655,10 +655,7 @@ int  cb_free_names_from(cb_name **cbn){
 
 	name = &(* (cb_name*) (**cbn).next);
 	while(name != NULL){
-		cb_clog( CBLOGDEBUG, "\ncb_free_names_from: loop.");
 		nextname = &(* (cb_name*) (*name).next);
-		if( nextname==NULL )
-			cb_clog( CBLOGDEBUG, "\ncb_free_names_from: Nextname was null.");
 		err = cb_free_name( &name ); // frees leaves
 		name = &(* nextname);
 	}
@@ -687,14 +684,7 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 		name = &(* (cb_name*) (**buf).list.name);
 		while(name != NULL){
 			++err;
-			cb_clog( CBLOGDEBUG, "\ncb_empty_names_from_name: nextname count %i.", err );
 			nextname = &(* (cb_name*) (*name).next);
-			if( name==NULL ){
-			    cb_clog( CBLOGDEBUG, " Next was null.");
-			}else{
-			    if( (*name).leaf==NULL )
-				cb_clog( CBLOGDEBUG, " Leaf was null.");
-			}
 			name = &(* nextname);
 		}
 	}

@@ -309,6 +309,9 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int ocoffset){
 
 	(*(**str).cb).list.currentleaf = &(*lastleaf);
 
+	newleaf=NULL; // 27.2.2015
+	lastleaf=NULL; // 27.2.2015
+
 	if(err>=CBNEGATION)
 	  return err;
 	return ret;
@@ -375,8 +378,9 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ // o
 	    }
 	  }
 
-	  // Add name 
+	  // Add name
           (*(**str).cb).list.last    = &(* (cb_name*) (*(*(**str).cb).list.last).next );
+
           err = cb_allocate_name( &(*(**str).cb).list.last, (**cbn).namelen ); if(err!=CBSUCCESS){ return err; } // 7.12.2013
           (*(*(**str).cb).list.current).next = &(*(*(**str).cb).list.last); // previous
           (*(**str).cb).list.current = &(*(*(**str).cb).list.last);
