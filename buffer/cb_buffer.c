@@ -561,29 +561,23 @@ int  cb_free_buffer(cbuf **buf){
 int  cb_free_name(cb_name **name){
 	cb_name *leaf = NULL;
 	cb_name *next = NULL;
-	cb_name *nextleaf = NULL;
-	cb_name *nextname = NULL;
-	
+
 	if( name==NULL || *name==NULL )
 	  return CBERRALLOC;
 
 	leaf = &(* (cb_name*) (**name).leaf );
-	while( leaf!=NULL ){
-	  nextleaf = &(* (cb_name*) (*leaf).leaf );
-	  next = &(* (cb_name*) (*leaf).next );
-	  while( next!=NULL ){
-	    nextname = &(* (cb_name*) (*next).next );
-	    cb_free_name( &next ); // 14.12.2014, nexts leafs
-	    next = &(* nextname);
-	  }
-          cb_free_name( &leaf );
-          leaf = &(* nextleaf);
+	if( leaf!=NULL )
+           cb_free_name( &leaf ); // deepest leaf first, 27.2.2015
+	if( leaf!=NULL ){
+	   next = &(* (cb_name*) (*leaf).next );
+	   cb_free_name( &next ); // 14.12.2014, nexts leafs
 	}
 	free( (**name).namebuf );
 	(**name).namebuf=NULL; (**name).namelen=0; (**name).buflen=0;
 	(**name).next=NULL; (**name).leaf=NULL; // 21.2.2015
 	/* Set last name to NULL */
-	free(*name); *name=NULL; 
+	free( (* (void**) name ) );
+	*name=NULL; 
 	return CBSUCCESS;
 }
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
@@ -632,9 +626,6 @@ int  cb_empty_names(cbuf **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL )
 	  return CBERRALLOC;
-	(**buf).list.last = NULL; // 21.2.2015
-	(**buf).list.current = NULL; // 21.2.2015
-	(**buf).list.currentleaf = NULL; // 21.2.2015
 
 	//if( (**buf).list.name==NULL )
 	//  cb_clog( CBLOGWARNING, "\ncb_empty_names: list.name was null.");
@@ -650,6 +641,30 @@ int  cb_empty_names(cbuf **buf){
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
 	(**buf).list.name = NULL;
 
+	(**buf).list.last = NULL; // 21.2.2015
+	(**buf).list.current = NULL; // 21.2.2015
+	(**buf).list.currentleaf = NULL; // 21.2.2015
+
+	return err;
+}
+int  cb_free_names_from(cb_name **cbn){
+	int err=CBSUCCESS;
+	cb_name *name = NULL;
+	cb_name *nextname = NULL;
+	if( cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
+
+	name = &(* (cb_name*) (**cbn).next);
+	while(name != NULL){
+		cb_clog( CBLOGDEBUG, "\ncb_free_names_from: loop.");
+		nextname = &(* (cb_name*) (*name).next);
+		if( nextname==NULL )
+			cb_clog( CBLOGDEBUG, "\ncb_free_names_from: Nextname was null.");
+		err = cb_free_name( &name ); // frees leaves
+		name = &(* nextname);
+	}
+	(**cbn).next = NULL;
+	(**cbn).leaf = NULL;
+
 	return err;
 }
 int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
@@ -658,16 +673,11 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 	cb_name *nextname = NULL;
 	if( buf==NULL || *buf==NULL || cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
 
-	name = &(* (cb_name*) (**cbn).next);
-	while(name != NULL){
-		nextname = &(* (cb_name*) (*name).next);
-		cb_free_name(&name); // frees leaves
-		name = &(* nextname);
-	}
-	(**cbn).next = NULL;
-	(**cbn).leaf = NULL;
+	err = cb_free_names_from( &(*cbn) );
+	if( err>=CBERROR ){	return err;  }
 
 	(**buf).list.last = &(**cbn); // 21.2.2015
+	(*(**buf).list.last).next = NULL; // 25.2.2015
 	(**buf).list.current = NULL; // 21.2.2015
 	(**buf).list.currentleaf = NULL; // 21.2.2015
 
@@ -676,9 +686,16 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 	if( (**buf).list.name!=NULL ){
 		name = &(* (cb_name*) (**buf).list.name);
 		while(name != NULL){
-			nextname = &(* (cb_name*) (*name).next);
-			name = &(* nextname);
 			++err;
+			cb_clog( CBLOGDEBUG, "\ncb_empty_names_from_name: nextname count %i.", err );
+			nextname = &(* (cb_name*) (*name).next);
+			if( name==NULL ){
+			    cb_clog( CBLOGDEBUG, " Next was null.");
+			}else{
+			    if( (*name).leaf==NULL )
+				cb_clog( CBLOGDEBUG, " Leaf was null.");
+			}
+			name = &(* nextname);
 		}
 	}
 	(**buf).list.namecount = err;
