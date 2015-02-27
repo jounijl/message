@@ -236,13 +236,9 @@ int main (int argc, char *argv[]) {
 
 			// tmp_gdb_test_call( encoding );
 
-			/* Tasta tuli segfault 21.2.2015. Luultavasti nimilista. Vain: CBSTATETREE, ei: CBSTATELESS, CBSTATEFUL, CBSTATETOPOLOGY. */
+			/* 21.2.2015: cb_free_name error from encoding 2 onwards: CBSTATETREE, not: CBSTATELESS, CBSTATEFUL, CBSTATETOPOLOGY. */
 	  	        err2 = cb_reinit_cbfile(&in); // free unused name_list_ptr and zero buffer counters
 			if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, "\ntest_cb: cb_reinit_cbfile(&in) returned %i.", err2 );  }
-
-			// 22.2.2015: INVALID NAMELIST IN "in" CAUSING MALLOC ERROR AT NEXT: cb_set_cursor_ucs
-			// FROM ENCODING 2 ONWARDS
-
 
 			//
  			// Output encoding
@@ -311,7 +307,6 @@ int main (int argc, char *argv[]) {
 				fprintf(stderr,"], length %i, [%li/", (*nameptr).namelen, (*nameptr).nameoffset);
 				fprintf(stderr,"%li/%i].\n", (*nameptr).offset, (*nameptr).length);
 
-				// DEBUG: Segfault after next call
 				if(in==NULL)
 					cb_clog( CBLOGDEBUG, "\n in was null." );
 				if( nameptr==NULL )
@@ -323,9 +318,9 @@ int main (int argc, char *argv[]) {
 				if( (*in).blk==NULL)
 					cb_clog( CBLOGDEBUG, "\n (*in).blk was null." );
 				//cb_clog( CBLOGDEBUG, "\ncalling cb_set_cursor_ucs length %i, errno %i.", (*nameptr).namelen, errno );
-	//		if(encodingstested>=1){				exit(-1); } // DEBUG TMP
 
-			tmp_gdb_test_call( encoding );
+		//		if(encodingstested>=1){				exit(-1); } // DEBUG TMP
+				tmp_gdb_test_call( encoding );
 
 			        err = cb_set_cursor_ucs( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
 				//cb_clog( CBLOGDEBUG, "\n ERR %lli.", err);

@@ -166,7 +166,7 @@ int main (int argc, char **argv) {
 	    tree = 1;
             continue;
           }
-          u = get_option( argv[i], argv[i+1], 'J', &value); // use JSON (in effect of t is set)
+          u = get_option( argv[i], argv[i+1], 'J', &value); // use JSON
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    tree = 1;
 	    cb_set_to_json( &in );

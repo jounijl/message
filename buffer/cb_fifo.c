@@ -239,4 +239,3 @@ int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int bufle
 	return CBSUCCESS;
 }
 
-

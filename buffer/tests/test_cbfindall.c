@@ -68,7 +68,7 @@ int main(void) {
 	if(err>=CBNEGATION && err!=CBNOTFOUND)
 	  fprintf(stderr,"\ncb_find_every_name: err=%i.", err);
 
-	cb_print_names(&in);
+	cb_print_names(&in, CBLOGDEBUG);
 
 	cb_free_cbfile(&in);
 

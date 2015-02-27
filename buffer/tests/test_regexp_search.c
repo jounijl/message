@@ -107,7 +107,7 @@ int main (int argc, char *argv[]) {
 	ucsname[ parambufsize+1 ]='\0';
 
 	fprintf(stderr,"\n%s parameter: [", argv[0]);
-	cb_print_ucs_chrbuf(&ucsname, chrbufindx, parambufsize);
+	cb_print_ucs_chrbuf(CBLOGDEBUG, &ucsname, chrbufindx, parambufsize);
 	fprintf(stderr,"] length = %i , chrbufindx=%i.", strlen( argv[1] ), chrbufindx );
 
 
