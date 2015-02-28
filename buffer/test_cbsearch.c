@@ -161,6 +161,12 @@ int main (int argc, char **argv) {
             cb_set_encoding(&in, inputenc);
             continue;
           }
+          u = get_option( argv[i], argv[i+1], 'z', &value); // set double delimiters and configuration file options
+          if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+	    tree = 1;
+	    cb_set_to_conf( &in );
+            continue;
+          }
           u = get_option( argv[i], argv[i+1], 't', &value); // traverse the dotted (or primary key-) tree with cb_tree_set_cursor_ucs
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    tree = 1;
@@ -258,9 +264,9 @@ int main (int argc, char **argv) {
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
 	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] [-x]\\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] <name> \n\n");
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [ -z ] <name> \n\n");
 	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [-x]\\\n");
+	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [ -z ] [-x]\\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [?<name3> [...] ] ]\"\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
@@ -273,8 +279,8 @@ void usage (char *progname[]){
         fprintf(stderr,"\t<count> is -1, search is endless. With -t the search include\n");
         fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
 	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
-	fprintf(stderr,"\t -J switches to JSON format. JSON value is not printed\n");
-	fprintf(stderr,"\tcorrectly (21.2.2015).\n\n");
+	fprintf(stderr,"\t -J JSON format. JSON value is not printed correctly\n");
+	fprintf(stderr,"\t(21.2.2015). -z configuration file format ('{' and '=').\n\n");
         fprintf(stderr,"\tExample 1:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
         fprintf(stderr,"\tExample 2:\n");
@@ -286,7 +292,9 @@ void usage (char *progname[]){
         fprintf(stderr,"\tExample 5:\n");
         fprintf(stderr,"\t   cat json.txt | ./cbsearch -c -1 -b 1024 -l 512 -J -s \"\\\"glossary\\\".\\\"GlossDiv\\\".\\\"GlossList\\\".\\\"GlossEntry\\\".\\\"GlossDef\\\".\\\"GlossSeeAlso\\\"\" \n\n");
         fprintf(stderr,"\tExample 6:\n");
-        fprintf(stderr,"\t   cat tree.txt | ./cbsearch -c -1 -b 1024 -l 512 -t -s \"\\\"name\\\".\\\"leaf1\\\".\\\"leaf2\\\"\" \n\n");
+        fprintf(stderr,"\t   cat tree.txt | ./cbsearch -c -1 -b 1024 -l 512 -t -s \"name.leaf1.leaf2\" \n\n");
+        fprintf(stderr,"\tExample 7:\n");
+        fprintf(stderr,"\t   cat conf.txt | ./cbsearch -z -c -1 -b 1024 -l 512 -t -s \"name1.name2\" \n\n");
 }
 
 /*
