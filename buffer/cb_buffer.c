@@ -352,6 +352,38 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
+int  cb_set_to_conf( CBFILE **str ){
+	//
+	// example:
+	//
+	// name {
+	//    name2 = value2 ; # Comment
+	//    # subrstart '=', rstart '{'
+	//    name3 { name4 = value4 ; }
+	// }
+	//
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+        cb_set_search_state( &(*str), CBSTATETREE );
+        cb_use_as_file( &(*str) );
+        cb_set_to_unique_names( &(*str) );
+        cb_set_subrstart( &(*str), (unsigned long int) '=' );
+        cb_set_subrend( &(*str), (unsigned long int) ';' );
+        cb_set_rstart( &(*str), (unsigned long int) '{' );
+        cb_set_rend( &(*str), (unsigned long int) '}' );  
+        cb_set_cstart( &(*str), (unsigned long int) '#' );
+        cb_set_cend( &(*str), (unsigned long int) 0x0A ); // new line
+        cb_set_bypass( &(*str), (unsigned long int) '\\' );
+        (**str).cf.doubledelim=1;
+        (**str).cf.removecrlf=1;
+        (**str).cf.removewsp=1;
+        (**str).cf.jsonnamecheck=0;
+        (**str).cf.json=0;
+        (**str).cf.leadnames=0;
+        (**str).cf.rfc2822headerend=0;
+        (**str).cf.asciicaseinsensitive=0;
+        (**str).cf.unfold=1;
+	return CBSUCCESS;
+}
 int  cb_set_to_json( CBFILE **str ){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	/*

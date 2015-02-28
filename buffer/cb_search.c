@@ -856,9 +856,9 @@ cb_set_cursor_reset_name_index:
 	      //if(buferr!=CBNAMEOUTOFBUF ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	      if(buferr!=CBNAMEOUTOFBUF && fname!=NULL ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 
-		cb_clog( CBLOGDEBUG, "\n Openpairs=%i, ocoffset=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, ocoffset, injsonquotes, (*(**cbs).cb).index );
-		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
-		cb_clog( CBLOGDEBUG, "| ");
+		//cb_clog( CBLOGDEBUG, "\n Openpairs=%i, ocoffset=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, ocoffset, injsonquotes, (*(**cbs).cb).index );
+		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
+		//cb_clog( CBLOGDEBUG, "| ");
 
 		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes==2 && (**cbs).cf.jsonnamecheck!=1 ) || \
 				( injsonquotes==2 && (**cbs).cf.jsonnamecheck==1 && \
