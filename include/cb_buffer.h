@@ -534,8 +534,10 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
 int  cb_get_encoding(CBFILE **str, int *number); 
 
+/* Functions to remember the settings (see source if forgotten). */
 int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, jsonnamecheck, rstart, rend, substart, subrend, cstart, cend, UTF-8 and CBSTATETREE.
 int  cb_set_to_conf( CBFILE **str ); // Sets doubledelim, CBSTATETREE, unique names, zeroes other options and sets default values of rstart, rend, substart, subrend, cstart and cend.
+int  cb_set_to_rfc2822( CBFILE **str ); // Remove CR. Sets new line as rend, rstart ':', folding, ending at header end, (ASCII) case insensitive names, comments as '(' and ')'.
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize

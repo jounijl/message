@@ -279,8 +279,9 @@ void usage (char *progname[]){
         fprintf(stderr,"\t<count> is -1, search is endless. With -t the search include\n");
         fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
 	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
-	fprintf(stderr,"\t -J JSON format. JSON value is not printed correctly\n");
-	fprintf(stderr,"\t(21.2.2015). -z configuration file format ('{' and '=').\n\n");
+	fprintf(stderr,"\t -J JSON format. Tree or doubledelimiter values are not printed\n");
+	fprintf(stderr,"\tcorrectly (21.2.2015). -z configuration file format\n");
+	fprintf(stderr,"\t('{' and '=').\n\n");
         fprintf(stderr,"\tExample 1:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
         fprintf(stderr,"\tExample 2:\n");

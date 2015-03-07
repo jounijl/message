@@ -366,10 +366,10 @@ int  cb_set_to_conf( CBFILE **str ){
         cb_set_search_state( &(*str), CBSTATETREE );
         cb_use_as_file( &(*str) );
         cb_set_to_unique_names( &(*str) );
-        cb_set_subrstart( &(*str), (unsigned long int) '=' );
-        cb_set_subrend( &(*str), (unsigned long int) ';' );
-        cb_set_rstart( &(*str), (unsigned long int) '{' );
-        cb_set_rend( &(*str), (unsigned long int) '}' );  
+        cb_set_subrstart( &(*str), (unsigned long int) '{' );
+        cb_set_subrend( &(*str), (unsigned long int) '}' );  
+        cb_set_rstart( &(*str), (unsigned long int) '=' );
+        cb_set_rend( &(*str), (unsigned long int) ';' );
         cb_set_cstart( &(*str), (unsigned long int) '#' );
         cb_set_cend( &(*str), (unsigned long int) 0x0A ); // new line
         cb_set_bypass( &(*str), (unsigned long int) '\\' );
@@ -383,6 +383,25 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.asciicaseinsensitive=0;
         (**str).cf.unfold=1;
 	return CBSUCCESS;
+}
+int  cb_set_to_rfc2822( CBFILE **str ){
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+        cb_set_rstart( &(*str), (unsigned long int) ':' );
+        cb_set_rend( &(*str), (unsigned long int) 0x0A );
+        cb_set_cstart( &(*str), (unsigned long int) '(' ); // rfc 2822 allowed comment, comments are folded [2822 3.2.3]
+        cb_set_cend( &(*str), (unsigned long int) ')' ); // rfc 2822 allowed comment
+        cb_set_bypass( &(*str), (unsigned long int) '\\' ); // "semantically invisible" [2822 3.2.3]
+        (**str).cf.rfc2822headerend=1;
+        (**str).cf.asciicaseinsensitive=1;
+        (**str).cf.unfold=1;
+        (**str).cf.doubledelim=0;
+        (**str).cf.removecrlf=0;
+        (**str).cf.removewsp=0;
+	(**str).cf.removenamewsp=0;
+        (**str).cf.jsonnamecheck=0;
+        (**str).cf.json=0;
+        (**str).cf.leadnames=0;
+	return CBSUCCESS;	
 }
 int  cb_set_to_json( CBFILE **str ){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
