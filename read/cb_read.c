@@ -98,6 +98,30 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	return ret;
 }
 
+/*
+ * Returns CBSUCCESS, CBNOTFOUND or an error. */
+int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, int matchctl ){
+	int err=CBNOTFOUND;
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL | ocoffset==NULL){    
+		cb_clog( CBLOGALERT, "\ncb_get_next_name_ucs: allocation error."); 
+		return CBERRALLOC; 
+	}
+	while( err==CBNOTFOUND ){
+		err = cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), *ocoffset, matchctl );
+		if(err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM){
+		   return CBSUCCESS;
+		}else if(err>=CBERROR){
+		   cb_log( &(*cbs), CBLOGALERT, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs, error %i.", err);
+		   return err;
+		}else if(err==CBVALUEEND || err==CBSTREAMEND){
+		   return CBNOTFOUND;
+		}else if(err>=CBNEGATION){
+		   cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i.", err);
+		}
+		*ocoffset=*ocoffset+1;
+	}
+	return err;
+}
 
 /*
  * Content.

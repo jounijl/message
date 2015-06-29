@@ -22,6 +22,14 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 int  cb_find_every_name(CBFILE **cbs); 
 
 /*
+ * 29.6.2015
+ * Find name under the current name from all the leafs
+ * and return it's ocoffset level. Reads from ocoffset
+ * onwards and updates ocoffset to the level of found 
+ * name. */
+int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, int matchctl);
+
+/*
  * 30.11.2013. Finds a variable described by dot-separated namelist
  * name1.name2.name3 from the values of the previous variables. */
 //int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // this function is in cbsearch
