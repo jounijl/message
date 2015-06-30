@@ -49,21 +49,21 @@
 #define CBNOFIT               38    // tried to write to too small space (characters left over)
 #define CBNOTJSON             39
 
-#define CBERROR	              40
-#define CBERRALLOC            41
-#define CBERRFD               42
-#define CBERRFILEOP           43
-#define CBERRFILEWRITE        44
-#define CBERRBYTECOUNT        45
-#define CBARRAYOUTOFBOUNDS    46
-#define CBINDEXOUTOFBOUNDS    47
-#define CBLEAFCOUNTERROR      48
-#define CBERRREGEXCOMP        49    // regexp pattern compile error 03/2014
-#define CBERRREGEXEC          50    // regexp exec error 03/2014
-#define CBBIGENDIAN           51
-#define CBLITTLEENDIAN        52
-#define CBUNKNOWNENDIANNESS   53
-#define CBOVERFLOW            54
+#define CBERROR	              50
+#define CBERRALLOC            51
+#define CBERRFD               52
+#define CBERRFILEOP           53
+#define CBERRFILEWRITE        54
+#define CBERRBYTECOUNT        55
+#define CBARRAYOUTOFBOUNDS    56
+#define CBINDEXOUTOFBOUNDS    57
+#define CBLEAFCOUNTERROR      58
+#define CBERRREGEXCOMP        59    // regexp pattern compile error 03/2014
+#define CBERRREGEXEC          60    // regexp exec error 03/2014
+#define CBBIGENDIAN           61
+#define CBLITTLEENDIAN        62
+#define CBUNKNOWNENDIANNESS   63
+#define CBOVERFLOW            64
 
 /*
  * Log priorities (log verbosity).
@@ -161,8 +161,8 @@
 
 
 /* If leafs are needed, CBSETSTATETREE has to be set before writing
- * to the file (functions in cb_write.c) to update the namelist
- * correctly. */
+ * to the file to update the namelist correctly. 
+ */
 
 /*
  * Sets CBSTATETREE. CBSTATETREE saves name-valuepairs from value to leaves.

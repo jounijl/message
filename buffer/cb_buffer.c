@@ -422,6 +422,7 @@ int  cb_set_to_json( CBFILE **str ){
 	(**str).cf.removecrlf = 1; // remove cr and lf character between value and name
 	(**str).cf.removewsp = 1; // remove linear white space characters between value and name
 	// (**str).cf.leadnames = 1; // leadnames are not in effect in CBSTATETREE
+	(**str).cf.unfold = 0; // JSON is mostly used in values and larger aggregates (not in protocols)
 	/*
 	 * JSON is Unicode encoded. */
 	cb_set_encoding( &(*str), CBENCUTF8 );
