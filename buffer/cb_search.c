@@ -28,12 +28,31 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); //
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 16.3.2014, 23.3.2014
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
-int  cb_set_search_method(CBFILE **buf, unsigned char method); // CBSEARCH*
+//int  cb_set_search_method(CBFILE **buf, unsigned char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
 int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.2.2015
+
+/*
+ * Functions in library include file to be used in checking the existence of a node after
+ * reading the tree from a file or from otherwice adding a node. 30.6.2015
+ */
+int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl ){
+	cb_match mctl;
+	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
+	return cb_set_to_node_matchctl( &(*cbs), &(*ucsname), namelength, ocoffset, &mctl);
+}
+int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *mctl ){
+	if(ocoffset==0)
+		return cb_set_to_name( &(*cbs), &(*ucsname), namelength, &(*mctl) );
+	else if(ocoffset>=1)
+		return cb_set_to_leaf( &(*cbs), &(*ucsname), namelength, ocoffset, &(*mctl) );
+	else
+		cb_clog( CBLOGWARNING, "\ncb_set_to_node_matchtl: ocoffset was negative, returning CBOVERFLOW."); 
+	return CBOVERFLOW;
+}
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
@@ -55,6 +74,8 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf_inner: allocation error."); return CBERRALLOC;
 	}
 
+	//fprintf(stderr,"\ncb_set_to_leaf_inner: .");
+
 	if( (*(**cbs).cb).list.currentleaf==NULL )
 	  return CBEMPTY;
 	// Node
@@ -74,7 +95,11 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
              * becomes 0) and search the next same name.
              */
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
-            if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTNAMES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
+
+// ONGELMA 1, vertaus samaan kohtaan set_to_name:ssa:
+//1.7.2015 name: if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
+
+            if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUELEAVES ){ 
               if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE ) // When used as only buffer, stream case does not apply
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
@@ -85,8 +110,10 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
                   return CBNAMEOUTOFBUF;
                 }
               (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
+
+// MUUTETTU RETURN CBSUCCESS LOHKON SISAAN:
+	      return CBSUCCESS; // CBMATCH
             }
-	    return CBSUCCESS; // CBMATCH
 	  }
 	}
 	if( (*leafptr).leaf!=NULL && openpairs>=1 ){ // Left
@@ -412,6 +439,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	if(*str!=NULL && (**str).cb != NULL && mctl!=NULL ){
 	  iter = &(*(*(**str).cb).list.name);
 	  while(iter != NULL){
+	    //fprintf(stderr,"\ncb_set_to_name: loop.");
 	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, &(*mctl) ); // 23.11.2013, 11.4.2014
 	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
@@ -450,6 +478,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	return CBNOTFOUND;
 }
 
+/*
 int  cb_set_to_polysemantic_names(CBFILE **cbf){
 	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
 }
@@ -467,6 +496,16 @@ int  cb_set_search_method(CBFILE **cbf, unsigned char method){
 	}
 	return CBERRALLOC;
 }
+int  cb_set_search_method(CBFILE **cbf, unsigned char method){
+	if(cbf!=NULL){
+	  if((*cbf)!=NULL){
+	    (**cbf).cf.searchmethod=method; 
+	    return CBSUCCESS;
+	  }
+	}
+	return CBERRALLOC;
+}
+*/
 
 //int  cb_remove_ahead_offset(CBFILE **cbf){ 
 //	return cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
@@ -733,7 +772,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	if(*ucsname==NULL)
 	  return CBERRALLOC;
 
-/*	if((**cbs).cf.searchstate==0)
+/*
+	if((**cbs).cf.searchstate==0)
 	  cb_log( &(*cbs), CBLOGDEBUG, "\nCBSTATELESS");
 	if((**cbs).cf.searchstate==1)
 	  cb_log( &(*cbs), CBLOGDEBUG, "\nCBSTATEFUL");
@@ -762,6 +802,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 cb_set_cursor_reset_name_index:
 	index=0;
 	injsonquotes=0;
+
 
 	// Search for new name
 	// ...& - ignore and set to start

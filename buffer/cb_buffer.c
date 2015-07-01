@@ -128,6 +128,8 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset);
+int  cb_set_search_method(CBFILE **cbf, unsigned char method);
+int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
 /*
  * Debug
@@ -352,6 +354,39 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
+int  cb_set_to_polysemantic_names(CBFILE **cbf){
+        return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
+}
+int  cb_set_to_polysemantic_leaves(CBFILE **cbf){
+        return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTLEAVES);
+}
+int  cb_set_to_unique_names(CBFILE **cbf){
+        return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
+}
+int  cb_set_to_unique_leaves(CBFILE **cbf){
+        return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUELEAVES);
+}
+
+int  cb_set_search_method(CBFILE **cbf, unsigned char method){
+        if(cbf!=NULL){
+          if((*cbf)!=NULL){
+            (**cbf).cf.searchmethod=method;
+            return CBSUCCESS;
+          }
+        }
+        return CBERRALLOC;  
+}         
+int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
+        if(cbf!=NULL){
+          if((*cbf)!=NULL){
+            (**cbf).cf.leafsearchmethod=method;
+            return CBSUCCESS;
+          }
+        }
+        return CBERRALLOC;  
+}         
+
+
 int  cb_set_to_conf( CBFILE **str ){
 	//
 	// example:
@@ -365,11 +400,12 @@ int  cb_set_to_conf( CBFILE **str ){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
         cb_set_search_state( &(*str), CBSTATETREE );
         cb_use_as_file( &(*str) );
-        cb_set_to_unique_names( &(*str) );
-        cb_set_subrstart( &(*str), (unsigned long int) '{' );
-        cb_set_subrend( &(*str), (unsigned long int) '}' );  
-        cb_set_rstart( &(*str), (unsigned long int) '=' );
-        cb_set_rend( &(*str), (unsigned long int) ';' );
+        //cb_set_to_unique_names( &(*str) );
+        cb_set_to_polysemantic_names( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
+        cb_set_rstart( &(*str), (unsigned long int) '{' );
+        cb_set_rend( &(*str), (unsigned long int) '}' );  
+        cb_set_subrstart( &(*str), (unsigned long int) '=' );
+        cb_set_subrend( &(*str), (unsigned long int) ';' );
         cb_set_cstart( &(*str), (unsigned long int) '#' );
         cb_set_cend( &(*str), (unsigned long int) 0x0A ); // new line
         cb_set_bypass( &(*str), (unsigned long int) '\\' );

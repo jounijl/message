@@ -122,6 +122,8 @@ int main (int argc, char **argv) {
 	    err = cb_get_chr(&in, &chr, &u, &y);
 	}
 
+	cb_flush(&out); // 30.6.2015
+
 	cb_free_cbfile(&in);
 	cb_free_cbfile(&out);
 

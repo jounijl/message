@@ -114,6 +114,8 @@
  * Search options */
 #define CBSEARCHUNIQUENAMES       0   // Names are unique (returns allways the first name in list)
 #define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+#define CBSEARCHUNIQUELEAVES      0   // Leaves are unique (returns allways the first name in list)
+#define CBSEARCHNEXTLEAVES        1   // Multiple same leaves (returns leaf if matchcount is zero, otherwice searches next in name value, also in stream)
 
 /*
  * Third search option is to leave buffer empty amd search allways the next name, with either above setting.
@@ -159,10 +161,6 @@
  */
 //#define CBSETDOUBLEDELIM 
 
-
-/* If leafs are needed, CBSETSTATETREE has to be set before writing
- * to the file to update the namelist correctly. 
- */
 
 /*
  * Sets CBSTATETREE. CBSTATETREE saves name-valuepairs from value to leaves.
@@ -299,7 +297,8 @@ typedef struct cb_ring {
 
 typedef struct cb_conf{
         unsigned char       type:4;                 // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
-        unsigned char       searchmethod:4;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        unsigned char       searchmethod:2;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        unsigned char       leafsearchmethod:2;     // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
         unsigned char       unfold:2;               // Search names unfolding the text first, RFC 2822
         unsigned char       asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
@@ -398,6 +397,8 @@ int  cb_set_cursor(CBFILE **cbs, unsigned char **name, int *namelength);
 int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
 
 /*
+ * Match functions:
+ *
  * The same functions overloaded with match length of the name. These are 
  * useful internally and in some searches. 
  *
@@ -421,12 +422,27 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl -13 - match if name1 is in UCS coding less than name2
  * matchctl -14 - match if name1 is in UCS coding greater than name2
  *
+ * Leafs:
+ *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
  * when openpairs is negative. Next rend after value ends reading. This parameter can be used
  * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset.
  *
+ * Library is a list. Leafs are an added functionality. Searching of every leaf is started
+ * from the beginning of the current name in the list.
+ *
+ * Function reads all leafs to the tree from the value if CBSTATETREE is set. Match is from 
+ * the matching ocoffset level, for example if ocoffset is set to 1: 
+ * level
+ * 3                 +leftleaf+rightleaf+rightleaf
+ * 2            +leftleaf    
+ * 1         +leaf+rightleaf  <----- matching leafs with ocoffset 1, first 'leaf', then 'rightleaf' if searched two times or the names are known
+ * 0  __listnode1________________________________listnode2__
+ *
+ * Return values:
+ *
  * Returns on success: CBSUCCESS, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
- * CB2822HEADEREND of it was set.
+ * CB2822HEADEREND it was set.
  * May return: CBNOTFOUND, CBVALUEEND, CBSTREAMEND
  * Possible errors: CBERRALLOC, CBOPERATIONNOTALLOWED (offsets)
  * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM
@@ -448,6 +464,18 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
+/*
+ * This function is usable only if the tree structure is used in something else. Function
+ * verifies that a node exists in the tree of locations at level offset. If the tree is
+ * read, checks the existence of the name ucsname from the list by setting the current 
+ * pointer to name or currentleaf to leaf. If ocoffset is 0, finds next name. If ocoffset
+ * is >= 1, finds from leafs of the current name. 30.6.2015
+ * May return: CBNOTFOUND (not found), CBEMPTY (currents leaf was empty)
+ * Success: CBSUCCESS
+ * Errors: CBNAMEOUTOFBUF, CBERRALLOC.
+ */
+int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl );
+int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *mctl );
 
 /*
  * One character at a time. Output flushes when the buffer is full.
@@ -544,7 +572,9 @@ int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
 int  cb_use_as_seekable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
 int  cb_use_as_stream(CBFILE **buf); // Namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
 int  cb_set_to_unique_names(CBFILE **cbf);
-int  cb_set_to_polysemantic_names(CBFILE **cbf); // Multiple same names, default
+int  cb_set_to_unique_leaves(CBFILE **cbf);
+int  cb_set_to_polysemantic_names(CBFILE **cbf); // Searches multiple same named names, default
+int  cb_set_to_polysemantic_leaves(CBFILE **cbf); // Searches multiple same named leaves, default
 
 /*
  * Helper queues and queue structures 
