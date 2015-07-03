@@ -38,6 +38,11 @@ int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.
 /*
  * Functions in library include file to be used in checking the existence of a node after
  * reading the tree from a file or from otherwice adding a node. 30.6.2015
+ *
+ * Returns 
+ *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
+ *   on error: CBERRALLOC, CBNAMEOUTOFBUF
  */
 int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl ){
 	cb_match mctl;
@@ -56,7 +61,13 @@ int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelen
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
- * matchctl and openpairs count. Returns CBNOTFOUND if leaf was not found. 'result' may be NULL. */
+ * matchctl and openpairs count. Returns CBNOTFOUND if leaf was not found. 'result' may be NULL. 
+ *
+ * Returns 
+ *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
+ *   on error: CBERRALLOC, CBNAMEOUTOFBUF
+ */
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 23.3.2014
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){ 
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC; 
@@ -68,7 +79,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 }
 // unsigned to 'int namelen' 6.12.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 11.4.2014, 23.3.2014
-	int err = CBSUCCESS;
+	int err = CBSUCCESS; char nextlevelempty=1;
 	cb_name *leafptr = NULL;
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf_inner: allocation error."); return CBERRALLOC;
@@ -80,11 +91,18 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	  return CBEMPTY;
 	// Node
 	leafptr = &(*(*(**cbs).cb).list.currentleaf);
+    	/*
+	 * Return value comparison. */
+	if( leafptr!=NULL ) // 3.7.2015
+	  if( (*leafptr).leaf!=NULL ) // 3.7.2015
+	    nextlevelempty=0; // 3.7.2015
 
 	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, &(*mctl)); // 11.4.2014, 23.3.2014
 	if(err==CBMATCH){
 	  if( openpairs < 0 ){ 
 	    cb_log( &(*cbs), CBLOGWARNING,  "\ncb_set_to_leaf: error: openpairs was %i.", openpairs); // debug
+	    if( nextlevelempty==0 ) // 3.7.2015
+	      return CBNOTFOUNDLEAVESEXIST; // 3.7.2015
 	    return CBNOTFOUND;
 	  }
 	  if( openpairs == 1 ){ // 1 = first leaf (leaf or next)
@@ -111,7 +129,9 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
                 }
               (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
 
-// MUUTETTU RETURN CBSUCCESS LOHKON SISAAN:
+// MUUTETTU RETURN CBSUCCESS LOHKON SISAAN 2.7.2015:
+	      if(nextlevelempty==0) // 3.7.2015
+		return CBSUCCESSLEAVESEXIST; // 3.7.2015
 	      return CBSUCCESS; // CBMATCH
             }
 	  }
@@ -119,18 +139,26 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	if( (*leafptr).leaf!=NULL && openpairs>=1 ){ // Left
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).leaf);
 	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, (openpairs-1), &(*mctl)); // 11.4.2014, 23.3.2014
-	  if(err==CBSUCCESS)
+	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST) // 3.7.2015
 	    return err;
 	}
 	if( (*leafptr).next!=NULL ){ // Right
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
 	  err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*mctl)); // 11.4.2014, 23.3.2014
-	  if(err==CBSUCCESS)
+	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST ) // 3.7.2015
 	    return err;
 	}
 	(*(**cbs).cb).list.currentleaf = NULL;
+        if( nextlevelempty==0 ) // 3.7.2015
+          return CBNOTFOUNDLEAVESEXIST; // 3.7.2015
 	return CBNOTFOUND;
 }
+/*
+ * Returns 
+ *   on success: CBSUCCESS 
+ *   on negation: CBEMPTY 
+ *   on error: CBERRALLOC, CBLEAFCOUNTERROR
+ */
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 
 	/*
@@ -432,13 +460,22 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ // o
         return CBADDEDNAME;
 }
 
-// unsigned to 'int namelen' 6.12.2014
+/*
+ * Returns 
+ *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
+ *   on error: CBERRALLOC, CBNAMEOUTOFBUF
+ */
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl){ // cb_match 11.3.2014, 23.3.2014
-	cb_name *iter = NULL; int err=CBSUCCESS;
+	cb_name *iter = NULL; int err=CBSUCCESS; char nextlevelempty=1;
 
 	if(*str!=NULL && (**str).cb != NULL && mctl!=NULL ){
 	  iter = &(*(*(**str).cb).list.name);
 	  while(iter != NULL){
+	    /*
+	     * Helpful return value comparison. */
+	    if( (*iter).leaf!=NULL ) // 3.7.2015
+	      nextlevelempty=0; // 3.7.2015
 	    //fprintf(stderr,"\ncb_set_to_name: loop.");
 	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, &(*mctl) ); // 23.11.2013, 11.4.2014
 	    if( err == CBMATCH ){ // 9.11.2013
@@ -465,6 +502,8 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	        (*(**str).cb).index=(*iter).offset; // 1.12.2013
 	        (*(**str).cb).list.current=&(*iter); // 1.12.2013
 	        (*(**str).cb).list.currentleaf=&(*iter); // 11.12.2013
+		if(nextlevelempty==0) // 3.7.2015
+		  return CBSUCCESSLEAVESEXIST; // 3.7.2015
 	        return CBSUCCESS;
 	      }
 	    }
@@ -475,37 +514,39 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	  cb_log( &(*str), CBLOGALERT, "\ncb_set_to_name: allocation error.");
 	  return CBERRALLOC; // 30.3.2013
 	}
+	if(nextlevelempty==0)
+	  return CBNOTFOUNDLEAVESEXIST;
 	return CBNOTFOUND;
 }
 
-/*
-int  cb_set_to_polysemantic_names(CBFILE **cbf){
-	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
-}
 
-int  cb_set_to_unique_names(CBFILE **cbf){
-	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
-}
+//int  cb_set_to_polysemantic_names(CBFILE **cbf){
+//	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
+//}
 
-int  cb_set_search_method(CBFILE **cbf, unsigned char method){
-	if(cbf!=NULL){
-	  if((*cbf)!=NULL){
-	    (**cbf).cf.searchmethod=method; 
-	    return CBSUCCESS;
-	  }
-	}
-	return CBERRALLOC;
-}
-int  cb_set_search_method(CBFILE **cbf, unsigned char method){
-	if(cbf!=NULL){
-	  if((*cbf)!=NULL){
-	    (**cbf).cf.searchmethod=method; 
-	    return CBSUCCESS;
-	  }
-	}
-	return CBERRALLOC;
-}
-*/
+//int  cb_set_to_unique_names(CBFILE **cbf){
+//	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
+//}
+
+//int  cb_set_search_method(CBFILE **cbf, unsigned char method){
+//	if(cbf!=NULL){
+//	  if((*cbf)!=NULL){
+//	    (**cbf).cf.searchmethod=method; 
+//	    return CBSUCCESS;
+//	  }
+//	}
+//	return CBERRALLOC;
+//}
+//int  cb_set_search_method(CBFILE **cbf, unsigned char method){
+//	if(cbf!=NULL){
+//	  if((*cbf)!=NULL){
+//	    (**cbf).cf.searchmethod=method; 
+//	    return CBSUCCESS;
+//	  }
+//	}
+//	return CBERRALLOC;
+//}
+
 
 //int  cb_remove_ahead_offset(CBFILE **cbf){ 
 //	return cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
@@ -739,7 +780,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	}else{
 	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, &(*mctl) ); // mctl 11.3.2014, 23.3.2014
 	}
-	if(err==CBSUCCESS){
+	// if(err==CBSUCCESS){
+	if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST){ // 3.7.2015
 	  //cb_log( &(*cbs), CBLOGDEBUG, "\nName found from list.");
 	  if( (*(**cbs).cb).buflen > ( (*(*(**cbs).cb).list.current).length+(*(*(**cbs).cb).list.current).offset ) ){
 	    ret = CBSUCCESS;

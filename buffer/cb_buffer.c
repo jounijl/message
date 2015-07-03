@@ -402,6 +402,7 @@ int  cb_set_to_conf( CBFILE **str ){
         cb_use_as_file( &(*str) );
         //cb_set_to_unique_names( &(*str) );
         cb_set_to_polysemantic_names( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
+        cb_set_to_polysemantic_leaves( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
         cb_set_rstart( &(*str), (unsigned long int) '{' );
         cb_set_rend( &(*str), (unsigned long int) '}' );  
         cb_set_subrstart( &(*str), (unsigned long int) '=' );

@@ -27,27 +27,29 @@
 #define CBADDEDNEXTTOLEAF     10
 #define CBMATCHMULTIPLE       11    // regexp multiple occurences 03/2014
 #define CBMATCHGROUP          12    // regexp group 03/2014
+#define CBSUCCESSLEAVESEXIST  13
 
 #define CBNEGATION            20
 #define CBSTREAMEND           21
 #define CBVALUEEND            22    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
 #define CBBUFFULL             23
 #define CBNOTFOUND            24
-#define CBNAMEOUTOFBUF        25
-#define CBNOTUTF              26
-#define CBNOENCODING          27
-#define CBMATCHPART           28    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY               29
-#define CBNOTSET              30
-#define CBAUTOENCFAIL         31    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL   32
-#define CBUCSCHAROUTOFRANGE   33
-#define CBREPATTERNNULL       34    // given pattern text was null 03/2014
-#define CBGREATERTHAN         35    // same as not found with lexical comparison of name1 to name2
-#define CBLESSTHAN            36
-#define CBOPERATIONNOTALLOWED 37    // seek was asked and CBFILE was not set as seekable
-#define CBNOFIT               38    // tried to write to too small space (characters left over)
-#define CBNOTJSON             39
+#define CBNOTFOUNDLEAVESEXIST 25
+#define CBNAMEOUTOFBUF        26
+#define CBNOTUTF              27
+#define CBNOENCODING          28
+#define CBMATCHPART           29    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY               30
+#define CBNOTSET              31
+#define CBAUTOENCFAIL         32    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL   33
+#define CBUCSCHAROUTOFRANGE   34
+#define CBREPATTERNNULL       35    // given pattern text was null 03/2014
+#define CBGREATERTHAN         36    // same as not found with lexical comparison of name1 to name2
+#define CBLESSTHAN            37
+#define CBOPERATIONNOTALLOWED 38    // seek was asked and CBFILE was not set as seekable
+#define CBNOFIT               39    // tried to write to too small space (characters left over)
+#define CBNOTJSON             40
 
 #define CBERROR	              50
 #define CBERRALLOC            51
