@@ -467,9 +467,11 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
 /*
+ * Not intended to be used. This function does not read new names or leafs.
+ *
  * This function is usable only if the tree structure is used in something else. Function
- * verifies that a node exists in the tree of locations at level offset. If the tree is
- * read, checks the existence of the name ucsname from the list by setting the current 
+ * verifies that a node exists in the tree of locations at level offset. (If the tree is
+ * read,) checks the existence of the name ucsname from the list by setting the current 
  * pointer to name or currentleaf to leaf. If ocoffset is 0, finds next name. If ocoffset
  * is >= 1, finds from leafs of the current name. 30.6.2015
  * May return: CBNOTFOUND (not found), CBEMPTY (currents leaf was empty)

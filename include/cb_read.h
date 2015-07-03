@@ -8,9 +8,8 @@
  * 4.11.2013
  * Finds next unused name, first from the list and then after the cursors 
  * position. New 'ucsname' is allocated and the name is copied 4-bytes
- * per character. Length is bytelength. */
+ * per character. Length is bytelength. ocoffset can not be used. */
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
-//int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset); 
 
 /*
  * 30.11.2013. Allocates new ucsname and copies current name to it. */
@@ -23,7 +22,8 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 int  cb_find_every_name(CBFILE **cbs); 
 
 /*
- * 29.6.2015
+ * 29.6.2015, NOT TESTED OR USED YET 3.7.2015 (under construction or will be removed)
+ *
  * Find name under the current name from all the leafs
  * and return it's ocoffset level. Reads from ocoffset
  * onwards and updates ocoffset to the level of found 

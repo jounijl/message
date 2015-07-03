@@ -39,10 +39,12 @@ int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.
  * Functions in library include file to be used in checking the existence of a node after
  * reading the tree from a file or from otherwice adding a node. 30.6.2015
  *
+ * Do not use this.
+ *
  * Returns 
  *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
- *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
- *   on error: CBERRALLOC, CBNAMEOUTOFBUF
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekablefile)
+ *   on error: CBERRALLOC.
  */
 int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl ){
 	cb_match mctl;
@@ -50,13 +52,16 @@ int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int 
 	return cb_set_to_node_matchctl( &(*cbs), &(*ucsname), namelength, ocoffset, &mctl);
 }
 int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *mctl ){
-	if(ocoffset==0)
-		return cb_set_to_name( &(*cbs), &(*ucsname), namelength, &(*mctl) );
-	else if(ocoffset>=1)
-		return cb_set_to_leaf( &(*cbs), &(*ucsname), namelength, ocoffset, &(*mctl) );
-	else
+	int err=CBSUCCESS;
+	if(ocoffset==0){
+		err = cb_set_to_name( &(*cbs), &(*ucsname), namelength, &(*mctl) );
+	}else if(ocoffset>=1){
+		err = cb_set_to_leaf( &(*cbs), &(*ucsname), namelength, ocoffset, &(*mctl) );
+	}else{
 		cb_clog( CBLOGWARNING, "\ncb_set_to_node_matchtl: ocoffset was negative, returning CBOVERFLOW."); 
-	return CBOVERFLOW;
+		return CBOVERFLOW;
+	}
+	return err;
 }
 
 /*
@@ -65,8 +70,8 @@ int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelen
  *
  * Returns 
  *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
- *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
- *   on error: CBERRALLOC, CBNAMEOUTOFBUF
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekable file)
+ *   on error: CBERRALLOC.
  */
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl){ // 23.3.2014
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){ 
@@ -463,8 +468,8 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int ocoffset){ // o
 /*
  * Returns 
  *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
- *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST
- *   on error: CBERRALLOC, CBNAMEOUTOFBUF
+ *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekable file)
+ *   on error: CBERRALLOC.
  */
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl){ // cb_match 11.3.2014, 23.3.2014
 	cb_name *iter = NULL; int err=CBSUCCESS; char nextlevelempty=1;

@@ -105,6 +105,6 @@ int main (int argc, char *argv[]) {
 
 void usage (char *progname[]){
         printf("\nUsage:\n");
-        printf("\t%s <filename>]\n", progname[0]);
+        printf("\t%s <filename>\n", progname[0]);
         printf("\tLoops file content to output.\n");
 }

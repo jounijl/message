@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <errno.h>  // int errno
 #include "../../include/cb_buffer.h"
+#include "../../include/cb_read.h"
 #include "../../get_option/get_option.h"
 
 /*
@@ -118,7 +119,7 @@ int main(int argc, char **argv) {
 	ninc = 0;
 
 	do{
-	  err = cb_get_next_name_ucs(&in, &name, &namelen);
+	  err = cb_get_next_name_ucs(&in, &name, &namelen, 0);
 	  if( err>=CBNEGATION && err!=CBNOTFOUND )
 	    fprintf(stderr,"\ncb_get_next_name_ucs: err=%i.", err);
 	  if( err==CBSTREAM || err==CBSUCCESS ){
@@ -137,11 +138,11 @@ int main(int argc, char **argv) {
 */
 	    ninc += nameincrease;
             //fprintf( stderr, "[0]", chr );
-	    cb_print_ucs_chrbuf(&name, namelen, namelen); // Name
-            fprintf( stderr, "%lc", (*in).rstart );
+	    cb_print_ucs_chrbuf( CBLOGINFO, &name, namelen, namelen); // Name
+            fprintf( stderr, "%lc", (*in).cf.rstart );
 	    err2==CBSUCCESS; linecounter=0;
             //fprintf( stderr, "[1]", chr );
-	    while( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).rend && chprev!=(*in).bypass ) ){
+	    while( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ) ){
               //fprintf( stderr, "[loop 2]", chr );
 	      chprev = chr;
 	      err2 = cb_search_get_chr(&in, &chr, &offset );
@@ -151,14 +152,14 @@ int main(int argc, char **argv) {
 	      //
 	      // Print value
 
-	      if( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).rend && chprev!=(*in).bypass ) ){
+	      if( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ) ){
 //	        for(indx=0; indx<vinc; ++indx) // Length increase
                   fprintf( stderr, "%lc", chr );
-	      }else if( chr==(*in).rend && chprev!=(*in).bypass ){
-	        fprintf( stderr, "%lc", (*in).rend );
+	      }else if( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ){
+	        fprintf( stderr, "%lc", (*in).cf.rend );
 	        vinc += valueincrease;
 	      }	      
-	      chr=(*in).rend-1;
+	      chr=(*in).cf.rend-1;
               //fprintf( stderr, "[loop 4]", chr );
 	      //
 	      // Decrease line length to read the result in text editors

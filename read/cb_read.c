@@ -111,7 +111,8 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 }
 
 /*
- * Not tested 1.7.2015.
+ * Not tested 1.7.2015. NEVER USED YET 3.7.2015 (under construction/will be removed)
+ *
  * Returns CBSUCCESS, CBNOTFOUND or an error. */
 int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, int matchctl ){
 	cb_match mctl;
@@ -160,7 +161,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		     err2 = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*cnpointer).namebuf, (*cnpointer).namelen , &(*mctl) );
 		     if(err2==CBMATCH){
 		     	/*
-		      	 * Currentleaf is at needed leaf (matchctl. */
+		      	 * Currentleaf is at needed leaf (matchctl). */
 		     	return CBSUCCESS;
 		     }else{
 			/*
