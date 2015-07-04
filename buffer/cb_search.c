@@ -35,34 +35,6 @@ int  cb_automatic_encoding_detection(CBFILE **cbs);
 
 int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.2.2015
 
-/*
- * Functions in library include file to be used in checking the existence of a node after
- * reading the tree from a file or from otherwice adding a node. 30.6.2015
- *
- * Do not use this.
- *
- * Returns 
- *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
- *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekablefile)
- *   on error: CBERRALLOC.
- */
-int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl ){
-	cb_match mctl;
-	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
-	return cb_set_to_node_matchctl( &(*cbs), &(*ucsname), namelength, ocoffset, &mctl);
-}
-int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *mctl ){
-	int err=CBSUCCESS;
-	if(ocoffset==0){
-		err = cb_set_to_name( &(*cbs), &(*ucsname), namelength, &(*mctl) );
-	}else if(ocoffset>=1){
-		err = cb_set_to_leaf( &(*cbs), &(*ucsname), namelength, ocoffset, &(*mctl) );
-	}else{
-		cb_clog( CBLOGWARNING, "\ncb_set_to_node_matchtl: ocoffset was negative, returning CBOVERFLOW."); 
-		return CBOVERFLOW;
-	}
-	return err;
-}
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,

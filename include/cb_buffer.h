@@ -441,6 +441,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * 1         +leaf+rightleaf  <----- matching leafs with ocoffset 1, first 'leaf', then 'rightleaf' if searched two times or the names are known
  * 0  __listnode1________________________________listnode2__
  *
+ * In searching a leaf, the previous leaf has to be known and the currentleaf has to be at the previous
+ * to return the next leaf at the next ocoffset level.
+ *
  * Return values:
  *
  * Returns on success: CBSUCCESS, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
@@ -466,20 +469,6 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 
 int  cb_remove_name_from_stream(CBFILE **cbs);
 
-/*
- * Not intended to be used. This function does not read new names or leafs.
- *
- * This function is usable only if the tree structure is used in something else. Function
- * verifies that a node exists in the tree of locations at level offset. (If the tree is
- * read,) checks the existence of the name ucsname from the list by setting the current 
- * pointer to name or currentleaf to leaf. If ocoffset is 0, finds next name. If ocoffset
- * is >= 1, finds from leafs of the current name. 30.6.2015
- * May return: CBNOTFOUND (not found), CBEMPTY (currents leaf was empty)
- * Success: CBSUCCESS
- * Errors: CBNAMEOUTOFBUF, CBERRALLOC.
- */
-int  cb_set_to_node( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, int matchctl );
-int  cb_set_to_node_matchctl( CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *mctl );
 
 /*
  * One character at a time. Output flushes when the buffer is full.
