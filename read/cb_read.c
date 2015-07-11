@@ -111,18 +111,114 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 }
 
 /*
- * Not tested 1.7.2015. NEVER USED YET 3.7.2015 (under construction/will be removed)
- *
- * Returns CBSUCCESS, CBNOTFOUND or an error. */
+ * Not tested 1.7.2015. NEVER USED YET 6.7.2015 (under construction/will be removed)
+ */
 int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, int matchctl ){
 	cb_match mctl;
 	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
 	return cb_find_leaf_from_current_matchctl( &(*cbs), &(*ucsname), &(*namelength), &(*ocoffset), &mctl);
 }
+
+int  TEST_cb_read_value_leaves( CBFILE **cbs );
+int  TEST_cb_read_value_leaves( CBFILE **cbs ){
+	// TEST
+	int err = CBSUCCESS;
+	unsigned char *testname = NULL;
+	int testnamelen = 1;
+	unsigned char testdata[2] = { 0x20, '\0' };
+	testname = &testdata[0];
+	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
+	// Is is not known where the cursor is. If ocoffset is set to 1, how to know if all of the value is 
+	// read in the list to the next name? The next function call can not be used.
+	err = cb_set_cursor_match_length_ucs( &(*cbs), &testname, &testnamelen, 0, -1 ); 
+	if(err<CBNEGATION)
+		return CBSUCCESS;
+	else
+		return err;
+}
+/*
+ * Requires atomic operation, sets searchmethod to "nextnames" and back.
+ *
+ * Return values
+ * Success: CBSUCCESS
+ * Error: CBERRALLOC and all from cb_set_cursor_match_length_ucs_matchctl
+ * May return: CBNOTFOUND
+ */
+int  cb_read_value_leaves( CBFILE **cbs ){
+	int err=CBNOTFOUND;
+	unsigned char smethod = CBSEARCHNEXTNAMES;
+	unsigned char *testname = NULL;
+	cb_name *oldcurrent = NULL;
+	int testnamelen = 1;
+	unsigned char testdata[2] = { 0x20, '\0' };
+	testname = &testdata[0];
+	if( cbs==NULL || *cbs==NULL ){
+		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: allocation error."); 
+		return CBERRALLOC; 
+	}
+
+	/*
+	 * Save previous current location. */
+	if( (*(**cbs).cb).list.name!=NULL ){
+		oldcurrent = &(*(*(**cbs).cb).list.name);
+		if( (*(**cbs).cb).list.current!=NULL ){
+			oldcurrent = &(*(*(**cbs).cb).list.current);
+		}
+	}
+
+        //fprintf(stderr,"\ncb_read_value_leaves: previous current [");
+	//if( oldcurrent!=NULL )
+        //	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
+	//else
+	//	fprintf(stderr,"<empty>");
+        //fprintf(stderr,"]");
+
+	/*
+	 * Find any next name (and read all leaves at the same time). */
+	smethod = (**cbs).cf.searchmethod;
+	(**cbs).cf.searchmethod=CBSEARCHNEXTNAMES;
+	err = cb_set_cursor_match_length_ucs( &(*cbs), &testname, &testnamelen, 0, 0 );
+	(**cbs).cf.searchmethod = smethod;
+	if(err<CBNEGATION){	
+		/* 
+		 * Decrease matchcount of found testname to find it again. */
+		if( (*(**cbs).cb).list.current!=NULL ){
+			if( (*(*(**cbs).cb).list.current).matchcount>0 )
+				(*(*(**cbs).cb).list.current).matchcount--;
+			else if( (*(*(**cbs).cb).list.current).matchcount<0 ) // was matched many times, overflow
+				(*(*(**cbs).cb).list.current).matchcount=1;
+		}
+	}
+	//cb_clog( CBLOGDEBUG, "\ncb_read_value_leaves: cb_set_cursor_match_length_ucs returned %i.", err );
+
+        //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_read_value_leaves: err=%i moved current from [", err );
+	//if( (*(**cbs).cb).list.current!=NULL )
+        //  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
+	//else
+	//  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
+        //cb_log( &(*cbs), CBLOGDEBUG, "]");
+
+//      cb_log( &(*cbs), CBLOGDEBUG, " to [" );
+//	if( oldcurrent!=NULL )
+//        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
+//	else
+//	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
+//      cb_log( &(*cbs), CBLOGDEBUG, "]");
+
+	/*
+	 * Rewind to the previous name. */
+	(*(**cbs).cb).list.current = &(*oldcurrent);
+	(*(**cbs).cb).list.currentleaf = NULL;
+
+	return err;
+}
 int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, cb_match *mctl ){
-	int err=CBNOTFOUND, err2=CBNOTFOUND, safecount=0;
-	cb_name *cnpointer = NULL;
-	cb_name *nextcn = NULL;
+	int err=CBNOTFOUND, safecount=0;
+	char atvalueend=0;
+	//unsigned char *testname = NULL;
+	//int testnamelen = 0;
+	//unsigned char testdata[2] = { 0x20, '\0' };
+	//testname = &testdata[0];
 	if( ocoffset==NULL)
 		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: ocoffset was null."); 
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL || ocoffset==NULL || mctl==NULL ){
@@ -135,53 +231,37 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN);
 	fprintf(stderr,"]");
 
-	cnpointer = (*(**cbs).cb).list.name;
-	if( (*(**cbs).cb).list.current!=NULL )
-	  cnpointer = (*(**cbs).cb).list.current;
-	if( (*(**cbs).cb).list.currentleaf!=NULL )
-	  cnpointer = (*(**cbs).cb).list.currentleaf;
+	/*
+	 * Read to the next name and move the current pointer to the previous name. */
+	err = cb_read_value_leaves( &(*cbs) );
+	if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_find_leaf_from_current: cb_read_value_leaves, error %i.", err); return err; }
+	if(err>CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_read_value_leaves returned %i.", err); }
 
 	/*
-	 * Continue until value end or no more leafs. */
-	while( err==CBNOTFOUND && safecount<CBMAXLEAVES && cnpointer!=NULL ){
+	 * Search first matching leaf from any ocoffset. */
+	*ocoffset = 1;
+	err = CBNOTFOUNDLEAVESEXIST;
+	while( ( err==CBNOTFOUNDLEAVESEXIST || err==CBVALUEEND || err==CBSTREAMEND ) && safecount<CBMAXLEAVES ){
 		++safecount;
 
 		//fprintf(stderr,"\ncb_find_leaf_from_current: ocoffset %i, err %i, safecount %i, matchctl %i.", *ocoffset, err, safecount, (*mctl).matchctl );
-	   	err = cb_set_cursor_match_length_ucs( &(*cbs), &(*ucsname), &(*namelength), *ocoffset, 0 ); // any next (compared later)
+	   	err = cb_set_cursor_match_length_ucs_matchctl( &(*cbs), &(*ucsname), &(*namelength), *ocoffset, &(*mctl) ); 
 		//fprintf(stderr,"\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, err %i.", err );
 
-		cnpointer = (*(**cbs).cb).list.currentleaf;
-		/*
-		 * Check if next level exists from this leaf. */
-		if( cnpointer!=NULL && nextcn==NULL )
-		  nextcn = (*cnpointer).leaf;
-
-		if(err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM){
-		   if( cnpointer!=NULL ){
-		     err2 = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*cnpointer).namebuf, (*cnpointer).namelen , &(*mctl) );
-		     if(err2==CBMATCH){
-		     	/*
-		      	 * Currentleaf is at needed leaf (matchctl). */
-		     	return CBSUCCESS;
-		     }else{
-			/*
-			 * Continue to match the next name. */
-			continue;
-		     }
-		   }
+		if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
+			return CBSUCCESS;
 		}else if(err>=CBERROR){
 		   cb_log( &(*cbs), CBLOGALERT, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, error %i.", err);
 		   return err;
-		}else if(err==CBVALUEEND || err==CBSTREAMEND){
+		}else if(err==CBNOTFOUNDLEAVESEXIST || err==CBVALUEEND || err==CBSTREAMEND){
+		   if( err==CBVALUEEND || err==CBSTREAMEND ){
+			++atvalueend;
+		   }
+		   if( atvalueend>2 )
+			return CBNOTFOUND;
 		   /*
 		    * Continue to search the next level leafs if some leafs existed. */
-		   if( nextcn!=NULL ){
-		      *ocoffset=*ocoffset+1;
-		      nextcn=NULL;
-		      continue;
-		   }else{
-		      return CBNOTFOUND;
-		   }
+	            *ocoffset+=1;
 		}else if(err>=CBNEGATION){
 		   cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
 		}
@@ -202,9 +282,15 @@ int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clen
 }
 int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
         int len = MAXCONTENTLEN;
-        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ 
+		cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
+		if( (*(**cbf).cb).list.currentleaf==NULL )
+		 	cb_log( &(*cbf), CBLOGDEBUG, " Currentleaf was null.");
+		return CBERRALLOC; 
+	}
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 )
                 len = (*(*(**cbf).cb).list.currentleaf).length;
+	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
         return cb_get_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len );
 }
 
@@ -220,6 +306,7 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
+	char injsonquotes=0;
         int openpairs=1; char found=0;
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
@@ -253,6 +340,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
+		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_get_chr, error %i.", err); return err; }
 
                 // if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rstart ) // pre 1.7.2015
                 // if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rend ) // pre 1.7.2015
@@ -272,8 +360,21 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
                         found=1;
                         continue;
                 }
-                if( err<CBERROR )
-                        err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+                if( err<CBERROR ){
+			if( chprev!=(**cbf).cf.bypass &&  chr==(unsigned long int)'\"' ){
+             		  if( injsonquotes==0 ) // first quote
+ 		            ++injsonquotes;
+              		  else if( injsonquotes==1 ) // second quote
+                	    injsonquotes=2; // ready to save the name (or after value)
+         		  else if( injsonquotes==2 ) // after second quote
+                	    injsonquotes=0; // after the name (or value ended with '"')
+  	          	}				
+			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ! ( \
+				( ( WSP(chr) || CR(chr) || LF(chr) ) && ( injsonquotes==0 || injsonquotes>=2 ) ) ) ) ) {
+                        	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+			}
+			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
+		}
                 if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
                         chr = (**cbf).cf.rstart; // any chr not bypass
         }
@@ -311,3 +412,5 @@ int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen,
 	}
 	return err;
 }
+
+

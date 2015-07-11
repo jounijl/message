@@ -62,8 +62,6 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf_inner: allocation error."); return CBERRALLOC;
 	}
 
-	//fprintf(stderr,"\ncb_set_to_leaf_inner: .");
-
 	if( (*(**cbs).cb).list.currentleaf==NULL )
 	  return CBEMPTY;
 	// Node
@@ -453,7 +451,6 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	     * Helpful return value comparison. */
 	    if( (*iter).leaf!=NULL ) // 3.7.2015
 	      nextlevelempty=0; // 3.7.2015
-	    //fprintf(stderr,"\ncb_set_to_name: loop.");
 	    err = cb_compare( &(*str), &(*name), namelen, &(*iter).namebuf, (*iter).namelen, &(*mctl) ); // 23.11.2013, 11.4.2014
 	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
@@ -730,7 +727,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0; 
-	char injsonquotes = 0, wasjsonsubrend=0;
+	char injsonquotes = 0, wasjsonrend=0; // TEST 10.7.2015, was: , wasjsonsubrend=0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL;
@@ -743,7 +740,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
 
-	if(*ucsname==NULL || namelength==NULL ){ // 13.12.2014
+	//if(*ucsname==NULL || namelength==NULL ){ // 13.12.2014
+	if( ucsname==NULL || *ucsname==NULL || namelength==NULL ){ // 7.7.2015
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_cursor_match_length_ucs_matchctl: allocation error, ucsname or length was null.");
 	  return CBERRALLOC;
 	}
@@ -871,7 +869,8 @@ cb_set_cursor_reset_name_index:
 	                || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
 	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.doubledelim==1 && (**cbs).cf.json==1 && injsonquotes!=1 ) \
 	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
-	      wasjsonsubrend=0;
+	      // wasjsonsubrend=0; TEST 10.7.2015
+	      wasjsonrend=0;
 	      if( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) { // 21.2.2015 JSON
 		injsonquotes=0;
 	        tovalue=0;
@@ -1032,19 +1031,40 @@ cb_set_cursor_reset_name_index:
 	      if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
 	        if( (**cbs).cf.json==1 && chr==(**cbs).cf.subrend && openpairs>0 && (**cbs).cf.doubledelim==1 ){ // JSON
 	          // (JSON rend is ',' subrend is '}' ) . If not ',' as should, remove last comma in list: a, b, c } 21.2.2015
-                  --openpairs;
-		  wasjsonsubrend=1;
+		  // --openpairs;
+		  //TEST 10.7.2015, was: wasjsonsubrend=1;
+		  if( wasjsonrend==0 )
+			--openpairs;
+		  wasjsonrend=0;
 	          injsonquotes=0;
 	        }else{ // /21.2.2015
-		  if( (**cbs).cf.json==1 && wasjsonsubrend==1)
-		    wasjsonsubrend=0;
-		  else
-	            --openpairs; // reader must read similarly, with openpairs count or otherwice
+
+// Downwards slope: }, name: " " },                              subrend, rend, rstart, subrend, rend       :  [subrend, rend]
+//   Decrement openpairs two times if '}' (subrend) - shoulde be once
+// Upwards slope:   }, name: " ", name2: { name3: { name4="",    rend, rstart, subrstart, rstart, subrstart :  [subrstart, rstart]
+//   Increment openpairs two times if '{' (subrstart) - should be once
+// : ++
+// } --
+
+// TESTPLACE 10.7.2015 (if commented, downwards slope does not work):
+		  if( (**cbs).cf.json==1 && wasjsonrend==0 ) // TEST 10.7.2015, was: && wasjsonsubrend==1 )
+		    wasjsonrend=1; //TEST 10.7.2015, was:  wasjsonsubrend=0;
+		  // else TEST 10.7.2015
+	          --openpairs; // reader must read similarly, with openpairs count or otherwice
 		}
 	      }
 	      atvalue=0; 
 	      cb_free_name(&fname);
 	      fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
+// 11.7.2015: from rstart to rend, value contains WSP characters outside jsonquotes
+	      // TEST 10.7.2015
+	      if( (**cbs).cf.doubledelim==1 && (**cbs).cf.json==1 && injsonquotes!=1 && openpairs<ocoffset ){
+		/*
+		 * JSON special: concecutive '}' and ',' */
+		cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs<ocoffset, %i. ocoffset %i. TEST 10.7.2015, returning VALUEEND", openpairs, ocoffset );
+	        injsonquotes=0;
+		return CBVALUEEND;
+	      }
  	      goto cb_set_cursor_reset_name_index;
 	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){
 	      /*
@@ -1061,7 +1081,7 @@ cb_set_cursor_reset_name_index:
 	      /*
 	       * When reading inner name-value -pairs, read of outer value ended.
 	       */
-              cb_log( &(*cbs), CBLOGDEBUG, "\nValue read, openpairs %i ocoffset %i.", openpairs, ocoffset); // debug
+              //cb_log( &(*cbs), CBLOGDEBUG, "\nValue read, openpairs %i ocoffset %i.", openpairs, ocoffset); // debug
  	      return CBVALUEEND; // 12.12.2013
 	  }else if( ( (**cbs).cf.searchstate==CBSTATEFUL || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) && atvalue==1){ // Do not save data between '=' and '&' 
 	      /*
@@ -1070,7 +1090,9 @@ cb_set_cursor_reset_name_index:
 	       */
 	      ;
 	  }else if((**cbs).cf.searchstate==CBSTATETREE ){ // save character to buffer, CBSTATETREE
-	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
+	      // Next json condition has no effect, 11.7.2015
+	      if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( injsonquotes==1 || injsonquotes==2 ) ) ) // 11.7.2015, if json, write name only if inside quotes (json name is always "string")
+	      	buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }else{ // save character to buffer CBSTATELESS
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }

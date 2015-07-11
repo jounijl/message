@@ -424,6 +424,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * matchctl -13 - match if name1 is in UCS coding less than name2
  * matchctl -14 - match if name1 is in UCS coding greater than name2
  *
+ * ocoffset:
+ * Open pairs. If in value and ocoffset is 0, leafs ? otherwice allways 1 or the ocoffset level ? (questions 10.7.2015)
+ *
  * Leafs:
  *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
@@ -442,7 +445,10 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * 0  __listnode1________________________________listnode2__
  *
  * In searching a leaf, the previous leaf has to be known and the currentleaf has to be at the previous
- * to return the next leaf at the next ocoffset level.
+ * to return the next leaf at the next ocoffset level. It is advisable to read the lists names value
+ * once with it's leaves. If the reading of leaves is stopped and some leaves are not read, the cursor
+ * should be returned to the start of the previous name in the list and start the reading of the leaves
+ * to restore the state of reading the leaves.
  *
  * Return values:
  *

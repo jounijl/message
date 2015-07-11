@@ -90,9 +90,9 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 
 	if(mctl==NULL){ cb_log( &(*cbs), CBLOGALERT, "\ncb_compare: allocation error, cb_match."); return CBERRALLOC; }
 
-	//fprintf(stderr,"\ncb_compare, name1: [");
-	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] name2: [");
-	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i, matchctl %i.", len1, len2, (*mctl).matchctl );
+	//cb_clog( CBLOGDEBUG, "\ncb_compare, name1: [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG,"] name2: [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG,"] len1: %i, len2: %i, matchctl %i.", len1, len2, (*mctl).matchctl );
 
 	if((*mctl).matchctl==-1)
 	  return CBNOTFOUND; // no match
