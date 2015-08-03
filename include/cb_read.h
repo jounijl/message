@@ -55,12 +55,18 @@ int  cb_read_value_leaves( CBFILE **cbs );
 /*
  * 18.12.2014 Content reading
  */
+/* Allocates ucscontent. */
 int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
 int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
+/* Copies ucscontent maxlength. */
+int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
+int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
+int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
 
 /*
  * 30.6.2015 Conversion to help in reading names from configuration files.
  */
 int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
+int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
 

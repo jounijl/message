@@ -28,7 +28,6 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); //
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 11.3.2014, 23.3.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, cb_match *mctl); // 16.3.2014, 23.3.2014
 int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
-//int  cb_set_search_method(CBFILE **buf, unsigned char method); // CBSEARCH*
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
@@ -461,7 +460,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	       */
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
-	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){ 
+	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
 	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // When used as only buffer, stream case does not apply
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
@@ -493,184 +492,38 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	return CBNOTFOUND;
 }
 
-
-//int  cb_set_to_polysemantic_names(CBFILE **cbf){
-//	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
-//}
-
-//int  cb_set_to_unique_names(CBFILE **cbf){
-//	return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
-//}
-
-//int  cb_set_search_method(CBFILE **cbf, unsigned char method){
-//	if(cbf!=NULL){
-//	  if((*cbf)!=NULL){
-//	    (**cbf).cf.searchmethod=method; 
-//	    return CBSUCCESS;
-//	  }
-//	}
-//	return CBERRALLOC;
-//}
-//int  cb_set_search_method(CBFILE **cbf, unsigned char method){
-//	if(cbf!=NULL){
-//	  if((*cbf)!=NULL){
-//	    (**cbf).cf.searchmethod=method; 
-//	    return CBSUCCESS;
-//	  }
-//	}
-//	return CBERRALLOC;
-//}
-
-
-//int  cb_remove_ahead_offset(CBFILE **cbf){ 
-//	return cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
-//}
-int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *cfi){ 
-	int err=CBSUCCESS;
-        if(cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || cfi==NULL)
-          return CBERRALLOC;
-
-	/*
- 	 * Index is allways in the right place. Contentlen is adjusted
-	 * by bytes left in readahead to read it again. 
-	 */
- 
-	if( (*(**cbf).cb).index <= ( (*(**cbf).cb).contentlen - (*cfi).bytesahead ) ){
-	  (*(**cbf).cb).contentlen -= (*cfi).bytesahead;  // Do not read again except bytes ahead 
-	}else if( (*(**cbf).cb).index < (*(**cbf).cb).contentlen ){
-	  (*(**cbf).cb).contentlen = (*(**cbf).cb).index; // This is the right choice allmost every time
-	}else{
-	  (*(**cbf).cb).index = (*(**cbf).cb).contentlen; // Error
-	  err = CBINDEXOUTOFBOUNDS; // Index was ahead of contentlen
-	}
-
-        if( (*(**cbf).cb).index < 0 ) // Just in case
-          (*(**cbf).cb).index=0;
-        if( (*(**cbf).cb).contentlen < 0 )
-          (*(**cbf).cb).contentlen=0;
-
-	if( (*(**cbf).cb).contentlen>=(*(**cbf).cb).buflen || (*(**cbf).cb).index>=(*(**cbf).cb).buflen ){
-	  if( (**cbf).cf.type==CBCFGSEEKABLEFILE )
-	    err = CBFILESTREAM;
-	  else
-	    err = CBSTREAM;
-	}
-
-	// Empty readahead
-        (*cfi).ahead=0;
-        (*cfi).bytesahead=0;
-        (*cfi).first=0;
-        (*cfi).last=0;
-        (*cfi).streamstart=-1; // readaheadbuffer is empty, cb_get_chr returns the right values
-        (*cfi).streamstop=-1;
-        return err;
-}
-
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset ){
 	int err = CBSUCCESS, bytecount=0, storedbytes=0;
-	if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL)
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || chroffset==NULL || chr==NULL){
+	  cb_clog( CBLOGDEBUG,"\ncb_search_get_chr: null parameter was given, error %i.", CBERRALLOC);
 	  return CBERRALLOC;
-	if((**cbs).cf.unfold==1)
-	  return cb_get_chr_unfold( &(*cbs), &(*chr), &(*chroffset) );
-	else{
+	}
+	if( (**cbs).cf.unfold==1 && (*(**cbs).cb).contentlen==( (**cbs).ahd.currentindex+(**cbs).ahd.bytesahead ) ){
+	  ; // cb_clog( CBLOGDEBUG,"\ncb_search_get_chr: unfolding and at the end of buffer, 1.");
+	}else if( (**cbs).cf.unfold==1 ){
+	  /* 
+	   * Not at the end of buffer.
+	   * Reading of a value should stop at the rend. After rend, the readahead should be empty
+	   * because LWSP characters are not read after the character. Emptying the read ahead buffer. */
+	  cb_clog( CBLOGWARNING,"\ncb_search_get_chr: Warning. Unfold read was not at the of buffer. Emptying the read ahead buffer.");
+	  err = cb_fifo_init_counters( &(**cbs).ahd );
+	  if( err>=CBERROR ){ cb_clog( CBLOGERR, "\ncb_search_get_chr: cb_fifo_init_counters, error %i.", err ); }
+	}
+	if((**cbs).cf.unfold==1){
+	  return cb_get_chr_unfold( &(*cbs), &(**cbs).ahd, &(*chr), &(*chroffset) );
+	}else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  // Stream, buffer, file
 	  *chroffset = (*(**cbs).cb).index - 1; // 2.12.2013
 	  // Seekable file
+	  // was 2.8.2015: if( (**cbs).cf.type==CBCFGSEEKABLEFILE )
+	  // was 2.8.2015:   if( (*(**cbs).cb).readlength>=0 ) // overflow
 	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE )
-	    if( (*(**cbs).cb).readlength>=0 ) // overflow
+	    if( (*(**cbs).cb).readlength>0 ) // no overflow, 2.8.2015
 	      *chroffset = (*(**cbs).cb).readlength - 1;
 	  return err;
 	}
 	return CBERROR;
-}
-
-int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset){
-	int bytecount=0, storedbytes=0, tmp=0; int err=CBSUCCESS;
-	unsigned long int empty=0x61;
-	if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL)
-	  return CBERRALLOC;
-
-	if( (**cbs).ahd.ahead == 0){
-	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	  if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
-	  if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
-
-cb_get_chr_unfold_try_another:
-	  if( WSP( *chr ) && err<CBNEGATION ){
-	    cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
-	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	    if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
-	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
-	    if( WSP( *chr ) && err<CBNEGATION ){
-	      cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp );
-	      goto cb_get_chr_unfold_try_another;
-	    }else{
-      	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes); // save 'any', 1:st in store
-	      cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (WSP)
-	    } 
-	  }else if( CR( *chr ) && err<CBNEGATION ){
-	    cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
-	    err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	    if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
-	    if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
-
-	    if( LF( *chr ) && err<CBNEGATION ){ 
-	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes);
-	      err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
-	      if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
-	      if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
-
-	      if( WSP( *chr ) && err<CBNEGATION ){
-	        cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // LF
-	        cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // CR
-	        goto cb_get_chr_unfold_try_another;
-	      }else if( err<CBNEGATION ){ 
-	        cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 3:rd in store
-	        err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
-	      }
-	    }else{
-	      cb_fifo_put_chr( &(**cbs).ahd, *chr, storedbytes ); // save 'any', 2:nd in store
-	      err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes); // return first in fifo (CR)
-	    }
-	  }
-	  if(err>=CBNEGATION){
-            //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
-	    //cb_fifo_print_counters(&(**cbs).ahd);
-	  }
-	  // Stream, file, buffer
-	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // Correct offset
-
-	  // Seekable file
-	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
-	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
-	    if( *chroffset < 0 ) // overflow
-	      *chroffset = 0;
-	  }
-
-	  return err;
-	}else if( (**cbs).ahd.ahead > 0){ // return previously read character
-	  err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &storedbytes );
-	  // Stream, file, buffer
-	  *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // 2.12.2013
-
-	  // Seekable file
-	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
-	    *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
-	    if( *chroffset < 0 ) // overflow
-	      *chroffset = 0;
-	  }
-
-	  if(err>=CBNEGATION){
-	    cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
-	       storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, storedbytes, (int) *chr); 
-	    cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
-	  }
-	  //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: return [0x%.6lX]. ", *chr );
-	  return err; // returns CBSTREAM
-	}else
-	  return CBARRAYOUTOFBOUNDS;
-        return CBERROR;
 }
 
 /*
@@ -720,13 +573,13 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	return cb_set_cursor_match_length_ucs_matchctl(&(*cbs), &(*ucsname), &(*namelength), ocoffset, &mctl);
 }
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
-	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
+	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // , errcontlen=0;
 	int  buferr=CBSUCCESS; 
 	int  index=0;
 	unsigned long int chr=0, chprev=CBRESULTEND;
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
-	char tovalue = 0; 
+	char tovalue = 0;
 	char injsonquotes = 0, wasjsonrend=0; // TEST 10.7.2015, was: , wasjsonsubrend=0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
@@ -806,14 +659,16 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	charbuf[CBNAMEBUFLEN]='\0';
 	charbufptr = &charbuf[0];
 
-	// Initialize readahead counters and memory before use and before return 
-	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd );
-	cb_fifo_init_counters( &(**cbs).ahd );
-
 	// Set cursor to the end to search next names
 	(*(**cbs).cb).index = (*(**cbs).cb).contentlen; // -bytesahead ?
 
 	//cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs %i ocoffset %i", openpairs, ocoffset );
+
+
+	//cb_log( &(*cbs), CBLOGDEBUG, "\nring buffer data first %i last %i {", (**cbs).ahd.first, (**cbs).ahd.last );
+	//cb_fifo_print_buffer( &(**cbs).ahd, CBLOGDEBUG );
+	//cb_log( &(*cbs), CBLOGDEBUG, "} ");
+
 
 	// Allocate new name
 cb_set_cursor_reset_name_index:
@@ -825,6 +680,15 @@ cb_set_cursor_reset_name_index:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
+
+	//cb_clog( CBLOGDEBUG, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
+	//fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
+	//cb_log( &(*cbs), CBLOGDEBUG, "\nset_cursor: new name, index (chr offset %li).", chroffset );
+        //cb_clog( CBLOGDEBUG, "\nring buffer counters:");
+        //cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
+        //cb_clog( CBLOGDEBUG, "\ndata [");
+	//cb_fifo_print_buffer( &(**cbs).ahd, CBLOGDEBUG );
+        //cb_clog( CBLOGDEBUG, "]");
 
 	/*
 	 * 6.12.2014:
@@ -869,7 +733,7 @@ cb_set_cursor_reset_name_index:
 	                || ( chr==(**cbs).cf.subrstart && !intiseven( openpairs ) && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
 	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.doubledelim==1 && (**cbs).cf.json==1 && injsonquotes!=1 ) \
 	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
-	      // wasjsonsubrend=0; TEST 10.7.2015
+	      // wasjsonsubrend=0; TEST 10.7.2015 (25.7.2015: "This test was successful and it is used as it was left")
 	      wasjsonrend=0;
 	      if( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) { // 21.2.2015 JSON
 		injsonquotes=0;
@@ -906,7 +770,9 @@ cb_set_cursor_reset_name_index:
 	    //if( charbufptr==NULL )
 	    //  cb_clog( CBLOGDEBUG, "\n charbufptr is null." );
 
-	    if( buferr==CBSUCCESS ){
+	    if( buferr==CBSUCCESS ){ 
+
+
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index, nameoffset); // 7.12.2013, 6.12.2014
 	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ cb_log( &(*cbs), CBLOGNOTICE, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
 
@@ -961,7 +827,20 @@ cb_set_cursor_reset_name_index:
 	    /*
 	     * Name (openpairs==1)
 	     */
-	    if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
+
+	   //
+	   // TEST 25.7.2015: (a bugfix of problem: empty name when reading the next name 
+	   // with unfold=1 and the next is not found)
+	   //
+	   // If unfolding is used and last read resulted an already read character (one character maximum) 
+	   // and index is zero, do not save the empty name.
+	   //
+	   //if( (**cbs).cf.unfold==1 && index==0 ){ // TEST 25.7.2015
+	      // Mismatch.
+	   //   ;
+	      // 25.7.2015, original starts from here without "}else"
+	   //}else 
+	   if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
 	      //cb_log( &(*cbs), CBLOGDEBUG, "\nNAME COMPARE");
 	      cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
 	      if( cis == CBMATCH ){ // 9.11.2013
@@ -1111,13 +990,25 @@ cb_set_cursor_reset_name_index:
 	   * cb_search_get_chr returns maximum bufsize offset */
 	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
+	  //cb_clog( CBLOGDEBUG, "|%c|", (unsigned char) chr );
+	  //fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
+	  //cb_clog( CBLOGDEBUG, "\nring buffer counters:");
+	  //cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
+          //cb_clog( CBLOGDEBUG, "\ndata [");
+	  //cb_fifo_print_buffer( &(**cbs).ahd, CBLOGDEBUG );
+          //cb_clog( CBLOGDEBUG, "]");
+
 	}
 
 	//if(err==CBSTREAMEND) // 27.12.2014
 	//  ret = CBSTREAMEND;
 
 cb_set_cursor_ucs_return:
-	cb_remove_ahead_offset( &(*cbs), &(**cbs).ahd ); // poistetaanko tassa kahteen kertaan 6.9.2013 ?
+
+	//cb_log( &(*cbs), CBLOGDEBUG, "\nring buffer data first %i last %i {", (**cbs).ahd.first, (**cbs).ahd.last );
+	//cb_fifo_print_buffer( &(**cbs).ahd, CBLOGDEBUG );
+	//cb_log( &(*cbs), CBLOGDEBUG, "} ");
+
         cb_free_name(&fname); // fname on kaksi kertaa, put_name kopioi sen uudelleen
 	fname = NULL; // lisays
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM || ret==CBMATCH || ret==CBMATCHLENGTH ) // match* on turha, aina stream tai success

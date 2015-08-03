@@ -29,43 +29,43 @@
 #define CBMATCHGROUP          12    // regexp group 03/2014
 #define CBSUCCESSLEAVESEXIST  13
 
-#define CBNEGATION            20
-#define CBSTREAMEND           21
-#define CBVALUEEND            22    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
-#define CBBUFFULL             23
-#define CBNOTFOUND            24
-#define CBNOTFOUNDLEAVESEXIST 25
-#define CBNAMEOUTOFBUF        26
-#define CBNOTUTF              27
-#define CBNOENCODING          28
-#define CBMATCHPART           29    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY               30
-#define CBNOTSET              31
-#define CBAUTOENCFAIL         32    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL   33
-#define CBUCSCHAROUTOFRANGE   34
-#define CBREPATTERNNULL       35    // given pattern text was null 03/2014
-#define CBGREATERTHAN         36    // same as not found with lexical comparison of name1 to name2
-#define CBLESSTHAN            37
-#define CBOPERATIONNOTALLOWED 38    // seek was asked and CBFILE was not set as seekable
-#define CBNOFIT               39    // tried to write to too small space (characters left over)
-#define CBNOTJSON             40
+#define CBNEGATION            50
+#define CBSTREAMEND           51
+#define CBVALUEEND            52    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
+#define CBBUFFULL             53
+#define CBNOTFOUND            54
+#define CBNOTFOUNDLEAVESEXIST 55
+#define CBNAMEOUTOFBUF        56
+#define CBNOTUTF              57
+#define CBNOENCODING          58
+#define CBMATCHPART           59    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY               60
+#define CBNOTSET              61
+#define CBAUTOENCFAIL         62    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL   63
+#define CBUCSCHAROUTOFRANGE   64
+#define CBREPATTERNNULL       65    // given pattern text was null 03/2014
+#define CBGREATERTHAN         66    // same as not found with lexical comparison of name1 to name2
+#define CBLESSTHAN            67
+#define CBOPERATIONNOTALLOWED 68    // seek was asked and CBFILE was not set as seekable
+#define CBNOFIT               69    // tried to write to too small space (characters left over)
+#define CBNOTJSON             70
 
-#define CBERROR	              50
-#define CBERRALLOC            51
-#define CBERRFD               52
-#define CBERRFILEOP           53
-#define CBERRFILEWRITE        54
-#define CBERRBYTECOUNT        55
-#define CBARRAYOUTOFBOUNDS    56
-#define CBINDEXOUTOFBOUNDS    57
-#define CBLEAFCOUNTERROR      58
-#define CBERRREGEXCOMP        59    // regexp pattern compile error 03/2014
-#define CBERRREGEXEC          60    // regexp exec error 03/2014
-#define CBBIGENDIAN           61
-#define CBLITTLEENDIAN        62
-#define CBUNKNOWNENDIANNESS   63
-#define CBOVERFLOW            64
+#define CBERROR	              100
+#define CBERRALLOC            101
+#define CBERRFD               102
+#define CBERRFILEOP           103
+#define CBERRFILEWRITE        104
+#define CBERRBYTECOUNT        105
+#define CBARRAYOUTOFBOUNDS    106
+#define CBINDEXOUTOFBOUNDS    107
+#define CBLEAFCOUNTERROR      108
+#define CBERRREGEXCOMP        109    // regexp pattern compile error 03/2014
+#define CBERRREGEXEC          110    // regexp exec error 03/2014
+#define CBBIGENDIAN           111
+#define CBLITTLEENDIAN        112
+#define CBUNKNOWNENDIANNESS   113
+#define CBOVERFLOW            114
 
 /*
  * Log priorities (log verbosity).
@@ -287,10 +287,12 @@ typedef struct cb_ring {
 	char spadding;        // pad to next storage size (32 bit)
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
+	signed long int currentindex; // TEST 28.7.2015, place of last read character to remember it the next time	
+	//int currentcharsize; // TEST 29.7.2015, size of the last character (if it's non WSP, only one character can exist)
         int buflen;
         int sizeslen;
-        int ahead;
-        int bytesahead;
+        int ahead;            // bytes in UCS encoding (usually bigger because a character is 4 bytes)
+        int bytesahead;       // bytes in transfer encoding (usually smaller, for example onebyte encoding)
         int first;
         int last;
 	int streamstart;      // id of first character from stream
@@ -308,7 +310,7 @@ typedef struct cb_conf{
         unsigned char       removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
 	unsigned char       removenamewsp:2;        // Remove white space characters inside name
 	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
-	unsigned char       jsonnamecheck:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
+	unsigned char       jsonnamecheck:1;        //
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
@@ -429,9 +431,15 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  *
  * Leafs:
  *
+ * All leaves have to be read by finding the next name from list first (main list, ocoffset 0)
+ * if multiple names are searched in sequence. All leaves have to be in the tree before finding
+ * the leaves from the tree (25.7.2015).
+ *
+ * Example: ocoffset 0, matchctl 0 searches any next name in list, not a leaf (25.7.2015).
+ *
  * In CBSTATETREE and CBSTATETOPOLOGY, ocoffset updates openpairs -count. The reading stops
  * when openpairs is negative. Next rend after value ends reading. This parameter can be used
- * to read leafs inside values. Currentleaf is updated if leaf is found with depth ocoffset.
+ * to read leaves inside values. Currentleaf is updated if leaf is found with depth ocoffset.
  *
  * Library is a list. Leafs are an added functionality. Searching of every leaf is started
  * from the beginning of the current name in the list.
@@ -510,19 +518,29 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 // Transfer encoding
 int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
 int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes );
+
 /*
  * Unfolds read characters. Characters are read by cb_get_chr.
- * cb_ring contains readahead buffer used in folding. The same
- * readahead buffer has to be moved across function calls. At
- * the end, the fifo has to be emptied of characters by 
- * decreasing counters in buffer.
+ * cb_ring contains readahead buffer used in folding. 
+ *
+ * The ring buffer in CBFILE is reserved to the use of the
+ * cb_set_cursor_... functions. Parameter ahd should be allocated
+ * elsewhere to use this function.
+ *
+ * It is possible to implement an own unfolding function. There
+ * are macros to use in helping to do this, the LWSP( x ) macro. 
+ *
+ * The position after the name does not have unfolding characters. 
+ * The unfolding buffer should be empty after the name. The same
+ * with the reading of the value. After the value at 'rend', there
+ * should be no unfolding characters and the unfolding buffer
+ * should be empty.
+ *
+ * Not tested in using elsewhere than in cb_set_cursor_... 
+ * functions, 3.8.2015.
  */
-int  cb_get_chr_unfold(CBFILE **cbs, unsigned long int *chr, long int *chroffset);
-/*
- * Decreases readahead from CBFILE:s length information and zeros
- * readahead counters.
- */
-int  cb_remove_ahead_offset(CBFILE **cbf, cb_ring *readahead);
+int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset);
+
 
 // Data
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch);

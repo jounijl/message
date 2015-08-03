@@ -331,7 +331,7 @@ int main (int argc, char *argv[]) {
 			           fprintf(stderr,"\ttest: cb_set_cursor, %lli.\n", err ); }
 				if(err==CBSTREAMEND || err>CBERROR){
 			           fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err );
-				}else if(err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM){
+				}else if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
 				   //if(err==CBSTREAM){ 
 				   //   err = cb_remove_name_from_stream(&in); // This should not necessary, get_chr is not used
 			           //   if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }

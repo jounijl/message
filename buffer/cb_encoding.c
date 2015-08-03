@@ -24,8 +24,26 @@ void cb_bytecount(unsigned long int *chr, int *bytecount);
 int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
 int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
 int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
+int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
 
+/*
+ * If ahead had bytes or unfold==1, unfolds read character(s). */
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
+	long int chroffset=0; // int err=CBSUCCESS;
+        if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ){ return CBERRALLOC; }
+
+	if( (**cbs).ahd.ahead > 0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead )==(*(**cbs).cb).contentlen  ){
+		/*
+		 * Special case. Reading from the end of buffer and ahead was not empty. Reading the one character
+		 * from the ahead leaving ahead buffer empty. 2.8.2015 */ /* Not tested yet, 3.8.2015. */
+		return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
+	}
+	/*
+	 * Library never unfolds characters read elsewhere than cb_set_cursor_match_length_ucs_matchctl */
+	return cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+}
+int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
        int err=CBSUCCESS, ret=CBNOTFOUND;
        if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
        if((**cbs).encoding==CBENCAUTO) // auto
@@ -716,4 +734,105 @@ int  cb_test_cpu_endianness(){
           return CBLITTLEENDIAN;
         }
 	return CBUNKNOWNENDIANNESS;
+}
+
+int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset){
+        int bytecount=0, storedbytes=0;
+        if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL || ahd==NULL)  return CBERRALLOC;
+	return cb_get_chr_unfold_sub( &(*cbs), &(*ahd), &(*chr), &(*chroffset), &bytecount, &storedbytes );
+}
+
+int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes){
+        int tmp=0; int err=CBSUCCESS;
+        unsigned long int empty=0x61;
+        if(cbs==NULL || *cbs==NULL || ahd==NULL || chroffset==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL)
+          return CBERRALLOC;
+
+	if( (**cbs).ahd.ahead>0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead ) !=(*(**cbs).cb).index )
+		cb_clog( CBLOGWARNING, "\ncb_get_chr_unfold_sub: warning, trying to read from unempty ring buffer with different index." );
+
+        if( (**cbs).ahd.ahead == 0){
+          err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+          if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+          if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+cb_get_chr_unfold_try_another:
+          if( WSP( *chr ) && err<CBNEGATION ){
+            cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+            err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+            if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+            if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+            if( WSP( *chr ) && err<CBNEGATION ){
+              cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp );
+              goto cb_get_chr_unfold_try_another;
+            }else{
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes); // save 'any', 1:st in store
+              cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (WSP)
+            } 
+          }else if( CR( *chr ) && err<CBNEGATION ){
+            cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+            err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+            if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+            if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+            if( LF( *chr ) && err<CBNEGATION ){ 
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+              err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+              if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+              if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+              if( WSP( *chr ) && err<CBNEGATION ){
+                cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // LF
+                cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // CR
+                goto cb_get_chr_unfold_try_another;
+              }else if( err<CBNEGATION ){ 
+                cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes ); // save 'any', 3:rd in store
+                err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (CR)
+              }
+            }else{
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes ); // save 'any', 2:nd in store
+              err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (CR)
+            }
+          }
+          //if(err>=CBNEGATION){
+            //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
+            //cb_fifo_print_counters(&(**cbs).ahd);
+          //}
+          // Stream, file, buffer
+          *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // Correct offset
+
+          // Seekable file
+          if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+            *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+            if( *chroffset < 0 ) // overflow
+              *chroffset = 0;
+          }
+
+	  //(**cbs).ahd.currentindex = (*(**cbs).cb).index; // place of last read character
+	  (**cbs).ahd.currentindex = *chroffset + *storedbytes; // place of next character, 29.7.2015
+          return err;
+        }else if( (**cbs).ahd.ahead > 0){ // return previously read character
+          err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) );
+          // Stream, file, buffer
+          *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // 2.12.2013
+
+          // Seekable file
+          if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+            *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+            if( *chroffset < 0 ) // overflow
+              *chroffset = 0;
+          }
+
+          if(err>=CBNEGATION){
+            cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
+               storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, *storedbytes, (int) *chr); 
+            cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
+          }
+
+	  // (**cbs).ahd.currentindex = (*(**cbs).cb).index; // place of last read character
+	  (**cbs).ahd.currentindex = *chroffset + *storedbytes; // place of next character, 29.7.2015
+          return err; // returns CBSTREAM
+        }else
+          return CBARRAYOUTOFBOUNDS;
+        return CBERROR;
 }

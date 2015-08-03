@@ -239,7 +239,7 @@ int main (int argc, char **argv) {
 	       	  namelen = u;
 	        } 
 	        if( ( WSP( chr ) && ! WSP( chprev ) && namelen>0 ) || y==(namearraylen-1) || chr=='\0' ){
-	          name[ namelen*4 ] = '\0';
+	          name[ namelen*4 ] = '\0'; 								// error here, null is at wrong place 16.7.2015
 	          err = search_and_print_name(&in, &name, namelen, tree );
 	          namelen = 0; u = 0;
 	          memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
@@ -354,7 +354,7 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	  nameptr = &(*(*(**in).cb).list.current);
 	else
 	  nameptr = &(*(*(**in).cb).list.currentleaf);
-	if( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ){
+	if( err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM ){
 	  //nameptr = &(*(*(**in).cb).list.current);
 	  //fprintf(stderr, "\n cbsearch, printing name:");
 	  print_name(&(*in), &nameptr );
@@ -406,7 +406,8 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 	chrprev = chr;
 	//err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
-	err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
+	// err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
+	err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
 
 	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
 	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
@@ -425,7 +426,8 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	  }
 	  chrprev = chr;
 	  //err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
-	  err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
+	  // err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
+	  err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
 	}
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr_unfold: %i.", err); }
 	fprintf(stderr,"\"\n");
@@ -489,7 +491,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
 	      fprintf(stderr,"\" not found.");
 	    }
 
-            if(err!=CBSUCCESS && err!=CBSTREAM && err!=CBFILESTREAM)
+            if(err!=CBSUCCESS && err!=CBSUCCESSLEAVESEXIST && err!=CBSTREAM && err!=CBFILESTREAM)
               ret = CBNOTFOUND;
             else
               ret = err;

@@ -20,6 +20,9 @@
 #include "../include/cb_buffer.h"
 #include "../include/cb_read.h"
 
+int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
+int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
+
 /*
  * 1 or 4 -byte functions.
  */
@@ -166,12 +169,12 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 		}
 	}
 
-        //fprintf(stderr,"\ncb_read_value_leaves: previous current [");
-	//if( oldcurrent!=NULL )
-        //	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
-	//else
-	//	fprintf(stderr,"<empty>");
-        //fprintf(stderr,"]");
+        fprintf(stderr,"\ncb_read_value_leaves: previous current [");
+	if( oldcurrent!=NULL )
+        	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
+	else
+		fprintf(stderr,"<empty>");
+        fprintf(stderr,"]");
 
 	/*
 	 * Find any next name (and read all leaves at the same time). */
@@ -189,21 +192,21 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 				(*(*(**cbs).cb).list.current).matchcount=1;
 		}
 	}
-	//cb_clog( CBLOGDEBUG, "\ncb_read_value_leaves: cb_set_cursor_match_length_ucs returned %i.", err );
+	cb_clog( CBLOGDEBUG, "\ncb_read_value_leaves: cb_set_cursor_match_length_ucs returned %i.", err );
 
-        //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_read_value_leaves: err=%i moved current from [", err );
-	//if( (*(**cbs).cb).list.current!=NULL )
-        //  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
-	//else
-	//  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
-        //cb_log( &(*cbs), CBLOGDEBUG, "]");
+        cb_log( &(*cbs), CBLOGDEBUG, "\ncb_read_value_leaves: err=%i moved current from [", err );
+	if( (*(**cbs).cb).list.current!=NULL )
+          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
+	else
+	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
+        cb_log( &(*cbs), CBLOGDEBUG, "]");
 
-//      cb_log( &(*cbs), CBLOGDEBUG, " to [" );
-//	if( oldcurrent!=NULL )
-//        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
-//	else
-//	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
-//      cb_log( &(*cbs), CBLOGDEBUG, "]");
+	cb_log( &(*cbs), CBLOGDEBUG, " to [" );
+ 	if( oldcurrent!=NULL )
+          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
+	else
+	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
+        cb_log( &(*cbs), CBLOGDEBUG, "]");
 
 	/*
 	 * Rewind to the previous name. */
@@ -273,14 +276,29 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
  * Content.
  */
 
+int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), 0);
+}
 int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), 1);
+}
+int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate ){
         int len = MAXCONTENTLEN;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.current==NULL || clength==NULL ){ return CBERRALLOC; }
         if( (*(*(**cbf).cb).list.current).length >= 0 )
                 len = (*(*(**cbf).cb).list.current).length;
-        return cb_get_content( &(*cbf), &(*(**cbf).cb).list.current, &(*ucscontent), &(*clength), len );
+	if(allocate==0)
+ 	       return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.current, &(*ucscontent), &(*clength), len );
+	else
+ 	       return cb_get_content( &(*cbf), &(*(**cbf).cb).list.current, &(*ucscontent), &(*clength), len );
+}
+int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+	return cb_subfunction_get_currentleaf_content( &(*cbf), &(*ucscontent), &(*clength), 0 );
 }
 int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+	return cb_subfunction_get_currentleaf_content( &(*cbf), &(*ucscontent), &(*clength), 1 );
+}
+int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate ){
         int len = MAXCONTENTLEN;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ 
 		cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
@@ -291,7 +309,10 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 )
                 len = (*(*(**cbf).cb).list.currentleaf).length;
 	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
-        return cb_get_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len );
+	if(allocate==0)
+        	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
+	else
+        	return cb_get_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
 }
 
 /*
@@ -304,11 +325,7 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
  * On error: CBERRALLOC
  */
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
-        int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
-        unsigned long int chr = 0x20, chprev = 0x20;
-	char injsonquotes=0;
-        int openpairs=1; char found=0;
-        int maxlen = maxlength, lindx=0; // lindx 14.2.2015
+        int maxlen = maxlength;
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
         
@@ -332,11 +349,24 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         (*ucscontent)[ maxlen+1 ] = '\0';
         *clength = maxlen; 
 
+	return cb_copy_content( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
+
+}
+
+int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
+        int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
+        unsigned long int chr = 0x20, chprev = 0x20;
+	char injsonquotes=0;
+        int openpairs=1; char found=0;
+        int maxlen = maxlength, lindx=0; // lindx 14.2.2015
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
         //for(maxlen=0 ; maxlen<maxlength && err<CBERROR; ++maxlen ){
+	cb_clog( CBLOGERR, "\ncb_copy_content:");
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
@@ -368,10 +398,11 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
                 	    injsonquotes=2; // ready to save the name (or after value)
          		  else if( injsonquotes==2 ) // after second quote
                 	    injsonquotes=0; // after the name (or value ended with '"')
-  	          	}				
+  	          	}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ! ( \
 				( ( WSP(chr) || CR(chr) || LF(chr) ) && ( injsonquotes==0 || injsonquotes>=2 ) ) ) ) ) {
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				cb_clog( CBLOGERR, "\n[%c], indx %i, err %i.", (unsigned char) chr, ucsbufindx, err );
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
 		}
@@ -391,26 +422,34 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
 }
 
 /*
- * Ucsname is allocated, ucsnamelen is not allocated. ucsname has to be NULL or CBERRALLOC will result. */
-int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){
-	int err=CBSUCCESS, indx=0, onebindx=0 ;
-	unsigned long int chr = 0x20;
+ * Ucsname is allocated, ucsnamelen is not allocated. ucsname has to be NULL or CBERRALLOC will result. */ 
+int cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){ 
 	if( *ucsname!=NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ) return CBERRALLOC;
 	*ucsname = (unsigned char*) malloc( sizeof(unsigned char) * ( 1 + ( 4*( (unsigned int) *onebytenamelen) ) ) );
+	//fprintf(stderr, "\ncb_allocate_ucsname_from_onebyte: 1");
 	if(*ucsname==NULL){
 		cb_clog( CBLOGERR, "\ncb_allocate_ucsname_from_onebyte: malloc returned null.");
 		return CBERRALLOC;
 	}
+	//fprintf(stderr, "\ncb_allocate_ucsname_from_onebyte: 2");
 	*ucsnamelen = 4*(*onebytenamelen);
 	memset( &(**ucsname), (int) 0x20, (size_t) *ucsnamelen );
 	(*ucsname)[*ucsnamelen] = '\0';
+	return cb_copy_ucsname_from_onebyte( &(*ucsname), &(*ucsnamelen), &(*onebytename), &(*onebytenamelen) );
+} 
+int cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){
+	int err=CBSUCCESS, indx=0, onebindx=0 ;
+	unsigned long int chr = 0x20;
+	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 1 ");
+	if( ucsname==NULL || *ucsname==NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ) return CBERRALLOC;
 	onebindx=0;
+	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 2 ");
 	for( indx=0; indx<*ucsnamelen && onebindx<*onebytenamelen && err<CBNEGATION; ){
 		chr = (*onebytename)[onebindx];
 		err = cb_put_ucs_chr( chr, &(*ucsname), &indx, *ucsnamelen );
 		++onebindx;
+		//fprintf(stderr, ".");
 	}
+	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 3 ");
 	return err;
 }
-
-

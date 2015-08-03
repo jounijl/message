@@ -45,8 +45,6 @@
    erilaiset yhteen funktiossa cb_get_chr ja siita yleisemmin CBENOTINENCODING tms.
  x Testaukseen, kokeillaan muuttaa arvosta muuttujan arvoa. Laitetaan arvoksi nimiparin nakoinen yhdistelma. 
    (Tama tietenkin korvaantuu ohjelmoijan lisaamilla ohitusmerkeilla, http:ssa ei tarvitse.)
- x CBSTATETOPOLOGY
-   - nice names
  x character encoding tests, multibyte and utf-32
  - boundary tests
  - stress test
@@ -54,7 +52,6 @@
  (- cb_put_name ja cb_save_name_from_charbuf allokoivat edelleen kahteen kertaan, ok)
  x Nimet sisaltavan valilyonteja ja tabeja. Ohjeen mukaan ne poistetaan ennen vertausta.
    -> nimiin ei kosketa, nimen ja arvon valista voi ottaa nyt valilyonnit ja tabit pois
- x Nimimoodi ei toimi, listamoodi toimii: cat tests/testi.txt | ./cbsearch -c 1 -b 2048 -l 512 unknown
  x Jos lisaa loppuun esim. 2> /dev/null, listan loppuun tulostuu merkkeja ^@^@^@...
  x Haku nimi3 loytaa nimet nimi1 ja nimi2 mutta ei jos unfold on pois paalta.
  - bypass ja RFC 2822 viestit eivat sovi yhteen. Jos bypassin korvaa erikoismerkilla,
@@ -76,7 +73,8 @@
    Se ei ole heti kaytettavissa.
  x cbsearch ei loyda ensimmaista nimea heti vaan vasta toisella kerralla.
  - Testausohjelmiin kuvaavat virheilmoitukset.
- - 32-bittinen regexp loytaa tekstin mutta regexp erikoismerkit ja haut eivat toimi
+ x 32-bittinen regexp loytaa tekstin mutta regexp erikoismerkit ja haut eivat toimi
+   - olihan testattu jo?
  ===
  x cb_conf:iin myos eri hakutavat
  x listaan lisaksi aikaleima milloin viimeksi haettu
@@ -113,7 +111,14 @@
    se ei lue merkkeja oikein jos: pelkka alustus ja err = cb_set_encodingbytes(&cbf, 0);
  x test_cb namelist is in error 22.2.2015 
    x cb_free_name correct order
-
+ ===
+ x not a bug, a usage error: *current should not be updated when updating *currentleaf
+ x not a bug, a usage error: If unfold==1 and *current is set to *name, does not find
+   next name from list. The search stops to first '{' (rstart) and
+   result is a zero length name. Does not find the actual next name 
+   after this. (=bug with unfold and setting the current pointer)
+ x not a bug, a usage error: cb_get_chr does not read ahd buffer
+   - Instructions in the header have been imporoved.
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
@@ -137,18 +142,19 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
 int cb_print_conf(CBFILE **str, char priority){
 	if(str==NULL || *str==NULL){ cb_log(&(*str), CBLOGALERT, "\ncb_print_conf: str was null."); return CBERRALLOC; }
-	cb_log(&(*str), priority, "\ntype:            \t0x%.2X", (**str).cf.type);
-	cb_log(&(*str), priority, "\nsearchmethod:    \t0x%.2X", (**str).cf.searchmethod);
-	cb_log(&(*str), priority, "\nunfold:          \t0x%.2X", (**str).cf.unfold);
-	cb_log(&(*str), priority, "\nasciicaseinsensitive: \t0x%.2X", (**str).cf.asciicaseinsensitive);
-	cb_log(&(*str), priority, "\nrfc2822headerend: \t0x%.2X", (**str).cf.rfc2822headerend);
-	cb_log(&(*str), priority, "\nremovewsp:        \t0x%.2X", (**str).cf.removewsp);
-	cb_log(&(*str), priority, "\nremovecrlf:       \t0x%.2X", (**str).cf.removecrlf);
-	cb_log(&(*str), priority, "\nremovenamewsp:    \t0x%.2X", (**str).cf.removenamewsp);
-	cb_log(&(*str), priority, "\nleadnames:        \t0x%.2X", (**str).cf.leadnames);
-	cb_log(&(*str), priority, "\njson:             \t0x%.2X", (**str).cf.json);
-	cb_log(&(*str), priority, "\ndoubledelim:      \t0x%.2X", (**str).cf.doubledelim);
-	cb_log(&(*str), priority, "\nsearchstate:      \t0x%.2X\n", (**str).cf.searchstate);
+	cb_log(&(*str), priority, "\ntype:                \t0x%.2X", (**str).cf.type);
+	cb_log(&(*str), priority, "\nsearchmethod:        \t0x%.2X", (**str).cf.searchmethod);
+	cb_log(&(*str), priority, "\nleafsearchmeathod:   \t0x%.2X", (**str).cf.leafsearchmethod);
+	cb_log(&(*str), priority, "\nunfold:              \t0x%.2X", (**str).cf.unfold);
+	cb_log(&(*str), priority, "\nasciicaseinsensitive:\t0x%.2X", (**str).cf.asciicaseinsensitive);
+	cb_log(&(*str), priority, "\nrfc2822headerend:    \t0x%.2X", (**str).cf.rfc2822headerend);
+	cb_log(&(*str), priority, "\nremovewsp:           \t0x%.2X", (**str).cf.removewsp);
+	cb_log(&(*str), priority, "\nremovecrlf:          \t0x%.2X", (**str).cf.removecrlf);
+	cb_log(&(*str), priority, "\nremovenamewsp:       \t0x%.2X", (**str).cf.removenamewsp);
+	cb_log(&(*str), priority, "\nleadnames:           \t0x%.2X", (**str).cf.leadnames);
+	cb_log(&(*str), priority, "\njson:                \t0x%.2X", (**str).cf.json);
+	cb_log(&(*str), priority, "\ndoubledelim:         \t0x%.2X", (**str).cf.doubledelim);
+	cb_log(&(*str), priority, "\nsearchstate:         \t0x%.2X\n", (**str).cf.searchstate);
 	return CBSUCCESS;
 }
 
@@ -205,7 +211,7 @@ int  cb_print_name(cb_name **cbn, char priority){
         cb_clog( priority, " name [" );
 	if( (**cbn).namebuf!=NULL && (**cbn).buflen>0 )
           cb_print_ucs_chrbuf( priority, &(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen);
-        cb_clog( priority, "] offset [%li] length [%i]", (**cbn).offset, (**cbn).length); // 6.12.2014
+        cb_clog( priority, "] namelen [%i] offset [%li] length [%i]",  (**cbn).namelen, (**cbn).offset, (**cbn).length); // 6.12.2014
         cb_clog( priority, " nameoffset [%li]\n", (**cbn).nameoffset);
         cb_clog( priority, " matchcount [%li]", (**cbn).matchcount);
         cb_clog( priority, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
@@ -1059,7 +1065,8 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *
 	}
 	*byteswritten=0;
 
-	cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+	//cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+	//cb_remove_ahead_offset( &(*cbf) ); // 27.7.2015, poistettu 2.8.2015
 
 	/* Replace block with small write block */
 	origcb = &(*(**cbf).blk);
@@ -1122,7 +1129,8 @@ int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **s
         if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC; }
         if( stg==NULL ){ return CBERRALLOC; }
         
-        cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+        //cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+        //cb_remove_ahead_offset( &(*cbf) ); // 27.7.2015, poistettu 2.8.2015
         
         // Replace block with small write block
         cb = &cbdata;
@@ -1213,7 +1221,9 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
           return CBOPERATIONNOTALLOWED;
         }
         // Remove readahead
-        err2 = cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+        //err2 = cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
+        //err2 = cb_remove_ahead_offset( &(*cbf) ); // 27.7.2015, poistettu 2.8.2015
+	cb_fifo_init_counters( &(**cbf).ahd ); // lisatty 2.8.2015
 	if( err2>=CBNEGATION ){
 	  cb_clog( CBLOGNOTICE, "\ncb_reread_file: could not remove ahead offset, %i.", err2);
 	  if( err2>=CBERROR )

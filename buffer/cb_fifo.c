@@ -180,12 +180,18 @@ int cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int 
         int index=0, err=CBSUCCESS;
         unsigned long int chr=0x20; // 11.12.2014
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
+	if(namelen<4){ // 4.7.2015, 4 bytes minimum
+	   cb_clog( priority, "(err CBEMPTY)");
+	   return CBEMPTY; // 4.7.2015
+	}
         for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
            err = cb_get_ucs_chr(&chr, &(*chrbuf), &index, buflen);
 	   if( chr==0x0000 && err==CBSUCCESS ){ // null terminator
              cb_clog( priority, "(null)");
 	   }else if(err!=CBSUCCESS){
 	     cb_clog( priority, "(err %i)", err);
+	     if(err>=CBERROR) // 4.7.2015
+		return err; // 4.7.2015
 	   }else{
              cb_clog( priority, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
              //cb_clog( priority, "(0x%lx)", chr ); // 8.6.2014
