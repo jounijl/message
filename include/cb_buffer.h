@@ -276,6 +276,7 @@
  * Compare ctl */
 typedef struct cb_match {
         int matchctl; // If match function is not regexp match, next can be NULL
+	int resmcount; // Place to save the matchcount by cb_compare. If matchctl -9 or -10 is used, this value can be used to evaluate the result of the comparison.
         void *re; // cast to pcre32 (void here to be able to compile the files without pcre)
         void *re_extra; // cast to pcre_extra32
 } cb_match;

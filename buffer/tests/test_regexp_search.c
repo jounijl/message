@@ -72,7 +72,7 @@ int main (int argc, char *argv[]) {
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
 
 	/*
 	 * Arguments. */

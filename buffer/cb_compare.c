@@ -108,8 +108,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_get_matchctl( &(*cbs), &(*name1), len1, 0, &newmctl, (*mctl).matchctl ); // 13.4.2014
 	  if(err!=CBSUCCESS){ cb_log( &(*cbs), CBLOGERR, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
 	  err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
-
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
+	  (*mctl).resmcount = mcount; // 9.8.2015
 	}else if( (*mctl).matchctl==-7 || (*mctl).matchctl==-9 ){ // new 18.3.2014, not yet tested 18.3.2014
 	  /*
 	   * Uses only compiled regexp inside mctl.
@@ -121,6 +121,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGERR, "\nerror in cb_compare, -7: re was null.");  return CBERRALLOC; }
 	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount);
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
+	  (*mctl).resmcount = mcount; // 9.8.2015
 	}else if( (*mctl).matchctl==-6 ){ // %am%
 	  if( len2 < len1 ){
 	    dfr = len1-len2; // if len2-len1 is negative

@@ -505,7 +505,7 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	   * Not at the end of buffer.
 	   * Reading of a value should stop at the rend. After rend, the readahead should be empty
 	   * because LWSP characters are not read after the character. Emptying the read ahead buffer. */
-	  cb_clog( CBLOGWARNING,"\ncb_search_get_chr: Warning. Unfold read was not at the of buffer. Emptying the read ahead buffer.");
+	  //cb_clog( CBLOGDEBUG,"\ncb_search_get_chr: Unfold read was not at the end of buffer. Emptying the read ahead buffer.");
 	  err = cb_fifo_init_counters( &(**cbs).ahd );
 	  if( err>=CBERROR ){ cb_clog( CBLOGERR, "\ncb_search_get_chr: cb_fifo_init_counters, error %i.", err ); }
 	}
@@ -569,7 +569,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 }
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl){
 	cb_match mctl;
-	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
+	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl; mctl.resmcount = 0;
 	return cb_set_cursor_match_length_ucs_matchctl(&(*cbs), &(*ucsname), &(*namelength), ocoffset, &mctl);
 }
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
