@@ -154,7 +154,13 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, "\nleadnames:           \t0x%.2X", (**str).cf.leadnames);
 	cb_log(&(*str), priority, "\njson:                \t0x%.2X", (**str).cf.json);
 	cb_log(&(*str), priority, "\ndoubledelim:         \t0x%.2X", (**str).cf.doubledelim);
-	cb_log(&(*str), priority, "\nsearchstate:         \t0x%.2X\n", (**str).cf.searchstate);
+	cb_log(&(*str), priority, "\nrstart:              \t[%c]", (char) (**str).cf.rstart );
+	cb_log(&(*str), priority, "\nrstop:               \t[%c]", (char) (**str).cf.rend );
+	cb_log(&(*str), priority, "\nsubrstart:           \t[%c]", (char) (**str).cf.subrstart );
+	cb_log(&(*str), priority, "\nsubrstop:            \t[%c]", (char) (**str).cf.subrend );
+	cb_log(&(*str), priority, "\ncstart:              \t[%c]", (char) (**str).cf.cstart );
+	cb_log(&(*str), priority, "\ncstop:               \t[%c]", (char) (**str).cf.cend );
+	cb_log(&(*str), priority, "\ncbypass:             \t[%c]\n", (char) (**str).cf.bypass );
 	return CBSUCCESS;
 }
 
