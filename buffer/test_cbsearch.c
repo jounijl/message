@@ -139,6 +139,11 @@ int main (int argc, char **argv) {
 	    tree = -10;
 	    continue;
 	  }
+	  u = get_option( argv[i], argv[i+1], 'u', &value); // unique names
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
+	    cb_set_to_unique_names(&in);
+	    continue;
+	  }
 	  u = get_option( argv[i], argv[i+1], 'b', &value); // buffer size
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    bufsize = (int) strtol(value,&str_err,10);
@@ -263,11 +268,15 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] [-x]\\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [ -z ] <name> \n\n");
-	fprintf(stderr,"\t%s [-c <count> ] [-b <buffer size> ] [-l <block size> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [-i <encoding number> ] [-e <char in hex> ] [-t ] [ -J ] [ -z ] [-x]\\\n");
-	fprintf(stderr,"\t         -s \"<name1> [ <name2> [?<name3> [...] ] ]\"\n");
+	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] <name> \n\n");
+	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] \\\n", progname[0]);
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] \\\n");
+	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
+	fprintf(stderr,"\t-t include the search from the subtrees\n");
+	fprintf(stderr,"\t-u set to unique names \n");
+	fprintf(stderr,"\t-z set to configuration file format\n");
+	fprintf(stderr,"\t-J use JSON format\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
@@ -276,12 +285,12 @@ void usage (char *progname[]){
 	fprintf(stderr,"\tit does not remove cr, lf or wsp characters between values\n");
 	fprintf(stderr,"\tand names. Name can be matched from beginning, in the middle\n");
         fprintf(stderr,"\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
-        fprintf(stderr,"\t<count> is -1, search is endless. With -t the search include\n");
+        fprintf(stderr,"\t<count> is -1, search is endless. With -t the search includes\n");
         fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
 	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
 	fprintf(stderr,"\t -J JSON format. Tree or doubledelimiter values are not printed\n");
-	fprintf(stderr,"\tcorrectly (21.2.2015). -z configuration file format\n");
-	fprintf(stderr,"\t('{' and '=').\n\n");
+	fprintf(stderr,"\tcorrectly (21.2.2015). -z configuration file format ('{' and\n");
+	fprintf(stderr,"\t '='). -u unique names.\n\n");
         fprintf(stderr,"\tExample 1:\n");
         fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
         fprintf(stderr,"\tExample 2:\n");
