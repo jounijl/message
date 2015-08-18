@@ -90,9 +90,9 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 
 	if(mctl==NULL){ cb_log( &(*cbs), CBLOGALERT, "\ncb_compare: allocation error, cb_match."); return CBERRALLOC; }
 
-	//cb_clog( CBLOGDEBUG, "\ncb_compare, name1: [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG,"] name2: [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG,"] len1: %i, len2: %i, matchctl %i.", len1, len2, (*mctl).matchctl );
+	cb_clog( CBLOGDEBUG, "\ncb_compare, name1: [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG,"] name2: [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG,"] len1: %i, len2: %i, matchctl %i", len1, len2, (*mctl).matchctl );
 
 	if((*mctl).matchctl==-1)
 	  return CBNOTFOUND; // no match
@@ -160,6 +160,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	}else{ // name or nam% , (or lexical compare if matchctl is -11, -12, -13 or -14)
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
+
+	cb_clog( CBLOGDEBUG, ", result %i.", err );
 
 	switch ( (*mctl).matchctl) {
 	  case  1:
@@ -230,20 +232,28 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
 	signed err=CBSUCCESS, cmp=0;
 	int indx1=0, indx2=0, num=0;
+	char stp=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
 
-	//fprintf(stderr,"cb_compare: name1=[");
-	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] name2=[");
-	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"]\n");
+	cb_clog( CBLOGDEBUG, "\ncb_compare_strict: name1=[");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG, "] name2=[");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG, "] from %i ", from2);
 
 	num=len1;
 	if(len1>len2)
 	  num=len2;
 	indx1=0;
-	for(indx2=from2; indx1<num && indx2<num && err<CBNEGATION; ++indx2){
+	for(indx2=from2; stp!=1 && indx1<num && indx2<num && err<CBNEGATION; ++indx2){
+	  cb_clog( CBLOGDEBUG, ".");
 	  if( (*name1)[indx1]!=(*name2)[indx2] ){
-	    indx2=num+7; err=CBNOTFOUND;
+	    // indx2=num+7; err=CBNOTFOUND;
+	    err=CBNOTFOUND; // 17.8.2015
+
+	    cb_clog( CBLOGDEBUG, "\ncomparison1 [%c] != [%c] (0x%X != 0x%X ) index1 %i index2 %i", (*name1)[indx1], (*name2)[indx2] , (*name1)[indx1], (*name2)[indx2], indx1, indx2 );
+	    cb_clog( CBLOGDEBUG, "\ncomparison2 [%c] != [%c] (0x%X != 0x%X ) ", (*name1)[indx1], (*name2)[indx2] , (*name1)[indx1+1], (*name2)[indx2+1] );
+	    cb_clog( CBLOGDEBUG, "\ncomparison3 [%c] != [%c] (0x%X != 0x%X ) ", (*name1)[indx1], (*name2)[indx2] , (*name1)[indx1+2], (*name2)[indx2+2] );
+	    cb_clog( CBLOGDEBUG, "\ncomparison4 [%c] != [%c] (0x%X != 0x%X ) ", (*name1)[indx1], (*name2)[indx2] , (*name1)[indx1+3], (*name2)[indx2+3] );
 
             cmp = (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name1)[indx1] );  // 31.7.2014
             cmp -= (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name2)[indx2] ); // 31.7.2014
@@ -252,7 +262,7 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	      err = CBGREATERTHAN; 	// 31.7.2014
 	    else if( len1 < (len2-from2) || ( len1==(len2-from2) && cmp<0 ) )
 	      err = CBLESSTHAN;    	// 31.7.2014
-
+	    stp=1;
 	  }else{
 	    if( err < CBNEGATION ){
 	      if( len1 > (len2-from2) )
