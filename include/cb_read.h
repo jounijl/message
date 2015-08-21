@@ -70,3 +70,18 @@ int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *cle
 int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
 int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
 
+/*
+ * Hierarchical searches. These are at the moment all usable search methods.
+ * If names length is still -1, searches all leafs of the name (until the next name)
+ * and searches the wanted named leaf by searching from the resulted tree.
+ *      
+ * If search is not done name by name (the names being in the list), the tree structure
+ * will be broken. It is possible to find just one name like this. During other
+ * searches, the tree would be broken. 19.8.2015
+ *
+ * With these, it's possible to search names like name1.name2.name3 with changing
+ * the names in other searches.
+ */
+//int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen);
+//int cb_search_leaf_from_currentleaf(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen, int levelfromprevious);
+

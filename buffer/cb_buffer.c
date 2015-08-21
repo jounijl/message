@@ -122,6 +122,13 @@
  ===
  x removewsp ja removecrlf, "nelj? nimi 4"
    x removenamewsp
+ ===
+ - function or matchctl: search first with CBNEXTNAMES, if not found, then set to first with lowest matchcount (11.8.2015)
+ - set_to_conf: both subrstart and rstart, subrend and rend should function similarly, not every second time but
+   allways similarly (maby at the first list only the other one). (12.8.2015)
+   - if rstart, wait for rstop, if subrstart, wait for subrstop 
+ ===
+ x removal of doubledelim from json settings
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
@@ -415,10 +422,14 @@ int  cb_set_to_conf( CBFILE **str ){
         //cb_set_to_unique_names( &(*str) );
         cb_set_to_polysemantic_names( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
         cb_set_to_polysemantic_leaves( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
-        cb_set_rstart( &(*str), (unsigned long int) '{' );
-        cb_set_rend( &(*str), (unsigned long int) '}' );  
-        cb_set_subrstart( &(*str), (unsigned long int) '=' );
-        cb_set_subrend( &(*str), (unsigned long int) ';' );
+        cb_set_rstart( &(*str), (unsigned long int) '=' ); // BEFORE TEST 18.8.2015
+        cb_set_rend( &(*str), (unsigned long int) ';' ); // BEFORE TEST 18.8.2015
+        //cb_set_rstart( &(*str), (unsigned long int) '{' );
+        //cb_set_rend( &(*str), (unsigned long int) '}' );  
+        cb_set_subrstart( &(*str), (unsigned long int) '{' ); // BEFORE TEST 18.8.2015
+        cb_set_subrend( &(*str), (unsigned long int) '}' ); // BEFORE TEST 18.8.2015
+        //cb_set_subrstart( &(*str), (unsigned long int) '=' );
+        //cb_set_subrend( &(*str), (unsigned long int) ';' );
         cb_set_cstart( &(*str), (unsigned long int) '#' );
         cb_set_cend( &(*str), (unsigned long int) 0x0A ); // new line
         cb_set_bypass( &(*str), (unsigned long int) '\\' );
@@ -560,9 +571,10 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.jsonnamecheck=1;
 #endif
 	//(**str).cf.leadnames=1; // test
+	(**str).cf.findleaffromallnames=0;
 	(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
 	(**str).encoding=CBDEFAULTENCODING;
-	(**str).fd = dup(fd);
+	(**str).fd = dup(fd); // tama tuli poistaa jo aiemmin? 21.8.2015
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
 	cb_fifo_init_counters( &(**str).ahd );

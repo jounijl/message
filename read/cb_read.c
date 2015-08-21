@@ -361,15 +361,17 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
+	if( ucscontent==NULL || *ucscontent==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: ucscontent was null."); return CBERRALLOC; }
+	if( (**cn).namebuf==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: (**cn).namebuf was null."); return CBERRALLOC; }
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-        //for(maxlen=0 ; maxlen<maxlength && err<CBERROR; ++maxlen ){
-	cb_clog( CBLOGERR, "\ncb_copy_content:");
-        for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR; ++lindx ){
+	cb_clog( CBLOGERR, "\ncb_copy_content: (ucsnamelen %i, maxlength %i)", *clength, maxlength);
+        for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
+		//cb_clog( CBLOGERR, "\ncb_copy_content: [%c] .", (unsigned char) chr );
 		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_get_chr, error %i.", err); return err; }
 
                 // if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rstart ) // pre 1.7.2015
@@ -402,7 +404,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ! ( \
 				( ( WSP(chr) || CR(chr) || LF(chr) ) && ( injsonquotes==0 || injsonquotes>=2 ) ) ) ) ) {
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
-				cb_clog( CBLOGERR, "\n[%c], indx %i, err %i.", (unsigned char) chr, ucsbufindx, err );
+				//cb_clog( CBLOGERR, "\n[%c], indx %i, err %i.", (unsigned char) chr, ucsbufindx, err );
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
 		}
@@ -453,3 +455,40 @@ int cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsi
 	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 3 ");
 	return err;
 }
+
+/*
+ * Hierarchical searches. These are at the moment all usable search methods.
+ * If names length is still -1, searches all leafs of the name (until the next name)
+ * and searches the wanted named leaf by searching from the resulted tree.
+ *
+ * If search is not done name by name (the names being in the list), the tree structure
+ * will be broken. It is possible to find just one name like this. During other 
+ * searches, the tree would be broken. 19.8.2015
+ */
+/**
+int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen ){
+	int err=CBSUCCESS;
+	unsigned char *emptyname = NULL;
+	int emptynamelen = 0;
+	unsigned char emptydata[1];
+	cb_match mctl;
+	emptydata[0]='\0';
+	emptyname = &emptydata[0];
+	mctl.matchctl=1; mctl.re=NULL; mctl.re_extra=NULL; mctl.resmcount=0;
+
+        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_search_leaf_from_currentname: cbf or it's buffer was null."); return CBERRALLOC; }
+	if( (*(**cbf).cb).list.current==NULL ) return CBNOTFOUND;
+**/
+//	if( (*(*(**cbf).cb).list.current).length<0 ){ // next name to current has not been searched before
+		/*
+		 * Search until the next name. */
+//		err = cb_set_cursor_match_length_ucs( &(*cbf), &emptyname, &emptynamelen, 1, -1 ); // all leaves of current name
+//	}
+	/*
+	 * Search from the leaves. */
+//	return err;	
+//}
+//int cb_search_leaf_from_currentleaf(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen, int levelfromprevious ){
+//        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_clog( CBLOGALERT, "\ncb_search_leaf_from_currentleaf: cbf or it's buffer was null."); return CBERRALLOC; }
+//	return CBSUCCESS;
+//}

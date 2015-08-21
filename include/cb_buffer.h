@@ -14,42 +14,44 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
-#define CBSUCCESS              0
-#define CBSTREAM               1
-#define CBFILESTREAM           2    // Buffer end has been reached but file is seekable
-#define CBMATCH                3    // Matched and the lengths are the same
-#define CBUSEDASBUFFER         4
-#define CBUTFBOM               5
-#define CB2822HEADEREND        6
-#define CBMATCHLENGTH          7    // Matched the given length
-#define CBADDEDNAME            8
-#define CBADDEDLEAF            9
-#define CBADDEDNEXTTOLEAF     10
-#define CBMATCHMULTIPLE       11    // regexp multiple occurences 03/2014
-#define CBMATCHGROUP          12    // regexp group 03/2014
-#define CBSUCCESSLEAVESEXIST  13
+#define CBSUCCESS               0
+#define CBSTREAM                1
+#define CBFILESTREAM            2    // Buffer end has been reached but file is seekable
+#define CBMATCH                 3    // Matched and the lengths are the same
+#define CBUSEDASBUFFER          4
+#define CBUTFBOM                5
+#define CB2822HEADEREND         6
+#define CBMATCHLENGTH           7    // Matched the given length
+#define CBADDEDNAME             8
+#define CBADDEDLEAF             9
+#define CBADDEDNEXTTOLEAF      10
+#define CBMATCHMULTIPLE        11    // regexp multiple occurences 03/2014
+#define CBMATCHGROUP           12    // regexp group 03/2014
+#define CBSUCCESSLEAVESEXIST   13
 
-#define CBNEGATION            50
-#define CBSTREAMEND           51
-#define CBVALUEEND            52    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
-#define CBBUFFULL             53
-#define CBNOTFOUND            54
-#define CBNOTFOUNDLEAVESEXIST 55
-#define CBNAMEOUTOFBUF        56
-#define CBNOTUTF              57
-#define CBNOENCODING          58
-#define CBMATCHPART           59    // 30.3.2013, shorter name is the same as longer names beginning
-#define CBEMPTY               60
-#define CBNOTSET              61
-#define CBAUTOENCFAIL         62    // First bytes bom was not in recognisable format
-#define CBWRONGENCODINGCALL   63
-#define CBUCSCHAROUTOFRANGE   64
-#define CBREPATTERNNULL       65    // given pattern text was null 03/2014
-#define CBGREATERTHAN         66    // same as not found with lexical comparison of name1 to name2
-#define CBLESSTHAN            67
-#define CBOPERATIONNOTALLOWED 68    // seek was asked and CBFILE was not set as seekable
-#define CBNOFIT               69    // tried to write to too small space (characters left over)
-#define CBNOTJSON             70
+#define CBNEGATION             50
+#define CBSTREAMEND            51
+#define CBVALUEEND             52    // opencount < 0, CBSTATETREE and CBSTATETOPOLOGY
+#define CBBUFFULL              53
+#define CBNOTFOUND             54
+#define CBNOTFOUNDLEAVESEXIST  55
+#define CBNAMEOUTOFBUF         56
+#define CBNOTUTF               57
+#define CBNOENCODING           58
+#define CBMATCHPART            59    // 30.3.2013, shorter name is the same as longer names beginning
+#define CBEMPTY                60
+#define CBNOTSET               61
+#define CBAUTOENCFAIL          62    // First bytes bom was not in recognisable format
+#define CBWRONGENCODINGCALL    63
+#define CBUCSCHAROUTOFRANGE    64
+#define CBREPATTERNNULL        65    // given pattern text was null 03/2014
+#define CBGREATERTHAN          66    // same as not found with lexical comparison of name1 to name2
+#define CBLESSTHAN             67
+#define CBOPERATIONNOTALLOWED  68    // seek was asked and CBFILE was not set as seekable
+#define CBNOFIT                69    // tried to write to too small space (characters left over)
+#define CBNOTJSON              70
+#define CBNAMEVALUEWASREAD     71    // name value (all the leaves) had been already read (because the length of last leaf was >= 0 ), at the same time telling "not found"
+#define CBLEAFVALUEWASREAD     72    // value (all the leaves) had been already read to last rend '&' 
 
 #define CBERROR	              100
 #define CBERRALLOC            101
@@ -70,23 +72,23 @@
 /*
  * Log priorities (log verbosity).
  */
-#define CBLOGEMERG             1
-#define CBLOGALERT             2
-#define CBLOGCRIT              3
-#define CBLOGERR               4
-#define CBLOGWARNING           5
-#define CBLOGNOTICE            6
-#define CBLOGINFO              7
-#define CBLOGDEBUG             8
+#define CBLOGEMERG              1
+#define CBLOGALERT              2
+#define CBLOGCRIT               3
+#define CBLOGERR                4
+#define CBLOGWARNING            5
+#define CBLOGNOTICE             6
+#define CBLOGINFO               7
+#define CBLOGDEBUG              8
 
-#define CBDEFAULTLOGPRIORITY   8
+#define CBDEFAULTLOGPRIORITY    8
 
 /*
  * Default values (multiple of 4)
  */
-#define CBNAMEBUFLEN        1024
-#define CBREADAHEADSIZE       28
-#define CBSEEKABLEWRITESIZE  128
+#define CBNAMEBUFLEN         1024
+#define CBREADAHEADSIZE        28
+#define CBSEEKABLEWRITESIZE   128
 
 /*
  CBREADAHEADSIZE is used to read RFC-822 unfolding characters. It's size should be small
@@ -95,8 +97,8 @@
  */
 
 
-#define CBMAXLEAVES         1000  // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
-                                  // (this can be set to a maximum number of unsigned integer)
+#define CBMAXLEAVES          1000  // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
+                                   // (this can be set to a maximum number of unsigned integer)
 
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
@@ -309,7 +311,8 @@ typedef struct cb_conf{
         unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
         unsigned char       removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         unsigned char       removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
-	unsigned char       removenamewsp:2;        // Remove white space characters inside name
+	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND.
+	unsigned char       removenamewsp:1;        // Remove white space characters inside name
 	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
 	unsigned char       jsonnamecheck:1;        //
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
@@ -430,7 +433,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * ocoffset:
  * Open pairs. If in value and ocoffset is 0, leafs ? otherwice allways 1 or the ocoffset level ? (questions 10.7.2015)
  *
- * Leafs:
+ * Leaves:
  *
  * All leaves have to be read by finding the next name from list first (main list, ocoffset 0)
  * if multiple names are searched in sequence. All leaves have to be in the tree before finding
