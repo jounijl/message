@@ -367,7 +367,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-	cb_clog( CBLOGERR, "\ncb_copy_content: (ucsnamelen %i, maxlength %i)", *clength, maxlength);
+	//cb_clog( CBLOGERR, "\ncb_copy_content: (ucsnamelen %i, maxlength %i)", *clength, maxlength);
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);

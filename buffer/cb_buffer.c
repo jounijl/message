@@ -304,20 +304,6 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
 	}
-	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
-	if((**cbn).namebuf==NULL){
-	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc CBERRALLOC." );
-	  return CBERRALLOC;
-	}
-
-	//for(indx=0;indx<namelen && indx<CBNAMEBUFLEN;++indx) // 7.12.2013
-	//  (**cbn).namebuf[indx]=' ';
-
-	memset( &(**cbn).namebuf[0], 0x20, (size_t) namelen ); // 22.2.2015
-
-	(**cbn).namebuf[namelen]='\0'; // 7.12.2013
-	(**cbn).buflen=namelen; // 7.12.2013
-	(**cbn).namelen=0;
 	(**cbn).offset=0; 
 	(**cbn).nameoffset=0;
 	(**cbn).length=-1; // 11.12.2014
@@ -326,6 +312,17 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	(**cbn).lasttimeused=-1;
 	(**cbn).next=NULL;
 	(**cbn).leaf=NULL;
+
+	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
+	if((**cbn).namebuf==NULL){
+	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc CBERRALLOC." );
+	  return CBERRALLOC;
+	}
+	memset( &(**cbn).namebuf[0], 0x20, (size_t) namelen ); // 22.2.2015
+	(**cbn).namebuf[namelen]='\0'; // 7.12.2013
+	(**cbn).buflen=namelen; // 7.12.2013
+	(**cbn).namelen=0;
+
 	return CBSUCCESS;
 }
 

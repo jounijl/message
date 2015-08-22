@@ -433,6 +433,11 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * ocoffset:
  * Open pairs. If in value and ocoffset is 0, leafs ? otherwice allways 1 or the ocoffset level ? (questions 10.7.2015)
  *
+ * Lengths, 22.8.2015:
+ * set_cursor updates lengths when they are known. If openpairs is increasing, the leafs length can not be updated.
+ * Name length in list can be updated. Some leafs are not given length (upward slope). Length may be different (22.8.2015)
+ * if the next name in list is not yet read. This may affect writing to the values space or to the names space.
+ *
  * Leaves:
  *
  * All leaves have to be read by finding the next name from list first (main list, ocoffset 0)
