@@ -343,6 +343,8 @@ typedef struct cb_name{
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
+// to be removed: leaf is allways first, next is allways the last. It is not possible to add leaves in between.
+	signed long int       serial;         // serial number of the name (=lists namecount when leaf was added). This value is used to determine the order of leaves in for example determining the last leaf level from namelist. 23.8.2015.
 	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
@@ -351,6 +353,7 @@ typedef struct cb_namelist{
 	cb_name            *current;
 	cb_name            *last;
 	signed long int     namecount;
+	signed long int     nodecount;        // count of all names and leaves to determine the serial number, 23.8.2015
 	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
 
