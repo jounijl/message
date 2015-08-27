@@ -169,12 +169,12 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 		}
 	}
 
-        fprintf(stderr,"\ncb_read_value_leaves: previous current [");
-	if( oldcurrent!=NULL )
-        	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
-	else
-		fprintf(stderr,"<empty>");
-        fprintf(stderr,"]");
+        //fprintf(stderr,"\ncb_read_value_leaves: previous current [");
+	//if( oldcurrent!=NULL )
+        //	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
+	//else
+	//	fprintf(stderr,"<empty>");
+        //fprintf(stderr,"]");
 
 	/*
 	 * Find any next name (and read all leaves at the same time). */
@@ -192,8 +192,8 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 				(*(*(**cbs).cb).list.current).matchcount=1;
 		}
 	}
-	cb_clog( CBLOGDEBUG, "\ncb_read_value_leaves: cb_set_cursor_match_length_ucs returned %i.", err );
 
+/**
         cb_log( &(*cbs), CBLOGDEBUG, "\ncb_read_value_leaves: err=%i moved current from [", err );
 	if( (*(**cbs).cb).list.current!=NULL )
           cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
@@ -207,7 +207,7 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 	else
 	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
         cb_log( &(*cbs), CBLOGDEBUG, "]");
-
+**/
 	/*
 	 * Rewind to the previous name. */
 	(*(**cbs).cb).list.current = &(*oldcurrent);
@@ -218,10 +218,6 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, cb_match *mctl ){
 	int err=CBNOTFOUND, safecount=0;
 	char atvalueend=0;
-	//unsigned char *testname = NULL;
-	//int testnamelen = 0;
-	//unsigned char testdata[2] = { 0x20, '\0' };
-	//testname = &testdata[0];
 	if( ocoffset==NULL)
 		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: ocoffset was null."); 
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL || ocoffset==NULL || mctl==NULL ){
@@ -230,9 +226,9 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	}
 	safecount=0;
 
-	fprintf(stderr,"\ncb_find_leaf_from_current: namelength %i, name [", *namelength );
-	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN);
-	fprintf(stderr,"]");
+	//fprintf(stderr,"\ncb_find_leaf_from_current: namelength %i, name [", *namelength );
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN);
+	//fprintf(stderr,"]");
 
 	/*
 	 * Read to the next name and move the current pointer to the previous name. */
@@ -247,9 +243,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	while( ( err==CBNOTFOUNDLEAVESEXIST || err==CBVALUEEND || err==CBSTREAMEND ) && safecount<CBMAXLEAVES ){
 		++safecount;
 
-		//fprintf(stderr,"\ncb_find_leaf_from_current: ocoffset %i, err %i, safecount %i, matchctl %i.", *ocoffset, err, safecount, (*mctl).matchctl );
 	   	err = cb_set_cursor_match_length_ucs_matchctl( &(*cbs), &(*ucsname), &(*namelength), *ocoffset, &(*mctl) ); 
-		//fprintf(stderr,"\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, err %i.", err );
 
 		if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
 			return CBSUCCESS;
@@ -266,7 +260,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		    * Continue to search the next level leafs if some leafs existed. */
 	            *ocoffset+=1;
 		}else if(err>=CBNEGATION){
-		   cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
+		   ; // cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
 		}
 	}
 	return CBNOTFOUND;
@@ -370,27 +364,21 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-	//cb_clog( CBLOGERR, "\ncb_copy_content: (ucsnamelen %i, maxlength %i)", *clength, maxlength);
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
-		//cb_clog( CBLOGERR, "\ncb_copy_content: [%c] .", (unsigned char) chr );
 		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_get_chr, error %i.", err); return err; }
 
-                // if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rstart ) // pre 1.7.2015
-                // if( chprev!=(**cbf).cf.bypass && chr==(**cbf).cf.rend ) // pre 1.7.2015
                 if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ) // 1.7.2015
                         ++openpairs;
                 if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rend || chr==(**cbf).cf.subrend ) ) // 1.7.2015
                         --openpairs;
                 if( openpairs<=0 && ( (**cbf).cf.searchstate==CBSTATETREE || (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ){
-                        //maxlen=maxlength; // stop
                         lindx=maxlength; // stop
                         found=1;
                         continue;
                 }else if( ( (**cbf).cf.searchstate==CBSTATELESS || (**cbf).cf.searchstate==CBSTATEFUL ) &&
                             ( chr==(**cbf).cf.rend && chprev!=(**cbf).cf.bypass ) ){
-                        //maxlen=maxlength; // stop
                         lindx=maxlength; // stop
                         found=1;
                         continue;
@@ -402,7 +390,6 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 			}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && injsonquotes==1 ) ) {
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
-				//cb_clog( CBLOGERR, "\n[%c], indx %i, err %i.", (unsigned char) chr, ucsbufindx, err );
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
 			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' ){ // value without quotes 2
@@ -430,12 +417,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 int cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){ 
 	if( *ucsname!=NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ) return CBERRALLOC;
 	*ucsname = (unsigned char*) malloc( sizeof(unsigned char) * ( 1 + ( 4*( (unsigned int) *onebytenamelen) ) ) );
-	//fprintf(stderr, "\ncb_allocate_ucsname_from_onebyte: 1");
 	if(*ucsname==NULL){
 		cb_clog( CBLOGERR, "\ncb_allocate_ucsname_from_onebyte: malloc returned null.");
 		return CBERRALLOC;
 	}
-	//fprintf(stderr, "\ncb_allocate_ucsname_from_onebyte: 2");
 	*ucsnamelen = 4*(*onebytenamelen);
 	memset( &(**ucsname), (int) 0x20, (size_t) *ucsnamelen );
 	(*ucsname)[*ucsnamelen] = '\0';
@@ -444,17 +429,13 @@ int cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, 
 int cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){
 	int err=CBSUCCESS, indx=0, onebindx=0 ;
 	unsigned long int chr = 0x20;
-	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 1 ");
 	if( ucsname==NULL || *ucsname==NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ) return CBERRALLOC;
 	onebindx=0;
-	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 2 ");
 	for( indx=0; indx<*ucsnamelen && onebindx<*onebytenamelen && err<CBNEGATION; ){
 		chr = (*onebytename)[onebindx];
 		err = cb_put_ucs_chr( chr, &(*ucsname), &indx, *ucsnamelen );
 		++onebindx;
-		//fprintf(stderr, ".");
 	}
-	//fprintf(stderr, "\ncb_copy_ucsname_from_onebyte: 3 ");
 	return err;
 }
 
@@ -466,6 +447,8 @@ int cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsi
  * If search is not done name by name (the names being in the list), the tree structure
  * will be broken. It is possible to find just one name like this. During other 
  * searches, the tree would be broken. 19.8.2015
+ *
+ * May be removed if not used (27.8.2015).
  */
 /**
 int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen ){

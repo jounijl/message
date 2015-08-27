@@ -49,7 +49,7 @@ int  cb_read_value_leaves( CBFILE **cbs );
 
 /*
  * 30.11.2013. Finds a variable described by dot-separated namelist
- * name1.name2.name3 from the values of the previous variables. */
+ * name1.name2.name3 from the values of the previous variables. (moved to test_cbsearch.c) */
 //int  cb_tree_set_cursor_ucs(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl); // this function is in cbsearch
 
 /*
@@ -81,6 +81,8 @@ int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, uns
  *
  * With these, it's possible to search names like name1.name2.name3 with changing
  * the names in other searches.
+ *
+ * May be removed if not needed (27.8.2015).
  */
 //int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen);
 //int cb_search_leaf_from_currentleaf(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen, int levelfromprevious);

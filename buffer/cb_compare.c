@@ -161,8 +161,6 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
 
-	//cb_clog( CBLOGDEBUG, ", result %i.", err );
-
 	switch ( (*mctl).matchctl) {
 	  case  1:
 	    if( err==CBMATCH )
@@ -245,12 +243,9 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	  num=len2;
 	indx1=0;
 	for(indx2=from2; stp!=1 && indx1<num && indx2<num && err<CBNEGATION; ++indx2){
-	  cb_clog( CBLOGDEBUG, ".");
 	  if( (*name1)[indx1]!=(*name2)[indx2] ){
 	    // indx2=num+7; err=CBNOTFOUND;
 	    err=CBNOTFOUND; // 17.8.2015
-
-	    //cb_clog( CBLOGDEBUG, "\ncomparison1 [%c] != [%c] (0x%X != 0x%X ) index1 %i index2 %i", (*name1)[indx1], (*name2)[indx2] , (*name1)[indx1], (*name2)[indx2], indx1, indx2 );
 
             cmp = (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name1)[indx1] );  // 31.7.2014
             cmp -= (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name2)[indx2] ); // 31.7.2014

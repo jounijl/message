@@ -311,7 +311,7 @@ typedef struct cb_conf{
         unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
         unsigned char       removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         unsigned char       removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
-	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND.
+	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
 	unsigned char       removenamewsp:1;        // Remove white space characters inside name
 	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
 	unsigned char       jsonnamecheck:1;        //
@@ -343,8 +343,8 @@ typedef struct cb_name{
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
-// to be removed: leaf is allways first, next is allways the last. It is not possible to add leaves in between.
-	signed long int       serial;         // serial number of the name (=lists namecount when leaf was added). This value is used to determine the order of leaves in for example determining the last leaf level from namelist. 23.8.2015.
+// to be (possibly) removed: leaf is allways first, next is allways the last. It is not possible to add leaves in between.
+	//signed long int       serial;         // serial number of the name (=lists namecount when leaf was added). This value is used to determine the order of leaves in for example determining the last leaf level from namelist. 23.8.2015.
 	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
@@ -353,7 +353,7 @@ typedef struct cb_namelist{
 	cb_name            *current;
 	cb_name            *last;
 	signed long int     namecount;
-	signed long int     nodecount;        // count of all names and leaves to determine the serial number, 23.8.2015
+	//signed long int     nodecount;        // count of all names and leaves to determine the serial number, 23.8.2015
 	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
 
