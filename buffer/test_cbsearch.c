@@ -52,7 +52,7 @@ int main (int argc, char **argv) {
 	int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
 	unsigned int namearraylen=0, y=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
-	char list=0, inputenc=CBENC1BYTE, tree=0;
+	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
@@ -114,8 +114,8 @@ int main (int argc, char **argv) {
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_polysemantic_names(&in);
-	cb_use_as_stream(&in);
-	//cb_use_as_file(&in);
+	//cb_use_as_stream(&in); // BEFORE TEST 11.8.2015
+	cb_use_as_file(&in); // TEST 11.8.2015
 	//cb_use_as_seekable_file(&in); // namelist is endless, memory increases
 	cb_set_encoding(&in, CBENC1BYTE);
 	cb_set_search_state(&in, CBSTATETREE);
@@ -141,7 +141,7 @@ int main (int argc, char **argv) {
 	  }
 	  u = get_option( argv[i], argv[i+1], 'u', &value); // unique names
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
-	    cb_set_to_unique_names(&in);
+	    uniquenamesandleaves=1;
 	    continue;
 	  }
 	  u = get_option( argv[i], argv[i+1], 'b', &value); // buffer size
@@ -221,6 +221,11 @@ int main (int argc, char **argv) {
 	fprintf(stderr,"\n");
 #endif
 
+	if( uniquenamesandleaves==1 ){
+	    cb_set_to_unique_names(&in);
+	    cb_set_to_unique_leaves(&in);
+	}
+
 	// Program
 	co = count;
 	if(count==-1)
@@ -255,7 +260,7 @@ int main (int argc, char **argv) {
 	}
 
 	// Debug:
-	//cb_print_names(&in, CBLOGDEBUG);
+	cb_print_names(&in, CBLOGDEBUG);
 
 	memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
 	name[namebuflen] = '\0';
@@ -275,8 +280,9 @@ void usage (char *progname[]){
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
 	fprintf(stderr,"\t-t include the search from the subtrees\n");
 	fprintf(stderr,"\t-u set to unique names \n");
-	fprintf(stderr,"\t-z set to configuration file format\n");
+	fprintf(stderr,"\t-z set to the configuration file format\n");
 	fprintf(stderr,"\t-J use JSON format\n");
+	fprintf(stderr,"\t-x regular expression search\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");

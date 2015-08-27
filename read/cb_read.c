@@ -353,6 +353,9 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
 
 }
 
+/*
+ * If (**cbf).cf.json==1, removes quotes around the content.
+ */
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
@@ -393,20 +396,19 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
                         continue;
                 }
                 if( err<CBERROR ){
-			if( chprev!=(**cbf).cf.bypass &&  chr==(unsigned long int)'\"' ){
-             		  if( injsonquotes==0 ) // first quote
- 		            ++injsonquotes;
-              		  else if( injsonquotes==1 ) // second quote
+			if( chprev!=(**cbf).cf.bypass &&  chr==(unsigned long int)'\"' ){ // value without quotes 1
+              		  if( injsonquotes==1 ) // second quote
                 	    injsonquotes=2; // ready to save the name (or after value)
-         		  else if( injsonquotes==2 ) // after second quote
-                	    injsonquotes=0; // after the name (or value ended with '"')
-  	          	}
-			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ! ( \
-				( ( WSP(chr) || CR(chr) || LF(chr) ) && ( injsonquotes==0 || injsonquotes>=2 ) ) ) ) ) {
+			}
+			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && injsonquotes==1 ) ) {
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 				//cb_clog( CBLOGERR, "\n[%c], indx %i, err %i.", (unsigned char) chr, ucsbufindx, err );
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
+			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' ){ // value without quotes 2
+             		  if( injsonquotes==0 ) // first quote
+ 		            injsonquotes=1; // 1
+  	          	}
 		}
                 if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
                         chr = (**cbf).cf.rstart; // any chr not bypass

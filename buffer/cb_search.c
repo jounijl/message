@@ -738,6 +738,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
 
+/**
 	cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: ocoffset %i, matchctl %i", ocoffset, (*mctl).matchctl );
 	if( (**cbs).cf.searchmethod==CBSEARCHUNIQUENAMES )
 		cb_clog( CBLOGDEBUG, ", unique names");
@@ -753,6 +754,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 		cb_clog( CBLOGDEBUG, ", not cbstatetree, [");
 	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN );
 	cb_clog( CBLOGDEBUG, "].");
+ **/
 
 	//if(*ucsname==NULL || namelength==NULL ){ // 13.12.2014
 	if( ucsname==NULL || *ucsname==NULL || namelength==NULL ){ // 7.7.2015
@@ -800,8 +802,12 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    openpairs = 1;
 	    //openpairs = ocoffset;
 	  }
-	  if( (**cbs).cf.json==1 ) // json does not work yet with previousopenpairs, using ocoffset as previously, 23.8.2015
-	    openpairs = ocoffset;  // names have to be read one after another. Ocoffset has to be known to be the next level.
+	}
+	if( (**cbs).cf.json==1 ){ // json does not work yet with previousopenpairs, using ocoffset as previously, 23.8.2015
+	  //openpairs = levels+1;  // TEST 24.8.2015
+	  openpairs = ocoffset;  // names have to be read one after another. Ocoffset has to be known to be the next level.
+	  //if(openpairs==0)
+	  //  openpairs=1; // false guess, 24.8.2015
 	}
 	
 	//cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: openpairs at start %i (levels %i, ocoffset %i).", openpairs, levels, ocoffset);
@@ -921,8 +927,11 @@ cb_set_cursor_reset_name_index:
 	        ++injsonquotes;
 	      else if( injsonquotes==1 ) // second quote
 	        injsonquotes=2; // ready to save the name (or after value)
-	      else if( injsonquotes==2 ) // after second quote
-	        injsonquotes=0; // after the name (or value ended with '"')
+	      //else if( injsonquotes==2 ) // after second quote
+	      //  injsonquotes=0; // after the name (or value ended with '"')
+	    }
+	    if( injsonquotes==2 && chr!=(unsigned long int)'\"' ){
+	      injsonquotes=3; // do not save these characters anymore to name, 27.8.2015
 	    }
 
 	    // Second is JSON comma problem ("na:me") prevention in name 21.2.2015
@@ -937,10 +946,16 @@ cb_set_cursor_reset_name_index:
 		rstartflipflop=1;
 
 	      //cb_clog( CBLOGDEBUG, "\nrstartflipflop=%i", rstartflipflop );
+	      //cb_clog( CBLOGDEBUG, "\ninjsonquotes=%i", injsonquotes );
+	      //if(chr==(**cbs).cf.rstart && (**cbs).cf.json==1)
+		//cb_clog( CBLOGDEBUG, ", rstart.");
+	      //else
+		//cb_clog( CBLOGDEBUG, ", subrstart.");
 
 	      if( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) { // 21.2.2015 JSON
 		injsonquotes=0;
 	        tovalue=0;
+	        //cb_clog( CBLOGDEBUG, "\njson, reset_name_index subrstart. " );
 	        goto cb_set_cursor_reset_name_index; // update openpairs only from ':' (JSON rstart is ':')
 	      } // /21.2.2015
 	      if(openpairs>0){ // leaf, 13.12.2013
@@ -970,8 +985,6 @@ cb_set_cursor_reset_name_index:
 	    atvalue=1;
 
 	    //cb_clog( CBLOGDEBUG, "\n Going to save name from charbuf to fname." );
-	    //if( fname==NULL )
-	    //  cb_clog( CBLOGDEBUG, "\n fname is null." );
 	    //if( charbufptr==NULL )
 	    //  cb_clog( CBLOGDEBUG, "\n charbufptr is null." );
 
@@ -980,7 +993,10 @@ cb_set_cursor_reset_name_index:
 	      buferr = cb_save_name_from_charbuf( &(*cbs), &fname, chroffset, &charbufptr, index, nameoffset); // 7.12.2013, 6.12.2014
 	      if(buferr==CBNAMEOUTOFBUF || buferr>=CBNEGATION){ cb_log( &(*cbs), CBLOGNOTICE, "\ncb_set_cursor_ucs: cb_save_name_from_ucs returned %i ", buferr); }
 
-	      //cb_clog( CBLOGDEBUG, "\ncb_save_name_from_charbuf: %i .", buferr );
+	      //cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: cb_save_name_from_charbuf returned %i .", buferr );
+
+	      if( fname==NULL )
+	        cb_clog( CBLOGDEBUG, "\n fname is null." );
 
 	      //if(buferr!=CBNAMEOUTOFBUF ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	      if(buferr!=CBNAMEOUTOFBUF && fname!=NULL ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
@@ -989,9 +1005,10 @@ cb_set_cursor_reset_name_index:
 		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
 		//cb_clog( CBLOGDEBUG, "| ");
 
-		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes==2 && (**cbs).cf.jsonnamecheck!=1 ) || \
-				( injsonquotes==2 && (**cbs).cf.jsonnamecheck==1 && \
-				cb_check_json_name( &(*fname).namebuf, &(*fname).namelen )!=CBNOTJSON ) ) ) ){ // 19.2.2015
+		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes>=2 && (**cbs).cf.jsonnamecheck!=1 ) || \
+				( injsonquotes>=2 && (**cbs).cf.jsonnamecheck==1 && \
+				cb_check_json_name( &charbufptr, &index )!=CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
+				// cb_check_json_name( &(*fname).namebuf, &(*fname).namelen )!=CBNOTJSON ) ) ) ){ // 19.2.2015
 	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
 	          buferr = cb_put_name(&(*cbs), &fname, openpairs, previousopenpairs); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
 
@@ -1104,6 +1121,7 @@ cb_set_cursor_reset_name_index:
 		rstartflipflop=0;
 
 	      //cb_clog( CBLOGDEBUG, "\nrstartflipflop=%i", rstartflipflop );
+	      //cb_clog( CBLOGDEBUG, "\ninjsonquotes=%i", injsonquotes );
 
 	      /*
 	       * '&', start a new name, 27.2.2015: solution to '}' + ',' -> --openpairs once
@@ -1135,7 +1153,7 @@ cb_set_cursor_reset_name_index:
 		/*
 		 * JSON special: concecutive '}' and ',' */
 		//cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs<ocoffset, %i<%i. TEST 10.7.2015, returning VALUEEND", openpairs, ocoffset );
-		cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs<previousopenpairs && openpairs==0, %i<%i. TEST 10.7.2015, returning VALUEEND", openpairs, previousopenpairs );
+		//cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs<previousopenpairs && openpairs==%i, %i<%i. TEST 10.7.2015, returning VALUEEND", openpairs, openpairs, previousopenpairs );
 	        injsonquotes=0;
 		/*
 		 * In test 22.8.2015, update length here and second time at cb_put_name or 
@@ -1181,8 +1199,11 @@ cb_set_cursor_reset_name_index:
 	      ;
 	  }else if((**cbs).cf.searchstate==CBSTATETREE ){ // save character to buffer, CBSTATETREE
 	      // Next json condition has no effect, 11.7.2015
-	      if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( injsonquotes==1 || injsonquotes==2 ) ) ) // 11.7.2015, if json, write name only if inside quotes (json name is always "string")
-	      	buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
+	      //cb_log( &(*cbs), CBLOGDEBUG, "\nPut chr json %i, injsonquotes %i (has to be 1 or 2)", (**cbs).cf.json, injsonquotes );
+	      if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( injsonquotes==1 || injsonquotes==2 ) ) ){ // 11.7.2015, if json, write name only if inside quotes (json name is always "string")
+	        buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
+	        //cb_clog( CBLOGDEBUG, "\n[%c] written.", (char) chr);
+	      }
 	  }else{ // save character to buffer CBSTATELESS
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }
@@ -1240,7 +1261,7 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 	unsigned long int cmp=0x61;
 	int buferr=CBSUCCESS, err=CBSUCCESS;
 	int indx = 0;
-	char atname=0;
+	char atname=0, injsonquotes=0;
 
 	if( cbs==NULL || *cbs==NULL || fname==NULL || charbuf==NULL || *charbuf==NULL ){
 	  //cb_clog( CBLOGDEBUG, "\ncb_save_name_from_charbuf: parameter was NULL, CBERRALLOC.");
@@ -1290,10 +1311,15 @@ cb_save_name_ucs_removals:
               /* Write name */
               if( cmp!=(**cbs).cf.cend && buferr==CBSUCCESS){ // Name, 28.8.2013
                 if( ! NAMEXCL( cmp ) ){ // bom should be replaced if it's not first in stream
-	          if( ! ( indx==index && (**cbs).cf.removewsp==1 && WSP( cmp ) ) ){ // special last white space, 13.12.2013
-                    buferr = cb_put_ucs_chr( cmp, &(**fname).namebuf, &(**fname).namelen, (**fname).buflen );
-	            //cb_log( &(*cbs), CBLOGDEBUG, "[%c]", (char) cmp);
-	            atname=1;
+	          if( cmp == (unsigned long int) 0x22 && injsonquotes==1 )
+	            ++injsonquotes;
+	          if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && injsonquotes==1 ) ){ // 27.8.2015, do not save quotes in json name "name" -> name (after checking the name format)
+	            if( ! ( indx==index && (**cbs).cf.removewsp==1 && WSP( cmp ) ) ){ // special last white space, 13.12.2013
+                      buferr = cb_put_ucs_chr( cmp, &(**fname).namebuf, &(**fname).namelen, (**fname).buflen );
+	              atname=1;
+	            }
+		  }else if( cmp == (unsigned long int) 0x22 ){ // '"'
+	            ++injsonquotes; if(injsonquotes<0) injsonquotes=3;
 	          }
 	        }
               }
@@ -1347,7 +1373,7 @@ int  cb_check_json_name( unsigned char **ucsname, int *namelength ){
 	err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, *namelength );
 	indx = *namelength-4;
 	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, *namelength );
-	if( chprev!= (unsigned long int) '\\' && chr == (unsigned long int) '"' ){
+	if( chprev!= (unsigned long int) '\\' && chr == (unsigned long int) '"' ){ // json bypass character 
           //cb_clog( CBLOGDEBUG, "\ncb_check_json_name: |");
 	  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, *namelength);
           //cb_clog( CBLOGDEBUG, "| returning success.");
