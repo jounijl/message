@@ -66,13 +66,13 @@
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0; 
+        int bufindx=0, err=CBSUCCESS, opt=0, indx=0, chrbufindx=0, parambufsize=0; 
         unsigned char *ucsname = NULL; 
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
 
 	/*
 	 * Arguments. */
@@ -90,14 +90,16 @@ int main (int argc, char *argv[]) {
 	chrbuf[BLKSIZE*4]='\0';
 
 	/* Regular expression pattern */
-        parambufsize = strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
-	ucsname = (unsigned char*) malloc( sizeof(char)*( (parambufsize*4)+1 ) ); // '\0' + argumentsize*4 // bom is ignored
+        parambufsize = (int) strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
+	if(parambufsize<0)
+	  parambufsize=0x7FFFFFFF;
+	ucsname = (unsigned char*) malloc( sizeof(char)*( (unsigned int) (parambufsize*4)+1 ) ); // '\0' + argumentsize*4 // bom is ignored
         if( ucsname==NULL ){ fprintf(stderr,"\nAllocation error, ucsname."); return CBERRALLOC; }
 	memset( &(*ucsname), (int) 0x20, (size_t) (parambufsize*4));
 	ucsname[parambufsize*4]='\0';
 
 	/* Copy */
-	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<strlen( argv[1] ); ++indx ){
+	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<(int) (strlen( argv[1] )&0x7FFFFFFF); ++indx ){
 	  err = cb_put_ucs_chr( (unsigned long int) argv[1][indx], &ucsname, &chrbufindx, (parambufsize*4));
 	  //err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned long int) argv[1][indx] ), &ucsname, &chrbufindx, (parambufsize*4)); // 13.7.2014
 	}
@@ -105,7 +107,7 @@ int main (int argc, char *argv[]) {
 	ucsname[ parambufsize+1 ]='\0';
 
 	fprintf(stderr,"\n%s parameter: [", argv[0]);
-	cb_print_ucs_chrbuf(&ucsname, chrbufindx, parambufsize);
+	cb_print_ucs_chrbuf(CBLOGDEBUG, &ucsname, chrbufindx, parambufsize);
 	fprintf(stderr,"] length = %i , chrbufindx=%i.", strlen( argv[1] ), chrbufindx );
 
 
@@ -130,12 +132,12 @@ int main (int argc, char *argv[]) {
 	 * Matching the input stream as overlapped blocks */
 	chr = (unsigned long int) getc(stdin); 	// bom is not needed [pcre.txt, "CHARACTER CODES"], pcre ignores bom and assumes host byte order
 	//fprintf(stderr,"\ntest_regexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
-	while( chr!=EOF && bufindx<BLKSIZE ){
+	while( chr != (unsigned long int) EOF && bufindx<BLKSIZE ){
 	  cb_put_ucs_chr(chr, &chrbuf, &bufindx, BLKSIZE);
 	  //cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( chr ), &chrbuf, &bufindx, BLKSIZE); // 13.7.2014
 	  chr = (unsigned long int) getc(stdin);
 	  //fprintf(stderr,"\ntest_regexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
-	  if(bufindx>=(BLKSIZE-6) || chr==EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
+	  if(bufindx>=(BLKSIZE-6) || chr == (unsigned long int) EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
 
             if( chr!=(unsigned char)EOF ){ // Last one char has to be searched still
 	      /*
@@ -146,7 +148,7 @@ int main (int argc, char *argv[]) {
 	       * Last block. */
 	      opt = opt & ~PCRE_NOTEOL;
 	    }
-	    err = cb_compare_regexp(&chrbuf, bufindx, 0, 0, &mctl, &mcount);
+	    err = cb_compare_regexp(&chrbuf, bufindx, &mctl, &mcount);
 	    fprintf(stderr,"\n After cb_compare_regexp,");
 	    if(err>=CBERROR )
 	      fprintf(stderr," error %i.", err);

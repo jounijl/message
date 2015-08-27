@@ -72,7 +72,7 @@ int main (int argc, char *argv[]) {
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
 
 	/*
 	 * Arguments. */
@@ -147,7 +147,7 @@ int main (int argc, char *argv[]) {
 	       * Last block. */
 	      opt = opt & ~PCRE_NOTEOL;
 	    }
-	    err = cb_compare_regexp_one_block(&chrbuf, bufindx, 0, 0, &mctl, &mcount);
+	    err = cb_compare_regexp_one_block(&chrbuf, bufindx, 0, &mctl, &mcount);
 	    //fprintf(stderr,"\n regexp_search main: after cb_compare_regexp,");
 	    if(err>=CBERROR )
 	      fprintf(stderr," error %i.", err);

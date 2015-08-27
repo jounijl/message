@@ -50,8 +50,6 @@ int main (int argc, char *argv[]) {
 	CBFILE *in = NULL;
 	CBFILE *out = NULL;
         int fd=0;
-	unsigned char *filename = NULL;
-	ssize_t ret = (ssize_t) 0;
 	unsigned char chr = 0;
         int err1=CBSUCCESS, err2=CBSUCCESS;
 
@@ -61,6 +59,7 @@ int main (int argc, char *argv[]) {
             return ERROR;
           }
         }
+	err1 = argc; err1=CBSUCCESS;
 
         // Open file
         fd  = open( &(*argv[1]), ( O_RDONLY ) );
@@ -106,6 +105,6 @@ int main (int argc, char *argv[]) {
 
 void usage (char *progname[]){
         printf("\nUsage:\n");
-        printf("\t%s <filename>]\n", progname[0]);
+        printf("\t%s <filename>\n", progname[0]);
         printf("\tLoops file content to output.\n");
 }

@@ -24,8 +24,26 @@ void cb_bytecount(unsigned long int *chr, int *bytecount);
 int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
 int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
 int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
+int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
 
+/*
+ * If ahead had bytes or unfold==1, unfolds read character(s). */
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
+	long int chroffset=0; // int err=CBSUCCESS;
+        if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ){ return CBERRALLOC; }
+
+	if( (**cbs).ahd.ahead > 0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead )==(*(**cbs).cb).contentlen  ){
+		/*
+		 * Special case. Reading from the end of buffer and ahead was not empty. Reading the one character
+		 * from the ahead leaving ahead buffer empty. 2.8.2015 */ /* Not tested yet, 3.8.2015. */
+		return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
+	}
+	/*
+	 * Library never unfolds characters read elsewhere than cb_set_cursor_match_length_ucs_matchctl */
+	return cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+}
+int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
        int err=CBSUCCESS, ret=CBNOTFOUND;
        if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
        if((**cbs).encoding==CBENCAUTO) // auto
@@ -142,7 +160,7 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	*ch = 0;
 	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
 	  err = cb_get_ch(cbs, &byte);
-	  *ch+=(long int)byte;
+	  *ch+=(unsigned long int)byte;
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
 	}
 	return err;
@@ -193,7 +211,7 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	  byte = (unsigned char) chr_tmp;
 	  // err = cb_put_ch(cbs, &byte); byteswritten++;
 	  err = cb_put_ch(cbs, byte); byteswritten++; // 12.8.2013
-	  if(err>CBNEGATION){ fprintf(stderr,"\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
+	  if(err>CBNEGATION){ cb_clog( CBLOGNOTICE, "\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
 	  if(byteswritten==1){
 	        if(byteisutf8head2( byte )){  utfbytes=2;
 		}else if(byteisutf8head3( byte )){  utfbytes=3;
@@ -239,13 +257,13 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	  }
 	}
 cb_put_utf8_ch_return_not_utf:
-	fprintf(stderr,"\ncb_put_utf8_ch: not utf, writecount: %i, high: 0x%X low: 0x%X.", byteswritten, (int) *chr_high, (int) *chr);
+	cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf8_ch: not utf, writecount: %i, high: 0x%X low: 0x%X.", byteswritten, (int) *chr_high, (int) *chr);
 	*bytecount = byteswritten;
         *storedbytes = byteswritten; // uusi
         return CBNOTUTF;
 
 cb_put_utf8_ch_return_bytecount_error:
-	fprintf(stderr,"\ncb_put_utf8_ch: bytecount %i is over the allowed limit %i or %i, chr_high: 0x%X chr: 0x%X.", \
+	cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf8_ch: bytecount %i is over the allowed limit %i or %i, chr_high: 0x%X chr: 0x%X.", \
 		byteswritten, (**cbs).encodingbytes, *bytecount, (int) *chr_high, (int) *chr);
 	*bytecount = byteswritten;
         *storedbytes = byteswritten; // uusi
@@ -270,10 +288,11 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	*chr=byte; *bytecount=1;
 
 	//
-	if( *chr == EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
+	if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
 	//
 
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
+	  *storedbytes = 1; // 6.12.2014, compiler warning: storedbytes was unused
           return CBSUCCESS;
 	}else if( byteisutf8head2( byte ) && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=2 ))  state=2;
 	else if( byteisutf8head3( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=3 ))  state=3;
@@ -281,30 +300,33 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	else if( byteisutf8head5( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=5 ))  state=5;
 	else if( byteisutf8head6( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=6 ))  state=6;
 	else{  // not utf
-	  fprintf(stderr,"\ncb_get_utf8_ch: first byte was not in utf format.");
+	  cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: first byte was not in utf format.");
+	  *storedbytes = 1; // 6.12.2014, compiler warning: storedbytes was unused
           return CBNOTUTF;
 	}
+
+	*storedbytes = state; // 6.12.2014, compiler warning: storedbytes was unused
 
 	if( state>1 && state<=6 ){
 	  for(indx=1;indx<state;++indx){
 	    err = cb_get_ch(cbs, &byte); *bytecount=*bytecount+1;
 	    if(state<=4){
-	      *chr=*chr<<8; *chr+=byte; 
+	      *chr=*chr<<8; *chr+=byte;
 	      if(state==3){
 	        if(intisutf8bom( *chr ))
 		  goto cb_get_utf8_ch_return_bom;
 	      }
 	    }else if(state==5){
-	      *chr_high=byte; 
+	      *chr_high=byte;
 	    }else if(state==6){
-	      *chr_high=*chr_high<<8; *chr_high+=byte; 
+	      *chr_high=*chr_high<<8; *chr_high+=byte;
 	    }
 	    if( err > CBNEGATION ){
-	      fprintf(stderr,"\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
+	      cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
 	      return err;
 	    }
 	    if( ! byteisutf8tail( byte ) ){
-	      fprintf(stderr,"\ncb_get_utf8_ch: byte after header is not in utf format, bytecount %i.", *bytecount);
+	      cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: byte after header is not in utf format, bytecount %i.", *bytecount);
 	      return CBNOTUTF;
 	    }
 	  }
@@ -324,7 +346,7 @@ int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 
 	*chr=low;
 	if( bytes==1 ){ high=0; *bytecount=1;
-//	  fprintf(stderr,"[%c]%i", (char)*chr, *bytecount );
+	  //fprintf(stderr,"[%c]%i", (char)*chr, *bytecount );
 	  return err;
 	} // 7 bits, ascii, 0x7F
 	// 00111111 = 0x3F ; 11000000 = 0xC0; 
@@ -376,7 +398,7 @@ int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	if(bytes==6){ result = tmp1 & 0x7FFFFFFF; *bytecount=4;
 	  goto cb_get_ucs_ch_return; // 31 bits needed, 0x7FFFFFFF	  
 	}else{
-	  fprintf(stderr, "\ncb_get_ucs_ch: error, bytes over 6.");
+	  cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_ucs_ch: error, bytes over 6.");
 	}
 cb_get_ucs_ch_return:
 	if(*bytecount==0) *bytecount=1;
@@ -504,11 +526,20 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
 	  return CBERRALLOC;
 
         if(*chr<=0xFFFF){
+	  *storedbytes=2; // 6.12.2014 storedbytes is unused
+	  if(*chr<=0xFF)  // 6.12.2014 bytecount is unused
+	    *bytecount=1;
+	  else
+	    *bytecount=2;
           if( (**cbs).encoding==CBENCUTF16BE )
             return cb_put_multibyte_ch(&(*cbs), *chr);
           if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // 1.9.2013
             return cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(*chr) );            
-        }else if(*chr<=0xFFFFF){
+        // }else if(*chr<=0xFFFFF){
+        }else if(*chr<=0x10FFFF){ // 6.12.2014
+	  // surrogate pairs from U+10000 to U+10FFFF: pairs of 16-bit code units [6.12.2014 Unicode Specification]
+	  *storedbytes=4; // 6.12.2014 storedbytes was missing
+	  *bytecount=3;   // 6.12.2014 bytecount was missing
           lower = lower | ( *chr & 0x3FF ) ; // last ten bits
           upper = upper | ( (*chr)>>10 & 0x3FF ) ; // upper ten bits
           if( (**cbs).encoding==CBENCUTF16BE ){
@@ -521,7 +552,7 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
           }
           return err;
         }else{
-          fprintf(stderr,"\ncb_put_utf16_ch: char %lX was out of range, err=%i.", *chr, err);
+          cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf16_ch: char %lX was out of range, err=%i.", *chr, err);
           return CBUCSCHAROUTOFRANGE;
         }
         return CBWRONGENCODINGCALL;
@@ -531,30 +562,34 @@ int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         int err=CBSUCCESS; 
 	if(cbs==NULL || *cbs==NULL || chr==NULL )
 	  return CBERRALLOC;
+	*storedbytes=0;
 
 cb_get_utf16_ch_get_next_chr:
         err = cb_get_multibyte_ch( &(*cbs), &(*chr));
-        if(err>CBERROR){ fprintf(stderr,"\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
-        if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800
+	*storedbytes+=2; // 6.12.2014
+#ifndef BIGENDIAN 
+        if( (**cbs).encoding==CBENCUTF16BE ) // moved here 6.12.2014
+          *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
+#endif            
+        if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
+        if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800 ; (msb)
           upper = *chr & 0x3FF;
           goto cb_get_utf16_ch_get_next_chr;
         }
-        if( ( *chr & 0xFC00 ) == 0xDC00 ){ // 1111110000000000 = 0xFC00 ; 110111 00000 00000 = 0xDC00
+        if( ( *chr & 0xFC00 ) == 0xDC00 ){ // 1111110000000000 = 0xFC00 ; 110111 00000 00000 = 0xDC00 ; (lsb)
           lower = *chr & 0x3FF;
           *chr = upper; *chr = (*chr)<<10;
           *chr = *chr | lower;
         }
-#ifdef BIGENDIAN 
-// turha (?)
-//        if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE )
-//          *chr = cb_reverse_two_bytes(*chr); // correct to UCS after reading like BE
-#else
-        if( (**cbs).encoding==CBENCUTF16BE )
-          *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
-#endif            
         if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE )
           return CBWRONGENCODINGCALL;
-        if( *chr > 0xFFFFF )
+        if( *chr <= 0xFF ) // 6.12.2014, compiler error bytecount was not used
+	  *bytecount=1;
+        else if( *chr <= 0xFFFF )
+  	  *bytecount=2;
+        else if( *chr <= 0x10FFFF )
+  	  *bytecount=3;
+        else if( *chr > 0x10FFFF ) // from 0xFFFFF, 6.12.2014
           return CBUCSCHAROUTOFRANGE;
         return err;
 }
@@ -595,7 +630,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
 	  if(err<CBERROR){
              *chr = cb_reverse_four_bytes(rev);
           }else{
-             fprintf(stderr,"cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
+             cb_log( &(*cbs), CBLOGERR, "cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
           }
           return err;
         }
@@ -607,7 +642,6 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
  */
 unsigned int  cb_reverse_int32_bits(unsigned int from){
 	unsigned int upper=0, lower=0, new=0;
-        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_int16_bits(lower);
@@ -622,11 +656,14 @@ unsigned int  cb_reverse_int32_bits(unsigned int from){
 unsigned int  cb_reverse_int16_bits(unsigned int from){
 	unsigned int  new=0;
 	unsigned char upper=0, lower=0;
-	upper = from>>8; // 8 upper bits
+	upper = (unsigned char) from>>8; // 8 upper bits
 	lower = 0xFF & from; // 8 lower bits
         lower = cb_reverse_char8_bits(lower);
 	upper = cb_reverse_char8_bits(upper);
-	new = lower<<8;
+	new = new&lower; // 6.12.2014
+	new = new<<8; // 6.12.2014
+	//new =  lower<<8;
+
 	new = new | upper;
 	return new;
 }
@@ -636,21 +673,20 @@ unsigned int  cb_reverse_int16_bits(unsigned int from){
  * 1  2  4  8  16 32 64 128
  */
 unsigned char  cb_reverse_char8_bits(unsigned char from){
-	unsigned char new=0; 
-	new = new | (from & 0x01)<<7; 
-	new = new | (from & 0x02)<<5;
-	new = new | (from & 0x04)<<3;
-	new = new | (from & 0x08)<<1;
+	unsigned int new = 0x0000, ifrom = (unsigned int) from;
+	new = new | (ifrom & 0x01)<<7;
+	new = new | (ifrom & 0x02)<<5;
+	new = new | (ifrom & 0x04)<<3;
+	new = new | (ifrom & 0x08)<<1;
 
-	new = new | (from & 0x10)>>1; // 16
-	new = new | (from & 0x20)>>3; // 32
-	new = new | (from & 0x40)>>5; // 64
-	new = new | (from & 0x80)>>7; // 128
-	return new;
+	new = new | (ifrom & 0x10)>>1; // 16
+	new = new | (ifrom & 0x20)>>3; // 32
+	new = new | (ifrom & 0x40)>>5; // 64
+	new = new | (ifrom & 0x80)>>7; // 128
+	return (unsigned char) new;
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
-        //fprintf(stderr,"cb_reverse_int32_bits(%X)\n", from);
 	upper = from>>16; // 16 upper bits
 	lower = 0xFFFF & from; // 16 lower bits
         lower = cb_reverse_two_bytes(lower);
@@ -662,8 +698,8 @@ unsigned int  cb_reverse_four_bytes(unsigned int  from){
 unsigned int  cb_reverse_two_bytes(unsigned int  from){
 	unsigned int  new=0;
 	unsigned char upper=0, lower=0;
-	upper = from>>8; // 8 upper bits
-	lower = 0xFF & from; // 8 lower bits
+	upper = (unsigned char) from>>8; // 8 upper bits
+	lower = (unsigned char) 0xFF & from; // 8 lower bits
 	new = lower; new = new<<8;
 	new = new | upper;
 	return new;
@@ -698,4 +734,105 @@ int  cb_test_cpu_endianness(){
           return CBLITTLEENDIAN;
         }
 	return CBUNKNOWNENDIANNESS;
+}
+
+int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset){
+        int bytecount=0, storedbytes=0;
+        if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL || ahd==NULL)  return CBERRALLOC;
+	return cb_get_chr_unfold_sub( &(*cbs), &(*ahd), &(*chr), &(*chroffset), &bytecount, &storedbytes );
+}
+
+int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes){
+        int tmp=0; int err=CBSUCCESS;
+        unsigned long int empty=0x61;
+        if(cbs==NULL || *cbs==NULL || ahd==NULL || chroffset==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL)
+          return CBERRALLOC;
+
+	if( (**cbs).ahd.ahead>0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead ) !=(*(**cbs).cb).index )
+		cb_clog( CBLOGWARNING, "\ncb_get_chr_unfold_sub: warning, trying to read from unempty ring buffer with different index." );
+
+        if( (**cbs).ahd.ahead == 0){
+          err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+          if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+          if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+cb_get_chr_unfold_try_another:
+          if( WSP( *chr ) && err<CBNEGATION ){
+            cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+            err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+            if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+            if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+            if( WSP( *chr ) && err<CBNEGATION ){
+              cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp );
+              goto cb_get_chr_unfold_try_another;
+            }else{
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes); // save 'any', 1:st in store
+              cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (WSP)
+            } 
+          }else if( CR( *chr ) && err<CBNEGATION ){
+            cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+            err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+            if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+            if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+            if( LF( *chr ) && err<CBNEGATION ){ 
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
+              err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+              if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
+              if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+
+              if( WSP( *chr ) && err<CBNEGATION ){
+                cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // LF
+                cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // CR
+                goto cb_get_chr_unfold_try_another;
+              }else if( err<CBNEGATION ){ 
+                cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes ); // save 'any', 3:rd in store
+                err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (CR)
+              }
+            }else{
+              cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes ); // save 'any', 2:nd in store
+              err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) ); // return first in fifo (CR)
+            }
+          }
+          //if(err>=CBNEGATION){
+            //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
+            //cb_fifo_print_counters(&(**cbs).ahd);
+          //}
+          // Stream, file, buffer
+          *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // Correct offset
+
+          // Seekable file
+          if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+            *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+            if( *chroffset < 0 ) // overflow
+              *chroffset = 0;
+          }
+
+	  //(**cbs).ahd.currentindex = (*(**cbs).cb).index; // place of last read character
+	  (**cbs).ahd.currentindex = *chroffset + *storedbytes; // place of next character, 29.7.2015
+          return err;
+        }else if( (**cbs).ahd.ahead > 0){ // return previously read character
+          err = cb_fifo_get_chr( &(**cbs).ahd, &(*chr), &(*storedbytes) );
+          // Stream, file, buffer
+          *chroffset = (*(**cbs).cb).index - 1 - (**cbs).ahd.bytesahead; // 2.12.2013
+
+          // Seekable file
+          if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
+            *chroffset = (*(**cbs).cb).readlength - 1 - (**cbs).ahd.bytesahead; // overall length to seek to
+            if( *chroffset < 0 ) // overflow
+              *chroffset = 0;
+          }
+
+          if(err>=CBNEGATION){
+            cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
+               storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, *storedbytes, (int) *chr); 
+            cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
+          }
+
+	  // (**cbs).ahd.currentindex = (*(**cbs).cb).index; // place of last read character
+	  (**cbs).ahd.currentindex = *chroffset + *storedbytes; // place of next character, 29.7.2015
+          return err; // returns CBSTREAM
+        }else
+          return CBARRAYOUTOFBOUNDS;
+        return CBERROR;
 }

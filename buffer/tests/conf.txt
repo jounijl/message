@@ -1,0 +1,16 @@
+teksti {
+   aihe = ensimmainen aihe; # kommentti
+   aihe2 =
+     teksti2 {
+	#
+	# Tassa on kommentti
+	#
+        aiheen_t2 = toinen aihe; # kommentti
+        aiheen_t3 = kolmas aihe; # kommentti
+        aiheen_t4 = neljas aihe; # kommentti
+    };
+   #
+   # kommentti
+   #
+   aihe5 = viides aihe; # kommentti
+}

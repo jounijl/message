@@ -1,22 +1,18 @@
 #!/bin/sh
 
 CC="/usr/bin/cc"
-#LD="/usr/bin/ld"
 LD="/usr/bin/clang"
 
 #
 # Library archive
 #
 
-LIBSRCS=" cb_buffer.c cb_compare.c ../read/cb_read.c cb_encoding.c cb_search.c cb_fifo.c"
-LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_encoding.o cb_search_topo.o cb_search.o cb_search_state.o cb_search_tree.o cb_fifo.o "
+LIBSRCS=" cb_buffer.c cb_compare.c ../read/cb_read.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
+#LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_encoding.o cb_search_topo.o cb_search.o cb_search_state.o cb_search_tree.o cb_fifo.o cb_log.o "
+LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
 LIBARCH="libcb.a"
-#FLAGS=" -g -Wall -I.:/usr/include:../include:/usr/local/include -L/usr/lib:/usr/local/lib -lpcre -lpcre16 -lpcre32 "
-# oli ennen 27.11.2014:
-#FLAGS=" -g -Wall -I~/Documents/Source/message/pcre/include -I.:/usr/include:../include -L~/Documents/Source/message/pcre -L/usr/lib -lpcre32 "
-# mika PCRE:ssa oli erikoista, saako UTF:n paalle ohjelmallisesti muutoinkin, ts. kirjastot loytyvat ilman asetuksia?
-FLAGS=" -g -Weverything -I/usr/local/include -I. -I/usr/include -I../include "
-LDFLAGS=" -lc -I/usr/local/include -I. -I/usr/include -I../include -L/usr/lib -L/usr/local/lib -lpcre32 "
+FLAGS=" -g -Weverything -I/usr/local/include -I. -I/usr/include -I../include -I../read -I../write "
+LDFLAGS=" -g -lc -I/usr/local/include -I. -I/usr/include -I../include -L/usr/lib -L/usr/local/lib -lpcre32 "
 
 rm $LIBARCH
 
@@ -25,9 +21,9 @@ for I in $LIBSRCS
    $CC $FLAGS -c $I
 done
 
-$CC $FLAGS -DCBSETSTATETOPOLOGY -c cb_search.c -o cb_search_topo.o
-$CC $FLAGS -DCBSETSTATEFUL      -c cb_search.c -o cb_search_state.o
-$CC $FLAGS -DCBSETSTATETREE     -c cb_search.c -o cb_search_tree.o
+#$CC $FLAGS -DCBSETSTATETOPOLOGY -c cb_search.c -o cb_search_topo.o
+#$CC $FLAGS -DCBSETSTATEFUL      -c cb_search.c -o cb_search_state.o
+#$CC $FLAGS -DCBSETSTATETREE     -c cb_search.c -o cb_search_tree.o
 
 ar -rcs $LIBARCH $LIBOBJS
 
