@@ -310,7 +310,7 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	(**cbn).matchcount=0;
 	(**cbn).firsttimefound=-1;
 	(**cbn).lasttimeused=-1;
-	(**cbn).serial=-1;
+	//(**cbn).serial=-1;
 	(**cbn).next=NULL;
 	(**cbn).leaf=NULL;
 
@@ -626,7 +626,7 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).buflen=blksize;
 	(**cbf).contentlen=0;
 	(**cbf).list.namecount=0;
-	(**cbf).list.nodecount=0;
+	//(**cbf).list.nodecount=0;
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
