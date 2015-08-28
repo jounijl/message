@@ -362,9 +362,9 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpa
 	(*newleaf).firsttimefound = (signed long int) time(NULL);
 	(*newleaf).next = NULL;
 	(*newleaf).leaf = NULL;
-        ++(*(**str).cb).list.nodecount;
-	if( newleaf!=NULL ) // 23.8.2015
-	  (*newleaf).serial = (*(**str).cb).list.nodecount; // 23.8.2015
+        //++(*(**str).cb).list.nodecount;
+	//if( newleaf!=NULL ) // 23.8.2015
+	//  (*newleaf).serial = (*(**str).cb).list.nodecount; // 23.8.2015
 
 	/*
 	 * Update previous leafs length */
@@ -516,9 +516,9 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
           (*(**str).cb).list.current = &(*(*(**str).cb).list.last);
           (*(**str).cb).list.currentleaf = &(*(*(**str).cb).list.last);
           ++(*(**str).cb).list.namecount;
-          ++(*(**str).cb).list.nodecount;
-	  if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
-	    (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
+          //++(*(**str).cb).list.nodecount;
+	  //if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
+	  //  (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
 	  if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
             if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
               (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
@@ -530,9 +530,9 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
           (*(*(**str).cb).list.current).next = NULL; // firsts next
           (*(*(**str).cb).list.current).leaf = NULL;
           (*(**str).cb).list.namecount=1;
-          (*(**str).cb).list.nodecount=1;
-	  if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
-	    (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
+          //(*(**str).cb).list.nodecount=1;
+	  //if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
+	  //  (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
         }
         err = cb_copy_name( &(*cbn), &(*(**str).cb).list.last); if(err!=CBSUCCESS){ return err; } // 7.12.2013
         (*(*(**str).cb).list.last).next = NULL;
