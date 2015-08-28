@@ -36,6 +36,12 @@ Testing program **cbconv** converts between encodings ( usage: flag -h ) includi
 
 ###### Introduction
 
- 
+
 <a href="http://jounijl.github.io/message">http://jounijl.github.io/message</a>
+
+
+###### Feedback
+
+
+<a href="https://docs.google.com/forms/d/1mUHy7VwHJty0KWh-Sa6VXZOele9qmR-11ZIM-0U2Tls/viewform?usp=send_form">Feedback form.</a>
 
