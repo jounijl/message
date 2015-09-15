@@ -300,8 +300,9 @@ int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucsco
 		 	cb_log( &(*cbf), CBLOGDEBUG, " Currentleaf was null.");
 		return CBERRALLOC; 
 	}
-        if( (*(*(**cbf).cb).list.currentleaf).length >= 0 )
-                len = (*(*(**cbf).cb).list.currentleaf).length;
+        if( (*(*(**cbf).cb).list.currentleaf).length >= 0 ){
+                len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
+	}
 	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0)
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
@@ -329,7 +330,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         /*
          * Count length */
         if( (**cn).length > 0 ) // Length from previous count
-                maxlen = (**cn).length;
+                maxlen = (**cn).length * 4; // 15.9.2015, character count times four bytes per character
         // Otherwice allocates maxlength buffer
         
         /*
