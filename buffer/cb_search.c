@@ -34,14 +34,33 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
 int  cb_automatic_encoding_detection(CBFILE **cbs);
 
+int  cb_get_current_level_at_edge(CBFILE **cbs, int *level); // addition 29.9.2015
+int  cb_get_current_level(CBFILE **cbs, int *level); // to be used with cb_set_to_name -- addition 28.9.2015
+int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
+
+int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
+int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
+//int  cb_clear_read_state(CBFILE **cbs); // 29.9.2015, zeros the counters to read the next value with cb_get_chr
+
 int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.2.2015
 
+
+/**
+int  cb_clear_read_state(CBFILE **cbs){
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	//(*(**cbs).cb).list.rd.injsonquotes = 0; (*(**cbs).cb).list.rd.injsonarray = 0;
+	//(*(**cbs).cb).list.rd.wasjsonrend = 0; (*(**cbs).cb).list.rd.wasjsonsubrend = 0;
+	//(*(**cbs).cb).list.rd.rstartflipflop = 1;
+	(*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // lastreadchrwasfromoutside=0;
+	return CBSUCCESS;
+}
+**/
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
  * matchctl and openpairs count. Returns CBNOTFOUND if leaf was not found. 'result' may be NULL. 
  *
- * Returns 
+ * Returns
  *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
  *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekable file)
  *   on error: CBERRALLOC.
@@ -60,38 +79,37 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	  *level = 0;
 	  return CBEMPTY;
 	}
+	*level = 1; // current was not null, at least a name is found at level one
 	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
-	*level = 1;
+	if( (*(**cbs).cb).list.currentleaf!=NULL ){ // addition 28.9.2015
+	  *level = 2;
+	}
 	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.3.2014
 }
 // unsigned to 'int namelen' 6.12.2014
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl){ // 11.4.2014, 23.3.2014
-	int err=CBSUCCESS; char lengthknown=0;
+	int err=CBSUCCESS, currentlevel=0; 
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf_inner: allocation error."); return CBERRALLOC;
 	}
 
-	err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl) );
-	if(err>=CBERROR){ cb_clog( CBLOGERR, "\ncb_set_to_leaf_inner: cb_set_to_leaf_inner_levels, error %i.", err ); }
+	currentlevel = *level;
 
-	if( (*(**cbs).cb).list.currentleaf!=NULL ){ // 21.8.2015
-	  if( (*(*(**cbs).cb).list.currentleaf).length>=0 )
-	    lengthknown = 1; // all leaves are previously read because the last ones length has been updated
+	err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &currentlevel, &(*mctl) );
+	if(err>=CBERROR){ cb_clog( CBLOGERR, "\ncb_set_to_leaf_inner: cb_set_to_leaf_inner_levels, error %i.", err ); }
+	if(err<CBNEGATION){ return err; } // level is correct if CBSUCCESS or CBSUCCESSLEAVESEXIST
+
+	/*
+	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to 
+	 * include the first open pair - if *level is more than 0: toterminal+1 . */
+	//if( currentlevel>1 )
+	//  --currentlevel;
+	*level = currentlevel - (*(**cbs).cb).list.toterminal; 
+	if(*level<0){ // to be sure errors do not occur
+	  cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner: error, levels was negative, %i.", *level );
+	  *level=0; 
 	}
-	if( (*(**cbs).cb).list.current!=NULL ){ // 21.8.2015
-	  if( (*(*(**cbs).cb).list.current).length>=0 )
-	    lengthknown = 2; // last name has been read
-	}
-	if( lengthknown==2 )
-	  *level=0; // the cursor is at the list again (last rend has been read because length>=0)
-	if( lengthknown==1 || lengthknown==2 ){
-	  if(err>=CBNEGATION){ // if not found
-	    if(lengthknown==1)
-	      return CBLEAFVALUEWASREAD;
-	    if(lengthknown==2)
-	      return CBNAMEVALUEWASREAD;
-	  }
-	}
+
 	return err; // found or negation
 }
 // level 19.8.2015
@@ -102,104 +120,102 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_to_leaf_inner_levels: allocation error."); return CBERRALLOC;
 	}
 
-        //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: " );
-
-	if( ( CBMAXLEAVES - 1 + openpairs ) < 0 || *level > CBMAXLEAVES ) // just in case an erroneus loop hangs the application
+	if( ( CBMAXLEAVES - 1 + openpairs ) < 0 || *level > CBMAXLEAVES ){ // just in case an erroneus loop hangs the application
+	  cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: error, endless loop prevention, level exceeded %i.", *level);
 	  return CBNOTFOUND;
+	}
 
 	if( (*(**cbs).cb).list.currentleaf==NULL ){
-          //cb_clog( CBLOGDEBUG, " currentleaf was empty, returning (level %i).", *level );
+          //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: currentleaf was empty, returning CBEMPTY with level %i.", *level );
 	  return CBEMPTY;
 	}
 	// Node
 	leafptr = &(*(*(**cbs).cb).list.currentleaf);
     	/*
 	 * Return value comparison. */
-	if( leafptr!=NULL ) // 3.7.2015
+	if( leafptr!=NULL ){ // 3.7.2015
 	  if( (*leafptr).leaf!=NULL ) // 3.7.2015
 	    nextlevelempty=0; // 3.7.2015
+	}
 
 	//cb_clog( CBLOGDEBUG, " comparing ["); 
+	//cb_clog( CBLOGDEBUG, " ["); 
 	//if(name!=NULL)
 	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
 	//cb_clog( CBLOGDEBUG, "] to [");
 	//if(leafptr!=NULL)
 	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leafptr).namebuf, (*leafptr).namelen, (*leafptr).buflen );
-	//cb_clog( CBLOGDEBUG, "] openpairs %i", openpairs);
+	//cb_clog( CBLOGDEBUG, "] " );
 
-// 19.8.2015, previous place of cb_compare
-//	err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, &(*mctl)); // 11.4.2014, 23.3.2014
-//	if(err==CBMATCH){
-	  if( openpairs < 0 ){  // THIS SHOULD BE REMOVED 19.7.2015
-	    //cb_log( &(*cbs), CBLOGDEBUG,  "\ncb_set_to_leaf_inner_levels: openpairs was negative, %i.", openpairs );
-	    //if( nextlevelempty==0 ) // 3.7.2015
-	    //  return CBNOTFOUNDLEAVESEXIST; // 3.7.2015
-	    //return CBNOTFOUND;
-	  }
-	  //if( openpairs == 0 ){
-	  //  cb_log( &(*cbs), CBLOGDEBUG,  "\ncb_set_to_leaf_inner_levels: openpairs %i. Continuing the search of already searched leafs.", openpairs);
-	  //}
-	  if( openpairs == 1 ){ // 1 = first leaf (leaf or next)
+	if( openpairs == 1 ){ // 1 = first leaf (leaf or next)
 
-	    err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, &(*mctl)); // 11.4.2014, 23.3.2014, new location 19.8.2015
-	    if(err==CBMATCH){ // 19.8.2015
-              /*
-               * 9.12.2013 (from set_to_name):
-               * If searching of multiple same names is needed (in buffer also), do not return 
-               * allready matched name. Instead, increase names matchcount (or set to 1 if it 
-               * becomes 0) and search the next same name.
-               */
-              (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
+	  err = cb_compare( &(*cbs), &(*name), namelen, &(*leafptr).namebuf, (*leafptr).namelen, &(*mctl)); // 11.4.2014, 23.3.2014, new location 19.8.2015
 
-	      //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: matchcount %li .", (*leafptr).matchcount );	
+	  if(err==CBMATCH){ // 19.8.2015
+            /*
+             * 9.12.2013 (from set_to_name):
+             * If searching of multiple same names is needed (in buffer also), do not return 
+             * allready matched name. Instead, increase names matchcount (or set to 1 if it 
+             * becomes 0) and search the next same name.
+             */
+            (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
 
-              if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUELEAVES ){ 
-                if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){ // When used as only buffer, stream case does not apply
-                  if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
-                    /*
-                     * Leafs content was out of memorybuffer, setting
-                     * CBFILE:s index to the edge of the buffer.
-                     */
-                    (*(**cbs).cb).index = (*(**cbs).cb).buflen; // set as a stream, 1.12.2013
-                    return CBNAMEOUTOFBUF;
-                  }
-	        } // this bracked added 17.8.2015 (the same as before)
-                (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
+            if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUELEAVES ){ 
+              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){ // When used as only buffer, stream case does not apply
+                if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
+                  /*
+                   * Leafs content was out of memorybuffer, setting
+                   * CBFILE:s index to the edge of the buffer.
+                   */
+                  (*(**cbs).cb).index = (*(**cbs).cb).buflen; // set as a stream, 1.12.2013
+                  return CBNAMEOUTOFBUF;
+                }
+	      } // this bracked added 17.8.2015 (the same as before)
+              (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
 
-// changed return cbsuccess inside the block 2.7.2015: 
-	        if(nextlevelempty==0) // 3.7.2015
-		  return CBSUCCESSLEAVESEXIST; // 3.7.2015
-	        return CBSUCCESS; // CBMATCH
-              }//else
-	        //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: match, unknown searchmethod (%i,%i) or matchcount %li not 1.", (**cbs).cf.searchmethod, (**cbs).cf.leafsearchmethod, (*leafptr).matchcount );	
-	    }//else
-	      //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: no match, openpairs==1 (effective with match)");
+	      if(nextlevelempty==0){ // 3.7.2015
+  	        return CBSUCCESSLEAVESEXIST; // 3.7.2015
+	      }
+	      return CBSUCCESS; // CBMATCH
+            }//else
+	      //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: match, unknown searchmethod (%i,%i) or matchcount %li not 1.", (**cbs).cf.searchmethod, (**cbs).cf.leafsearchmethod, (*leafptr).matchcount );	
 	  }//else
-	    //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: openpairs was not 1.");
-// 19.8.2015 previous place for cb_compare if(err==CBMATCH){, parentheses closed.
-//	}else
-//	  cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: no match.");
+	    //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: no match, openpairs==1 (effective with match)");
+	}//else
+	  //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: openpairs was not 1.");
 
 	if( (*leafptr).leaf!=NULL && openpairs>=1 ){ // Left
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).leaf);
 	  *level = *level + 1; // level should return the last leafs openpairs count
+	  //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: TO LEFT." );
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, (openpairs-1), &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST){ // 3.7.2015
+	    cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: returning CBSUCCESS, levels %i (2 - leaf).", *level);
 	    return err;
 	  }else
 	    *level = *level - 1; // return to the previous level
+// 4.10.2015: EHDOTUS: tahan kohtaan jos next==null, palauttaa *level ilman miinusta -> on jo lisatty lisayksena 28.9.2015
 
 	}
 	if( (*leafptr).next!=NULL ){ // Right (written after leaf if it is written)
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
+	  //cb_clog( CBLOGDEBUG, "\ncb_set_to_leaf_inner_levels: TO RIGHT." );
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST ){ // 3.7.2015
 	    return err;
 	  }
+	}else if( (*leafptr).next==NULL && (*leafptr).leaf!=NULL && openpairs>=0 ){ // from this else starts addition made 28.9.2015 -- addition 28.9.2015, 2.10.2015
+	  /*
+	   * If the previous leaf compared previously was not null, add level by one (the compared leaf). */
+	  *level = *level + 1; // 2.10.2015 explanations: -1, if next null, +1 if leaf was not null previously
 	}
-	(*(**cbs).cb).list.currentleaf = NULL;
-        if( nextlevelempty==0 ) // 3.7.2015
+	// here ends an addition made 28.9.2015 -- /addition 28.9.2015
+
+	// next was removed in version 22.9.2015: if null here, levels may be found but the currentleaf is null (needed in further tests)
+	(*(**cbs).cb).list.currentleaf = NULL; // 30.9.2015 this is still here (and 8.10.2015)
+        if( nextlevelempty==0 ){ // 3.7.2015
           return CBNOTFOUNDLEAVESEXIST; // 3.7.2015
+	}
 	return CBNOTFOUND;
 }
 /*
@@ -341,6 +357,8 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpa
 	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(**leaf).namebuf, (**leaf).namelen, (**leaf).buflen );
 	//cb_log( &(*str), CBLOGDEBUG, "]");
 
+	cb_init_terminalcount( &(*str) );
+
 	/*
 	 * Find last leaf */
 	leafcount = openpairs;
@@ -468,6 +486,8 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
         if(cbn==NULL || *cbn==NULL || str==NULL || *str==NULL || (**str).cb==NULL )
           return CBERRALLOC;
 
+	cb_init_terminalcount( &(*str) );
+
 	//cb_log( &(*str), CBLOGDEBUG, "\ncb_put_name: openpairs=%i previousopenpairs=%i [", openpairs, previousopenpairs);
 	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen );
 	//cb_log( &(*str), CBLOGDEBUG, "]");
@@ -542,6 +562,104 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
 }
 
 /*
+ * Returns the level of the current location where the cursor reads new characters
+ * at the end of the stream.
+ * */
+int  cb_get_current_level_at_edge(CBFILE **cbs, int *level){ // addition 29.9.2015
+	int currentlevel=0, err=CBSUCCESS;
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || level==NULL ) return CBERRALLOC;
+	err = cb_get_current_level( &(*cbs),  &currentlevel);
+	if(err>=CBERROR){ cb_clog( CBLOGERR, "\ncb_get_current_level_at_edge: cb_get_current_level, error %i.", err); }
+	*level = currentlevel - (*(**cbs).cb).list.toterminal; 
+	/*
+	 * If something reads one rend or subrend away, the *level is incorrect.
+	 *
+	 * The value may not be read before the full name has been read. Otherwice
+ 	 * the level information is lost (unless rend or subrend '}' is inspected in
+	 * the read function).
+	 *
+	 * Possibilities:
+	 * a. If read was not from the library, flag is set. If flag is set, level is set to be a closed pair.
+	 *    - Update of instructions: if value is read, it should be read complitely to last rend.
+	 * b. Improvement of a. The last character is saved and if it is rend or subrend, toterminal is increased.
+	 *    - Update of instructions: if value is read, it can be read until the first rend but not further.
+	 * c. The state of reading, rstartflipflop, injsonarray, injsonquotes is saved in CBFILE and changed in
+	 *    the cb_get_chr function. Toterminal is updated in cb_get_chr.
+	 * d. The programmer must search the full next name with the tree in list before the value can be read as
+	 *    is the case when starting. The tree is formed correctly if no value is read before the name in list 
+	 *    is read.
+	 * e. Like b. but the characters are folded, the last read character is saved in CBFILE if the new character
+	 *    was not SP, tab, cr or lf or the previous was not a bypass (double delim). The toterminal is increased 
+	 *    with one when library is reading it when the last character read was rend. 
+	 * f. c. with unfolding as in e.
+	 *
+	 * Chosen method is f (2), cb_read structure is added to be used in cb_get_chr. For the mean time,
+	 * b. is used (1). The variables and functions in c. can be cleaned to their own functions and the
+	 * variables put into cb_read.
+	 *
+	 */
+
+	//if( *level<0 )
+	//  cb_clog( CBLOGDEBUG, "\ncb_get_current_level_at_edge: debug, error, level<0, *level %i (currentlevel %i, toterminal %i).", *level, currentlevel, (*(**cbs).cb).list.toterminal );
+
+	return err;
+}
+/*
+ * Returns the last read leafs level to be used
+ * in reading the leaves of the names correctly. 
+ *
+ * Returns the level (0 if all are null).*/
+int  cb_get_current_level(CBFILE **cbs, int *level){ // addition 28.9.2015
+	int err = CBSUCCESS;
+	cb_name *iter = NULL;
+	if( level==NULL ) return CBERRALLOC; 
+	*level = 0;
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+
+	//iter = &(*(*(**cbs).cb).list.name); // 2.10.2015, VIRHE TASSA, LASKEMINEN PITAA ALOITTAA AINA VIIMEISESTA LISTAN ALKIOSTA
+	iter = &(*(*(**cbs).cb).list.last); // 2.10.2015, VIRHE TASSA, LASKEMINEN PITAA ALOITTAA AINA VIIMEISESTA LISTAN ALKIOSTA
+					    // TARKISTETTAVA VIELA ONKO MUITA KORJAUKSIA JOTKA LIITTYVAT TAHAN.
+
+	if( iter!=NULL ){
+	  *level = 1;
+	}else{
+	  return CBSUCCESS; // ..._set_leaf returns here, CBEMPTY
+	}
+	//if( (*iter).next!=NULL )
+	//  cb_clog( CBLOGDEBUG, "\ncb_get_current_level: error, name after last was not null.");
+
+	if( (*iter).leaf==NULL ){
+	  return CBSUCCESS;
+	}else{
+	  *level = 2; // 6.10.2015, first leaf, from open pairs
+	}
+	iter = &(* (cb_name*) (*iter).leaf ); // XV , here, level is from closed pair
+	err = cb_get_current_level_sub( &iter , &(*level) );
+	return err;
+}
+int  cb_get_current_level_sub(cb_name **cn, int *level){ // addition 28.9.2015
+	int err = CBSUCCESS;
+	cb_name *iter = NULL;
+	if( cn==NULL || *cn==NULL || level==NULL ) return CBERRALLOC;
+	/*
+	 * Search of last leaf and counting the level. 
+	 *
+	 * Towards right (faster, name is not compared). */
+	if( (**cn).next!=NULL ){
+		iter = &(* (cb_name*) (**cn).next );
+		err = cb_get_current_level_sub( &iter, &(*level) );
+	}else if( (**cn).leaf!=NULL ){ // XV, 3.10.2015, 6.10.2015
+	        *level += 1;
+		iter = &(* (cb_name*) (**cn).leaf );
+		err = cb_get_current_level_sub( &iter, &(*level) );
+	}else{ 
+	 	; //cb_clog( CBLOGDEBUG, "\ncb_get_current_level_sub: next and leaf was null, level %i.", *level);
+	}
+
+	return CBSUCCESS;
+}
+
+/*
  * Returns 
  *   on success: CBSUCCESS, CBSUCCESSLEAVESEXIST
  *   on negation: CBEMPTY, CBNOTFOUND, CBNOTFOUNDLEAVESEXIST, CBNAMEOUTOFBUF (if not file or seekable file)
@@ -551,6 +669,11 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	cb_name *iter = NULL; int err=CBSUCCESS; char nextlevelempty=1;
 
         //cb_clog( CBLOGDEBUG, "\ncb_set_to_name: " );
+
+	//cb_clog( CBLOGDEBUG, " comparing ["); 
+	//if(name!=NULL)
+	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
+	//cb_clog( CBLOGDEBUG, "] ");
 
 	if(*str!=NULL && (**str).cb != NULL && mctl!=NULL ){
 	  iter = &(*(*(**str).cb).list.name);
@@ -607,6 +730,7 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	  //cb_clog( CBLOGWARN, "\ncb_search_get_chr: null parameter was given, error CBERRALLOC.", CBERRALLOC);
 	  return CBERRALLOC;
 	}
+
 	if( (**cbs).cf.unfold==1 && (*(**cbs).cb).contentlen==( (**cbs).ahd.currentindex+(**cbs).ahd.bytesahead ) ){
 	  ; 
 	}else if( (**cbs).cf.unfold==1 ){
@@ -618,7 +742,9 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	  if( err>=CBERROR ){ cb_clog( CBLOGERR, "\ncb_search_get_chr: cb_fifo_init_counters, error %i.", err ); }
 	}
 	if((**cbs).cf.unfold==1){
-	  return cb_get_chr_unfold( &(*cbs), &(**cbs).ahd, &(*chr), &(*chroffset) );
+	  err = cb_get_chr_unfold( &(*cbs), &(**cbs).ahd, &(*chr), &(*chroffset) );
+	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
+	  return err; 
 	}else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  // Stream, buffer, file
@@ -629,6 +755,7 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	  if( (**cbs).cf.type==CBCFGSEEKABLEFILE )
 	    if( (*(**cbs).cb).readlength>0 ) // no overflow, 2.8.2015
 	      *chroffset = (*(**cbs).cb).readlength - 1;
+	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
 	  return err;
 	}
 	return CBERROR;
@@ -680,31 +807,62 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl; mctl.resmcount = 0;
 	return cb_set_cursor_match_length_ucs_matchctl(&(*cbs), &(*ucsname), &(*namelength), ocoffset, &mctl);
 }
+
+/*
+ * Number of closing flow control characters from the level of the last leaf.
+ *
+ * Every saved name or leaf zeros the terminaloffset. Every subrend and rend 
+ * increases it.
+ *
+ * For example: 
+ *        name },    the terminal offset is 2 or
+ *
+ *        name2 } } }, the terminal offset is 4
+ *
+ *       name3: {     the terminal offset is 0
+ *
+ */
+int  cb_init_terminalcount(CBFILE **cbs){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL) return CBERRALLOC;
+	(*(**cbs).cb).list.toterminal=0;
+	//cb_clog( CBLOGDEBUG, "\ncb_init_terminalcount: toterminal %i.", (*(**cbs).cb).list.toterminal );
+	return CBSUCCESS;
+}
+int  cb_increase_terminalcount(CBFILE **cbs){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL) return CBERRALLOC;
+	++(*(**cbs).cb).list.toterminal;
+	if((*(**cbs).cb).list.toterminal<0)
+	  (*(**cbs).cb).list.toterminal=0;
+	//cb_clog( CBLOGDEBUG, "\ncb_increase_terminalcount: toterminal %i.", (*(**cbs).cb).list.toterminal );
+	return CBSUCCESS;
+}
+
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
-	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // , errcontlen=0;
+	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
 	int  buferr=CBSUCCESS; 
 	int  index=0;
-	unsigned long int chr=0, chprev=CBRESULTEND;
+	unsigned long int chr=0, chprev=CBRESULTEND; 
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0;
-	char injsonquotes = 0, wasjsonrend=0; // TEST 10.7.2015, was: , wasjsonsubrend=0;
+	char injsonquotes = 0, injsonarray = 0, wasjsonrend=0, wasjsonsubrend=0, jsonemptybracket=0;
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL;
 	char atvalue=0; 
 	char rstartflipflop=0; // After subrstart '{', rend ';' has the same effect as concecutive rstart '=' and rend ';' (empty value).
-			       // After rstart '=', subrstart '{' or subrend '}' has no effect until rend ';'. 
+			       // After rstart '=', subrstart '{' or subrend '}' has no effect until rend ';'.  (3.10.2015: and reader should read until rend)
 			       // For example: name { name2=text2; name3 { name4=text4; name5=text5; } }
 			       // (JSON can be replaced by setting rstart '"', rend '"' and by removing ':' from name)
         unsigned long int ch3prev=CBRESULTEND+2, ch2prev=CBRESULTEND+1;
 	int openpairs=0, previousopenpairs=0; // cbstatetopology, cbstatetree (+ cb_name length information)
 	int levels=0; // try to find the last read openpairs with this variable
 
-	if( cbs==NULL || *cbs==NULL || mctl==NULL){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || mctl==NULL){
 	  cb_log( &(*cbs), CBLOGALERT, "\ncb_set_cursor_match_length_ucs_matchctl: allocation error."); return CBERRALLOC;
 	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
+
 
 /**
 	cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: ocoffset %i, matchctl %i", ocoffset, (*mctl).matchctl );
@@ -720,9 +878,10 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 		cb_clog( CBLOGDEBUG, ", cbstatetree, [");
 	else
 		cb_clog( CBLOGDEBUG, ", not cbstatetree, [");
-	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN );
-	cb_clog( CBLOGDEBUG, "].");
  **/
+	//cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: ocoffset %i, matchctl %i, NAME [", ocoffset, (*mctl).matchctl );
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), *namelength, CBNAMEBUFLEN );
+	//cb_clog( CBLOGDEBUG, "].");
 
 	//if(*ucsname==NULL || namelength==NULL ){ // 13.12.2014
 	if( ucsname==NULL || *ucsname==NULL || namelength==NULL ){ // 7.7.2015
@@ -730,44 +889,78 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	  return CBERRALLOC;
 	}
 
+	/*
+	 * Previous toterminal if previous read was from outside of the library
+	 * (last rend or subrend).
+	 */
+	if( (**cbs).cf.searchstate==CBSTATETREE && (*(**cbs).cb).list.rd.lastreadchrendedtovalue==1 ){ // 7.10.2015 lastreadchrwasfromoutside==1 ){
+		/*
+	 	 * Last character from reads outside of the library. Most likely the
+	         * last rend or subrend after reading the value.
+		 *
+		 * If reading is stopped one character after the bypass character,
+		 * the tree is not formed correctly. The value should be read to the
+		 * rend or subrend character (until the reading of rends and subrends
+		 * is put to some of the get_chr functions and it's state is saved
+		 * in cb_read or similar solution).
+		 *
+		 */
+		//if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend || (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend ){
+		if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend || ( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend && \
+			( (**cbs).cf.doubledelim==1 || (**cbs).cf.json==1 ) ) ){ // 8.10.2015 (this can be done in any case and this line was not needed)
+		  previousopenpairs=CBMAXLEAVES; // 6.10.2015, from up to down
+		  cb_increase_terminalcount( &(*cbs) );
+		  if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend ){ // wasjsonsubrend is needed here because of '}' ','
+		    wasjsonrend=1; wasjsonsubrend=0; rstartflipflop=0;
+		  }else if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend ){
+		    wasjsonrend=0; wasjsonsubrend=1;
+		  }
+		}
+		(*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015 lastreadchrwasfromoutside=0; // zero the flag after addition (not more additions are needed)
+	}
+
 	if( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ){ // Search next matching leaf (assuming the ocoffset was remembered correctly from the previous search)
 	  openpairs = ocoffset; // 12.12.2013
-	  previousopenpairs = openpairs; // first
 	}
 
 	// 1) Search list (or tree leaves) and set cbs.cb.list.index if name is found
 	if( ocoffset==0 ){ // 12.12.2013
 	  err = cb_set_to_name( &(*cbs), &(*ucsname), *namelength, &(*mctl) ); // 11.3.2014, 23.3.2014
+	  if(err>=CBNEGATION){
+	    if( cb_get_current_level_at_edge( &(*cbs), &levels ) >= CBERROR ){ // count the levels (separately from other functions)
+	      cb_clog( CBLOGERR, "\ncb_set_cursor_match_length_ucs_matchctl: cb_get_current_level, allocation error. ");
+	      return CBERRALLOC;
+	    }else{
+	      openpairs = levels;
+	    }
+	  }
 	}else{
 	  err = cb_set_to_leaf( &(*cbs), &(*ucsname), *namelength, ocoffset, &levels, &(*mctl) ); // mctl 11.3.2014, 23.3.2014
-	  if( err==CBNAMEVALUEWASREAD || err==CBLEAFVALUEWASREAD ){
-	    /*
-	     * At the end of previous value and not found (from length information). */
-	    //cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: value was read previously and name not found. ");
-	    if( err==CBLEAFVALUEWASREAD ){ // TEST 21.8.2015
-	      //cb_clog( CBLOGDEBUG, ", CBLEAFVALUEWASREAD.");
-	      openpairs=0; // A { } [cursor here] B {
-	      previousopenpairs = 1;
-	    }else if( err==CBNAMEVALUEWASREAD ){ // TEST 21.8.2015
-	      //cb_clog( CBLOGDEBUG, ", CBNAMEVALUEWASREAD.");
-	      openpairs=1; // A { } B { [cursor here]
-	      previousopenpairs = 0;
-	    }
-	    if( (**cbs).cf.findleaffromallnames != 1 ){ // find leaf from this one names content only, otherwice, search also from the next names
-	      ret = CBVALUEEND;
+	  if( levels<0 ){
+	    levels = 0; // 30.9.2015 temporary until current is set to null and currentleaf after coming back to the namelist
+	    openpairs = levels; // 30.9.2015
+	  }
+	  openpairs = levels;
+	  if( (*(**cbs).cb).list.current!=NULL && (*(**cbs).cb).list.last!=NULL ){
+	    if( (*(*(**cbs).cb).list.current).offset != (*(*(**cbs).cb).list.last).offset && openpairs>0 && (**cbs).cf.findleaffromallnames!=1 ){ // 3.10.2015
+	      /*
+	       * Searched leaf inside value of a name and the name is not last in the list.
+	       * Returning the search results if the value was read (openpairs==0). */
+	      ret = err;
 	      goto cb_set_cursor_ucs_return;
 	    }
-	  }else if( levels<0 ){
-	    openpairs = ocoffset; // next flow control character updates previousopenpairs
-	  }else if( levels!=0 ){
-	    openpairs = levels;
-	  }else{ // GUESSING HERE, 22.8.2015, levels==0, NOT READY 22.8.2015
-	    openpairs = 1;
 	  }
 	}
-	if( (**cbs).cf.json==1 ){ // json does not work yet with previousopenpairs, using ocoffset as previously, 23.8.2015
-	  openpairs = ocoffset;  // names have to be read one after another. Ocoffset has to be known to use it in the next level.
-	}
+
+        // 1.10.2015
+        // VIII still too many set_length -functions. Excess has been marked with text "28.9.2015". Part of them can be removed.
+        //      (7.10.2015: not fixed, 8.10.2015: not fixed)
+
+
+	if(previousopenpairs==CBMAXLEAVES) // 7.10.2015, from up to down (toterminal was increased since the last read)
+	  previousopenpairs=openpairs+1;
+	else // unknown, cursor id between = and & 
+	  previousopenpairs=openpairs; // 7.10.2015
 	
 	//cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: openpairs at start %i (levels %i, ocoffset %i).", openpairs, levels, ocoffset);
 
@@ -836,11 +1029,12 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 cb_set_cursor_reset_name_index:
 	index=0;
 	injsonquotes=0;
-
+	injsonarray=0;
 
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
+
 	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
 	//cb_clog( CBLOGDEBUG, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
@@ -864,8 +1058,8 @@ cb_set_cursor_reset_name_index:
 
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
 
-
-	  cb_automatic_encoding_detection( &(*cbs) ); // set encoding automatically if it's set
+	  if( (**cbs).encoding==CBENCAUTO )
+	  	cb_automatic_encoding_detection( &(*cbs) ); // set encoding automatically if it's set
 
 	  tovalue=0;
 
@@ -873,43 +1067,53 @@ cb_set_cursor_reset_name_index:
 	  /*
 	   * Read until rstart '='
 	   */
-	  // doubledelim is not tested 8.12.2013 (17.8.2015: every other subrstart subrstop pair does not work well)
 	  if( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ){ // '=', save name
 
 	    /*
-	     * JSON quotes (is never reset by anything else). */
-	    if( chprev!=(**cbs).cf.bypass && chr==(unsigned long int)'\"' ){
-	      if( injsonquotes==0 ) // first quote
-	        ++injsonquotes;
-	      else if( injsonquotes==1 ) // second quote
-	        injsonquotes=2; // ready to save the name (or after value)
-	      //else if( injsonquotes==2 ) // after second quote
-	      //  injsonquotes=0; // after the name (or value ended with '"')
-	    }
-	    if( injsonquotes==2 && chr!=(unsigned long int)'\"' ){
-	      injsonquotes=3; // do not save characters after second '"' to name, 27.8.2015
+	     * JSON arrays (a comma between an array may disturb reading of the values)
+	     * similarly as quotes. 
+	     */
+	    if( (**cbs).cf.json==1 ){
+	      if( chprev!=(**cbs).cf.bypass && chr==(unsigned long int)'[' && injsonquotes!=1 )
+		injsonarray++;
+	      if( chprev!=(**cbs).cf.bypass && chr==(unsigned long int)']' && injsonquotes!=1 )
+		injsonarray--;
+	      if( injsonarray<0 )
+		injsonarray=0;
+
+	      /*
+	       * JSON quotes (is never reset by anything else). 
+	       */
+	      if( chprev!=(**cbs).cf.bypass && chr==(unsigned long int)'\"' ){
+	        if( injsonquotes==0 ) // first quote
+	          ++injsonquotes;
+	        else if( injsonquotes==1 ) // second quote
+	          injsonquotes=2; // ready to save the name (or after value)
+	      }
+	      if( injsonquotes==2 && chr!=(unsigned long int)'\"' ){
+	        injsonquotes=3; // do not save characters after second '"' to name, 27.8.2015
+	      }
 	    }
 
 	    // Second is JSON comma problem ("na:me") prevention in name 21.2.2015
 	    if(       (    ( chr==(**cbs).cf.rstart && (**cbs).cf.json!=1 ) \
-	                || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 ) \
+	                || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) \
 	                || ( chr==(**cbs).cf.subrstart && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
-	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 && injsonquotes!=1 ) \
+	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) \
 	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
 	      wasjsonrend=0;
+	      wasjsonsubrend=0;
 
-	      if( chr==(**cbs).cf.rstart) // 17.8.2015
+	      if( chr==(**cbs).cf.rstart){ // 17.8.2015
 		rstartflipflop=1;
-
-	      //cb_clog( CBLOGDEBUG, "\nrstartflipflop=%i", rstartflipflop );
-	      //cb_clog( CBLOGDEBUG, "\ninjsonquotes=%i", injsonquotes );
-	      //if(chr==(**cbs).cf.rstart && (**cbs).cf.json==1)
-		//cb_clog( CBLOGDEBUG, ", rstart.");
-	      //else
-		//cb_clog( CBLOGDEBUG, ", subrstart.");
+	        if( (**cbs).cf.json==1 )
+		  jsonemptybracket=0; // 3.10.2015, from '{' to '}' without a name or '{' '{' '}' '}' without a name
+	      }
 
 	      if( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 ) { // 21.2.2015 JSON
 		injsonquotes=0;
+		injsonarray=0;
+		++jsonemptybracket; // 3.10.2015, from '{' to '}' without a name or '{' '{' '}' '}' without a name
 	        tovalue=0;
 	        goto cb_set_cursor_reset_name_index; // update openpairs only from ':' (JSON rstart is ':')
 	      } // /21.2.2015
@@ -953,20 +1157,20 @@ cb_set_cursor_reset_name_index:
 	      if( fname==NULL )
 	        cb_clog( CBLOGDEBUG, "\n fname is null." );
 
-	      //if(buferr!=CBNAMEOUTOFBUF ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 	      if(buferr!=CBNAMEOUTOFBUF && fname!=NULL ){ // cb_save_name_from_charbuf returns CBNAMEOUTOFBUF if buffer is full
 
-		//cb_clog( CBLOGDEBUG, "\n Openpairs=%i, ocoffset=%i, injsonquotes=%i, index=%li going to cb_check_json_name |", openpairs, ocoffset, injsonquotes, (*(**cbs).cb).index );
+		//cb_clog( CBLOGDEBUG, "\n Openpairs=%i, ocoffset=%i, injsonquotes=%i, injsonarray=%i,index=%li, name [", openpairs, ocoffset, injsonquotes, injsonarray, (*(**cbs).cb).index );
 		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
-		//cb_clog( CBLOGDEBUG, "| ");
+		//cb_clog( CBLOGDEBUG, "] ");
+		//if( (**cbs).cf.json==1 )
+		//  cb_clog( CBLOGDEBUG, ", going to cb_check_json_name.");
 
 		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes>=2 && (**cbs).cf.jsonnamecheck!=1 ) || \
 				( injsonquotes>=2 && (**cbs).cf.jsonnamecheck==1 && \
 				cb_check_json_name( &charbufptr, &index )!=CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
 				// cb_check_json_name( &(*fname).namebuf, &(*fname).namelen )!=CBNOTJSON ) ) ) ){ // 19.2.2015
-	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
-	          buferr = cb_put_name(&(*cbs), &fname, openpairs, previousopenpairs); // (last in list), jos nimi on verrattavissa, tallettaa nimen ja offsetin
-
+	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), if name is comparable, saves name and offset
+	          buferr = cb_put_name(&(*cbs), &fname, openpairs, previousopenpairs); // (last in list), if name is comparable, saves name and offset
 
 		  //cb_clog( CBLOGDEBUG, "\n Put name |");
 		  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
@@ -1068,69 +1272,104 @@ cb_set_cursor_reset_name_index:
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN); // write '='
 
 	  }else if( chprev!=(**cbs).cf.bypass && ( ( chr==(**cbs).cf.rend && (**cbs).cf.json!=1 ) || \
-	                           ( chr==(**cbs).cf.rend && (**cbs).cf.json==1 && injsonquotes!=1 ) || \
+	                           ( chr==(**cbs).cf.rend && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) || \
 	                           ( (**cbs).cf.json!=1 && chr==(**cbs).cf.subrend && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 ) || \
-	                           ( (**cbs).cf.json==1 && injsonquotes!=1 && chr==(**cbs).cf.subrend ) ) ){
+	                           ( (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 && chr==(**cbs).cf.subrend ) ) ){
 
-	      if( chr==(**cbs).cf.rend )
+	      if( (**cbs).cf.json!=1 || ( ( jsonemptybracket<=0 && chr==(**cbs).cf.subrend ) || chr==(**cbs).cf.rend ) ) // '}' ',' json-condition added 3.10.2015, kolmas
+	        cb_increase_terminalcount( &(*cbs) );
+
+	      if( chr==(**cbs).cf.rend ){
 		rstartflipflop=0;
-
-	      //cb_clog( CBLOGDEBUG, "\nrstartflipflop=%i", rstartflipflop );
-	      //cb_clog( CBLOGDEBUG, "\ninjsonquotes=%i", injsonquotes );
+		if( (**cbs).cf.json==1 )
+	          jsonemptybracket=0;
+	      }else if( (**cbs).cf.json==1 ){
+	        --jsonemptybracket;
+	        if(jsonemptybracket<0)
+		   jsonemptybracket=0; // 3.10.2015, last
+	      }
 
 	      /*
 	       * '&', start a new name, 27.2.2015: solution to '}' + ',' -> --openpairs once
 	       */
 	      if( ( (**cbs).cf.searchstate==CBSTATETOPOLOGY || (**cbs).cf.searchstate==CBSTATETREE ) && openpairs>=1){
 	        if( (**cbs).cf.json==1 && chr==(**cbs).cf.subrend && openpairs>0 ){ // JSON
-	          // (JSON rend is ',' subrend is '}' ) . If not ',' as should, remove last comma in list: a, b, c } 21.2.2015
-		  if( wasjsonrend==0 ){
+	          // 1. (JSON rend is ',' subrend is '}' ) . If not ',' as should, remove last comma in list: a, b, c } 21.2.2015
+		  // 2. If '}' after '}', the same.
+		  wasjsonsubrend=1;
+		  if( wasjsonrend==0 && injsonarray<=0 ){ // array: [ <value>[<,><value> [...] ] ], no curly braces - injsonarray is not necessary here
 			previousopenpairs = openpairs;
 			--openpairs;
+			cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 28.9.2015
+			// subrend was in place of rend, special condition:
+			// 1. reduce with '}' '}' but not with ',' in ',' '}' '}'
+			// 3. reduce with '}' '}' but not with ',' in '}' '}' ',' ; 3.10.2015: in namelist, not in leaves
+			//wasjsonsubrend=0; // was as if ',' , not '}'
 		  }
 		  wasjsonrend=0;
 	          injsonquotes=0;
 	        }else{ 
 
-		  if( (**cbs).cf.json==1 && wasjsonrend==0 )  
+		  if( (**cbs).cf.json==1 && wasjsonrend==0 && injsonarray<=0 )  // injsonarray is needed here
 		    wasjsonrend=1; 
-		  previousopenpairs = openpairs;
-	          --openpairs; // reader must read similarly, with openpairs count or otherwice
+		  // 3. If previous '}' reduced the openpairs count, do not reduce again with ','
+		  if( (**cbs).cf.json!=1 || ( injsonarray<=0 && (**cbs).cf.json==1 ) ){	// 28.9.2015 1
+		  	previousopenpairs = openpairs;
+	          	--openpairs; // reader must read similarly, with openpairs count or otherwice
+			cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 28.9.2015
+		  }
+                  wasjsonsubrend=0;
 		}
 	        //cb_clog( CBLOGDEBUG, "\nopenpairs=%i", openpairs );
 	      }
-	      atvalue=0; 
+	      atvalue=0;
 	      cb_free_name(&fname);
 	      fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
-// 11.7.2015: from rstart to rend, value contains WSP characters outside jsonquotes
-	      // if( (**cbs).cf.json==1 && injsonquotes!=1 && openpairs<ocoffset ){
-	      if( (**cbs).cf.findleaffromallnames!=1 && (**cbs).cf.json==1 && injsonquotes!=1 && openpairs<previousopenpairs && openpairs==0 ){ // TEST, 23.8.2015
+// JSON: XX
+// conf:issa on sama seuraavasti: (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) 
+	      if( ocoffset>0 && (**cbs).cf.json==1 && injsonquotes!=1 && openpairs<previousopenpairs && openpairs==0 ){ // TEST, 23.8.2015, 3.10.2015, toinen yritys. 8.10.2015
 		/*
 		 * JSON special: concecutive '}' and ',' */
-		//cb_log( &(*cbs), CBLOGDEBUG, "\nopenpairs<previousopenpairs && openpairs==%i, %i<%i. Returning VALUEEND", openpairs, openpairs, previousopenpairs ); // Test
+		//cb_log( &(*cbs), CBLOGDEBUG, "\nocoffset %i, openpairs<previousopenpairs && openpairs==%i, %i<%i. Returning VALUEEND.", ocoffset, openpairs, openpairs, previousopenpairs ); // Test
+		//cb_clog( CBLOGDEBUG, " PREVCHR %c.", (char) (*(**cbs).cb).list.rd.lastchr );
 	        injsonquotes=0;
 		/*
 		 * In test 22.8.2015, update length here and second time at cb_put_name or 
 	 	 * cb_put_leaf. Second time the value is updated to the final value (with writable 
 		 * block sizes). Writable block sizes are not done well yet here (at 22.8.2015). */
 		cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 22.8.2015
-	        ret = CBVALUEEND; // 22.8.2015
-	        goto cb_set_cursor_ucs_return;
-		//return CBVALUEEND;
+		/*
+		 * These have to be set to null to know the right level the next time, 1.10.2015. */
+		(*(**cbs).cb).list.currentleaf=NULL; // 1.10.2015, VI
+		if( (**cbs).cf.findleaffromallnames!=1 ){
+	          ret = CBVALUEEND; // 22.8.2015
+	          //cb_clog( CBLOGDEBUG, "\ncb_set_cursor_...: set currentleaf to null, openpairs=%i", openpairs );
+	          goto cb_set_cursor_ucs_return;
+		}
 	      }
  	      goto cb_set_cursor_reset_name_index;
 	  }else if(chprev==(**cbs).cf.bypass && chr==(**cbs).cf.bypass){
 	      /*
 	       * change \\ to one '\' 
 	       */
+
+// pre TEST 7.10.2015			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && 
+// pre TEST 8.10.2015			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && 
+// pre TEST 8.10.2015	 	          ( (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) ) ) && 
+
 	      chr=(**cbs).cf.bypass+1; // any char not '\'
 	  }else if(     ( \
-			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && \
+			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset ) && openpairs<previousopenpairs ) && \
 		          ( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) \
 		        ) || ( \
-		          ( (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) ) ) && \
+		          ( (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) ) && openpairs<previousopenpairs ) && \
 		          ( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY) \
 			) ){ // 27.2.2015: test JSON: TEST WAS: FAIL ( '}'+',' should be -1, not -2 ) , STILL HERE, AN ERROR
+
+// CONF: XX
+
+// 8.10.2015: added: openpairs<previousopenpairs , openpairs  must go up until it can go down.
+
 	      /*
 	       * When reading inner name-value -pairs, read of outer value ended.
 	       */
@@ -1140,9 +1379,13 @@ cb_set_cursor_reset_name_index:
 	       * cb_put_leaf. Second time the value is updated to the final value (with writable 
 	       * block sizes in mind). Writable block sizes are not done well yet here (at 22.8.2015). */
 	      cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 22.8.2015
-	      ret = CBVALUEEND; // 22.8.2015
-	      goto cb_set_cursor_ucs_return;
- 	      // return CBVALUEEND; // 12.12.2013
+	      if( ocoffset>0 && (**cbs).cf.findleaffromallnames!=1 ){ // if conditions added 3.10.2015 (search was a leaf search and search is not from all names)
+	        ret = CBVALUEEND; // 22.8.2015
+	        // testattu, ei toimi oikein, toterminal > level: (*(**cbs).cb).list.rd.lastreadchrendedtovalue=1; // 7.10.2015, kohta XX (VIELA TESTATTAVANA KLO 11:50)
+	        //cb_clog( CBLOGDEBUG, "\nPLACE, json=%i, PREVCHR %c.", (**cbs).cf.json, (char) (*(**cbs).cb).list.rd.lastchr );
+	        goto cb_set_cursor_ucs_return;
+ 	        // return CBVALUEEND; // 12.12.2013
+	      }
 	  }else if( ( (**cbs).cf.searchstate==CBSTATEFUL || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) && atvalue==1){ // Do not save data between '=' and '&' 
 	      /*
 	       * Indefinite length values. Index does not increase and unordered
@@ -1200,6 +1443,7 @@ cb_set_cursor_ucs_return:
 	    else
 	      (*(*(**cbs).cb).list.current).lasttimeused = (signed long int) time(NULL); // last time used in seconds
 	  }
+	//cb_clog( CBLOGDEBUG, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i.", ret);
 	return ret;
 
         return CBNOTFOUND;

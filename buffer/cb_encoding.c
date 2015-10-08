@@ -27,16 +27,39 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to l
 int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
 int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
 
+int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes); // 29.9.2015
+
 /*
  * If ahead had bytes or unfold==1, unfolds read character(s). */
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-	long int chroffset=0; // int err=CBSUCCESS;
+	int err = CBSUCCESS;
+	if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+	if( (**cbs).cf.searchstate!=CBSTATETREE )
+		return err;
+	/*
+	 * Set flag if reading from outside the library functions (cb_search_get_chr switches it back). */
+	if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).contentlen ){ // at the end of buffer edge or at stream (reading a not yet read character)
+		(*(**cbs).cb).list.rd.lastreadchrendedtovalue=1; // 7.10.2015, lastreadchrwasfromoutside=1;
+
+		if( ! WSP( *chr ) && ! CR( *chr ) && ! LF( *chr ) )
+		  (*(**cbs).cb).list.rd.lastchr = *chr;
+		// The same as in get_chr_unfold, see cb_search_get_chr:
+		(*(**cbs).cb).list.rd.lastchroffset = (*(**cbs).cb).index - 1; // 1.10.2015: is not needed, only if chr is rend and subrend counts (states should be at initial state in every rend)
+	}
+	return err;
+}
+/*
+ * Without the cb_read used with CBSTATETREE. */
+int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
+	long int chroffset=0;
         if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ){ return CBERRALLOC; }
 
 	if( (**cbs).ahd.ahead > 0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead )==(*(**cbs).cb).contentlen  ){
 		/*
 		 * Special case. Reading from the end of buffer and ahead was not empty. Reading the one character
 		 * from the ahead leaving ahead buffer empty. 2.8.2015 */ /* Not tested yet, 3.8.2015. */
+		//return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
 		return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
 	}
 	/*

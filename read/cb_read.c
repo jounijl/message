@@ -295,15 +295,15 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
 int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate ){
         int len = MAXCONTENTLEN;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ 
-		cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
-		if( (*(**cbf).cb).list.currentleaf==NULL )
-		 	cb_log( &(*cbf), CBLOGDEBUG, " Currentleaf was null.");
+		//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
+		//if( (*(**cbf).cb).list.currentleaf==NULL )
+		// 	cb_log( &(*cbf), CBLOGDEBUG, " Currentleaf was null.");
 		return CBERRALLOC; 
 	}
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 ){
                 len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
 	}
-	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
+	//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0)
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
 	else

@@ -425,8 +425,15 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
 
 	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
+	   ! ( (**cbf).cf.json==1 && chr!=(**cbf).cf.subrend ) && \
+	   ! ( (**cbf).cf.searchstate==CBSTATETREE && (**cbf).cf.doubledelim==1 && chr!=(**cbf).cf.subrend ) && \
 	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
 	     err<=CBNEGATION ){
+
+// was before 28.9.2015
+//	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
+//	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
+//	     err<=CBNEGATION ){
 
 	  if(err==CBSTREAM)
 	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary

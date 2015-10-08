@@ -275,6 +275,25 @@
 #define PSIZE                 void*
 
 /*
+ * Reader function state to update the level of the tree
+ * correctly in cb_get_chr. A method to communicate with
+ * the reader function.  29.9.2015 
+ *
+ * 7.10.2015: saves last read character. How the value is read,
+ * should not be restricted. If variables preserving the state
+ * is needed, they should be in cb_read.
+ */
+typedef struct cb_read {
+	/* 
+	 * Read state variables can be moved here if the state can be detached from set_cursor_... 
+	 * and moved to some reading function. */
+	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
+	long int           lastchroffset;
+	unsigned char      lastreadchrendedtovalue;
+	unsigned char      pad1, pad2, pad3;
+} cb_read;
+
+/*
  * Compare ctl */
 typedef struct cb_match {
         int matchctl; // If match function is not regexp match, next can be NULL
@@ -290,8 +309,7 @@ typedef struct cb_ring {
 	char spadding;        // pad to next storage size (32 bit)
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
-	signed long int currentindex; // TEST 28.7.2015, place of last read character to remember it the next time	
-	//int currentcharsize; // TEST 29.7.2015, size of the last character (if it's non WSP, only one character can exist)
+	signed long int currentindex; // 28.7.2015, place of last read character to remember it the next time	
         int buflen;
         int sizeslen;
         int ahead;            // bytes in UCS encoding (usually bigger because a character is 4 bytes)
@@ -343,8 +361,6 @@ typedef struct cb_name{
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
-// to be (possibly) removed: leaf is allways first, next is allways the last. It is not possible to add leaves in between.
-	//signed long int       serial;         // serial number of the name (=lists namecount when leaf was added). This value is used to determine the order of leaves in for example determining the last leaf level from namelist. 23.8.2015.
 	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
@@ -353,7 +369,8 @@ typedef struct cb_namelist{
 	cb_name            *current;
 	cb_name            *last;
 	signed long int     namecount;
-	//signed long int     nodecount;        // count of all names and leaves to determine the serial number, 23.8.2015
+	signed int          toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeros this.
+	cb_read             rd;
 	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
 
@@ -414,7 +431,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * useful internally and in some searches. 
  *
  * matchctl  1 - strict match, CBMATCH
- * matchctl  0 - searches any next name not yet used, once
+ * matchctl  0 - searches any next name not yet used, once. Note: if CBSEARCHUNIQUENAMES is set, the next attribute is allways the same. Use CBSEARCNEXTNAMES with this.
  * matchctl -1 - searches endlessly without matching any name listing all the
  *               rest of the unused names
  * matchctl -2 - match names length text, CBMATCHLEN (name like nam% or nam*)
@@ -442,6 +459,11 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  * if the next name in list is not yet read. This may affect writing to the values space or to the names space.
  *
  * Leaves:
+ *
+ * 1) First search the name
+ * 2) Leaf is searched from the current
+ *
+ * 2.10.2015: still here: 1,5) Search the next name, return to the previous name by searching it again and move on to 2)
  *
  * All leaves have to be read by finding the next name from list first (main list, ocoffset 0)
  * if multiple names are searched in sequence. All leaves have to be in the tree before finding

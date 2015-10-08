@@ -129,6 +129,11 @@
    - if rstart, wait for rstop, if subrstart, wait for subrstop 
  ===
  x removal of doubledelim from json settings
+ ===
+ v.1.2.0:
+ - json next searches next leaf, not a name. set_to_conf searches next name. These are different.
+ ===
+ - ..._set_cursor_... small variables to processor register variables macro
  */
 
 int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
@@ -626,7 +631,12 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).buflen=blksize;
 	(**cbf).contentlen=0;
 	(**cbf).list.namecount=0;
+	(**cbf).list.toterminal=0;
+	//(**cbf).list.openpairs=0; // 28.9.2015
 	//(**cbf).list.nodecount=0;
+	(**cbf).list.rd.lastchr=0; // 7.10.2015
+	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
+	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
@@ -708,6 +718,8 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	cb_empty_names(&(*buf));
 	(**buf).list.name=NULL; // 1.6.2013
 	(**buf).list.namecount=0; // 21.2.2015
+	(**buf).list.toterminal=0; // 29.9.2015
+	//(**buf).list.openpairs=0; // 28.9.2015
 	return CBSUCCESS;
 }
 /*
@@ -753,6 +765,10 @@ int  cb_empty_names(cbuf **buf){
 	}
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
 	(**buf).list.name = NULL;
+
+	//(**buf).list.openpairs = 0; // 28.9.2015
+	(**buf).list.toterminal = 0; // 29.9.2015
+	
 
 	(**buf).list.last = NULL; // 21.2.2015
 	(**buf).list.current = NULL; // 21.2.2015
@@ -802,6 +818,7 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 		}
 	}
 	(**buf).list.namecount = err;
+	// terminaloffset is missing here
 
 	return CBSUCCESS;
 }
