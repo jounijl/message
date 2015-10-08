@@ -40,21 +40,9 @@ int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
 
 int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
 int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
-//int  cb_clear_read_state(CBFILE **cbs); // 29.9.2015, zeros the counters to read the next value with cb_get_chr
 
 int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // Test 19.2.2015
 
-
-/**
-int  cb_clear_read_state(CBFILE **cbs){
-	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
-	//(*(**cbs).cb).list.rd.injsonquotes = 0; (*(**cbs).cb).list.rd.injsonarray = 0;
-	//(*(**cbs).cb).list.rd.wasjsonrend = 0; (*(**cbs).cb).list.rd.wasjsonsubrend = 0;
-	//(*(**cbs).cb).list.rd.rstartflipflop = 1;
-	(*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // lastreadchrwasfromoutside=0;
-	return CBSUCCESS;
-}
-**/
 
 /*
  * Returns a pointer to 'result' from 'leaf' tree matching the name and namelen with CBFILE cb_conf,
