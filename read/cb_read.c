@@ -357,10 +357,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	char injsonquotes=0;
         int openpairs=1; char found=0;
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
-        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
-        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
-	if( ucscontent==NULL || *ucscontent==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: ucscontent was null."); return CBERRALLOC; }
-	if( (**cn).namebuf==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: (**cn).namebuf was null."); return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
+	if( ucscontent==NULL || *ucscontent==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
+	if( (**cn).namebuf==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
@@ -368,7 +368,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
-		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_get_chr, error %i.", err); return err; }
+		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 
                 if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ) // 1.7.2015
                         ++openpairs;
@@ -390,9 +390,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
                 	    injsonquotes=2; // ready to save the name (or after value)
 			}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && injsonquotes==1 ) ) {
+			 	//cb_clog( CBLOGDEBUG, "[%c]", (char) chr ); // BEST
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 			}
-			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_get_content: cb_put_ucs_chr, error %i.", err); return err; }
+			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
 			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' ){ // value without quotes 2
              		  if( injsonquotes==0 ) // first quote
  		            injsonquotes=1; // 1
@@ -478,3 +479,40 @@ int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, 
 //        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_clog( CBLOGALERT, "\ncb_search_leaf_from_currentleaf: cbf or it's buffer was null."); return CBERRALLOC; }
 //	return CBSUCCESS;
 //}
+
+/*
+ * Get int nmbr from text describing the number. */
+int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int *nmbr){
+	int indx=0, err=CBSUCCESS, maxcounter=0; unsigned long int nm=0;
+	char first=1, minus=0;
+	if( ucsnumber==NULL || *ucsnumber==NULL || nmbr==NULL ) return CBERRALLOC;
+	*nmbr=0;
+
+        //fprintf(stderr,"\ncb_get_long_int: value string [");
+        //if( ucsnumber!=NULL && ucsnumlen>0 )
+        //        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsnumber), ucsnumlen, CBNAMEBUFLEN );
+        //fprintf(stderr,"]");
+
+	for(indx=0; indx<ucsnumlen && indx>=0 && err<CBNEGATION && maxcounter<11; ){
+		++maxcounter; // minus sign plus characters 4294967295, together 11, without minus, 10
+		err = cb_get_ucs_chr( &nm, &(*ucsnumber), &indx, ucsnumlen);
+		//cb_clog( CBLOGDEBUG, "\ncb_get_long_int: nm %li, nmbr %li.", nm, *nmbr );
+		if(err<CBNEGATION){ // 16 bits largest number 655536
+			if(first==0){
+				*nmbr = (*nmbr)*10;
+			}else{
+				if( nm == (signed long int) '-' ){ // negative
+					++maxcounter;
+					minus = 1;
+				}else
+					first = 0;
+			}
+			if( nm != (signed long int) '-' )
+				(*nmbr) += (nm-0x30);
+		}
+	}
+	if( minus==1 )
+		(*nmbr) = 0 - (*nmbr);
+	return CBSUCCESS;
+}
+

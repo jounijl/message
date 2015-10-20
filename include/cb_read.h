@@ -87,3 +87,6 @@ int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, uns
 //int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen);
 //int cb_search_leaf_from_currentleaf(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen, int levelfromprevious);
 
+/*
+ * Integer text to long int conversion. */
+int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int *nmbr );
