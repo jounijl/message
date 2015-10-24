@@ -14,7 +14,8 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
-#include <pcre.h>	// to use matchctl -7 and -8 (cb_match has void* re and re_extra to leave these ctls optionally out if needed)
+#define PCRE2_CODE_UNIT_WIDTH 32
+#include <pcre2.h>	// to use matchctl -7 and -8 (cb_match has void* re and re_extra to leave these ctls optionally out if needed)
 
 /*
  * Byte count of re subject block (one character is four bytes). */
@@ -38,7 +39,7 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 
 /*
  * Pattern is converted to host byte order from 4-byte UCS representation. */
-int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); 
+int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); 
 
 /*
  * Matches name2 in overlapping blocks. Converts name2 from 4-byte UCS form to host byte order. */
@@ -47,3 +48,5 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 /*
  * Match one line. Name2 has to be in host byte order (pcre32). */
 int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount);
+
+

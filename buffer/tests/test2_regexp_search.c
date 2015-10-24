@@ -29,15 +29,26 @@
 #include "../../include/cb_buffer.h"  // main functions, struct cb_match
 #include "../../include/cb_compare.h" // inner utilities, search function
 
+
+#ifdef PCRE2
+#define PCRE2_CODE_UNIT_WIDTH 32
+#include <pcre2.h>
+#else
+#include <pcre.h>
+#endif
+
 // multiples of 4-bytes
 #define BLKSIZE		128
 #define OVERLAPSIZE     64
 
 #define ERRUSAGE -1
 
-int  test_compare_regexp(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl);
-int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl);
-int  test_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl);
+int  test_compare_regexp(unsigned char **name2, int len2, int startoffset, unsigned int options, cb_match *mctl);
+int  test_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
+int  test_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
+#ifndef PCRE2
+int  test_compare_print_fullinfo(cb_match *mctl);
+#endif
 
 /*
  * cat <file> | ./test_regexp_search <regexp pattern>
@@ -70,13 +81,15 @@ int  test_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, int o
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0;
+        int bufindx=0, err=CBSUCCESS, parambufsize=0, indx=0, chrbufindx=0;
+	unsigned int opt=0;
         unsigned char *ucsname = NULL; 
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
 	cb_match mctl;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
+	//mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak, 21.10.2015
 
 	/*
 	 * Arguments. */
@@ -89,8 +102,8 @@ int main (int argc, char *argv[]) {
 	 * Allocation */
 
 	/* Regular expression pattern */
-        parambufsize = strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
-	ucsname = (unsigned char*) malloc( sizeof(char)*( (parambufsize*4)+1 ) ); // '\0' + argumentsize*4 // bom is ignored
+        parambufsize = (int) strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
+	ucsname = (unsigned char*) malloc( sizeof(char)* (unsigned int) ((parambufsize*4)+1 ) ); // '\0' + argumentsize*4 // bom is ignored
         if( ucsname==NULL ){ fprintf(stderr,"\nAllocation error, ucsname."); return CBERRALLOC; }
 	memset( &(*ucsname), (int) 0x20, (size_t) (parambufsize*4) );
 	ucsname[parambufsize*4]='\0';
@@ -103,7 +116,7 @@ int main (int argc, char *argv[]) {
 	/* PCRE assumes host byte order and matches BOM:s if they are found, otherwice ignores them. */
 
 	/* Copy */
-	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<strlen( argv[1] ); ++indx ){
+	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<(int)strlen( argv[1] ); ++indx ){
 	  // before 13.7.2014:
 	  err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned int) argv[1][indx] ), &ucsname, &chrbufindx, (parambufsize*4)); // 30.6.2014
 	  // after 13.7.2014 (..._host_byte_order moved to ..._get_matchctl ):
@@ -114,46 +127,48 @@ int main (int argc, char *argv[]) {
 
 
 	fprintf(stderr,"\n%s parameter: [", argv[0]);
-	cb_print_ucs_chrbuf(&ucsname, chrbufindx, parambufsize);
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &ucsname, chrbufindx, parambufsize);
 	fprintf(stderr,"] length = %i , chrbufindx=%i.", strlen( argv[1] ), chrbufindx );
 
 
 	/*
 	 * Compiling regexp  */
-	fprintf(stderr,"\n test_compare_get_matchctl( &ucsname, %i, 0, &mctl, -7 );", parambufsize);
 	err = test_compare_get_matchctl( &ucsname, parambufsize, 0, &mctl, -7 ); // 12.4.2014
-	//err = test_compare_get_matchctl( &ucsname, parambufsize, PCRE_UTF32, &mctl, -7 ); 
 	if(err!=CBSUCCESS){ fprintf(stderr,"\nError in test_compare_get_matchctl, %i.", err); }
 
-	fprintf(stderr,"\n From test_compare_get_matchctl, err %i :", err);
-	fprintf(stderr,"\n mctl.matchctl=%i", mctl.matchctl);
-	if(mctl.re==NULL)
-	  fprintf(stderr,"\n mctl.re was null, err from test_compare_get_matchctl, %i.", err);
-	else
-	  fprintf(stderr,"\n mctl.re was not null.");
-	if(mctl.re_extra==NULL)
-	  fprintf(stderr,"\n mctl.re_extra was null, err from test_compare_get_matchctl, %i.", err);
-	else
-	  fprintf(stderr,"\n mctl.re_extra was not null.");
+	//fprintf(stderr,"\n From test_compare_get_matchctl, err %i :", err);
+	//fprintf(stderr,"\n mctl.matchctl=%i", mctl.matchctl);
+	//if(mctl.re==NULL)
+	//  fprintf(stderr,"\n mctl.re was null, err from test_compare_get_matchctl, %i.", err);
+	//else
+	//  fprintf(stderr,"\n mctl.re was not null.");
 
 // --
 
 	/*
 	 * Matching the input stream as overlapped blocks */
 	chr = (unsigned long int) getc(stdin); 	// bom is not needed [pcre.txt, "CHARACTER CODES"], pcre ignores bom and assumes host byte order
-	while( chr!=EOF && bufindx<BLKSIZE ){
+	while( chr!=(unsigned long int)EOF && bufindx<BLKSIZE ){
 	  cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned int) chr) , &chrbuf, &bufindx, BLKSIZE);
 	  chr = (unsigned long int) getc(stdin);
-	  if(bufindx>=(BLKSIZE-6) || chr==EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
+	  if(bufindx>=(BLKSIZE-6) || chr==(unsigned long int)EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
 
-            if( chr!=(unsigned char)EOF ){ // Last one char has to be searched still
+            if( chr!=(unsigned long int)EOF ){ // Last one char has to be searched still
 	      /*
 	       * First block or in between blocks. */
-              opt = opt | PCRE_NOTEOL; // Subject string is not the end of a line	    
+#ifdef PCRE2
+              opt = opt | PCRE2_NOTEOL; // Subject string is not the end of a line
+#else
+              opt = opt | PCRE_NOTEOL; // Subject string is not the end of a line
+#endif
 	    }else{
 	      /*
 	       * Last block. */
-	      opt = opt & ~PCRE_NOTEOL;
+#ifdef PCRE2
+	      opt = opt & ~PCRE2_NOTEOL;
+#else
+	      opt = opt & (unsigned int) ~PCRE_NOTEOL;
+#endif
 	    }
 	    err = test_compare_regexp(&chrbuf, bufindx, 0, 0, &mctl);
 	    fprintf(stderr,"\n After test_compare_regexp,");
@@ -176,8 +191,11 @@ int main (int argc, char *argv[]) {
 	    if(err!=CBSUCCESS){ fprintf(stderr,"\nError in cb_copy_from_end_to_start: %i.", err); }
 	    /*
 	     * Next block. */
+#ifdef PCRE2
+            opt = opt | PCRE2_NOTBOL; // Subject string is not the beginning of a line
+#else
             opt = opt | PCRE_NOTBOL; // Subject string is not the beginning of a line
- 
+#endif
 	  }
 	}
 	
@@ -185,24 +203,41 @@ int main (int argc, char *argv[]) {
         return res;
 }
 
-int  test_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl){
+int  test_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
 	// pcre.txt "CHARACTER CODES": options = options | PCRE_UTF32; 
 	if(ctl==NULL){ fprintf(stderr,"\ntest_get_matchctl: allocation error."); return CBERRALLOC; }
-	if(cbf!=NULL && *cbf!=NULL)
-	  if( (**cbf).cf.asciicaseinsensitive==1)
+	if(cbf!=NULL && *cbf!=NULL){
+	  if( (**cbf).cf.asciicaseinsensitive==1){
+#ifdef PCRE2
+	    options = options | PCRE2_CASELESS; // can be set to another here
+#else
 	    options = options | PCRE_CASELESS; // can be set to another here
+#endif
+	  }
+	}
+#ifdef PCRE2
+	options = options | PCRE2_UCP; // unicode properties
+#else
 	options = options | PCRE_UCP; // unicode properties
+#endif
 
 	return test_compare_get_matchctl(&(*pattern), patsize, options, &(*ctl), matchctl);
 }
 
-int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl){
+int  test_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
 	//const pcre32 *re = NULL;
 	//const pcre32_extra *re_extra = NULL;
-	const char *errptr = NULL; int errcode=0, erroffset=0; 
+	//const int  *ptr = NULL;
+	const char *errptr = NULL; int errcode=0; 
 	const char  errmsg[6] = {'e','r','r','o','r','\0'};	
+#ifdef PCRE2
+	PCRE2_SIZE erroffset = 0;
+	PCRE2_SPTR32 sptr = NULL;
+#else
+	int erroffset=0;
+#endif
 	//int err=CBSUCCESS;
-	PCRE_SPTR32 sptr = NULL; // PCRE_SPTR32 vastaa unsigned int*
+	//PCRE_SPTR32 sptr = NULL; // PCRE_SPTR32 vastaa unsigned int*
 	errptr = &errmsg[0];
 
 	if(ctl==NULL){
@@ -216,7 +251,8 @@ int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options
 	}
 	//pcre32_free_study( (pcre32_extra*) (*ctl).re_extra );
 	//free( (*ctl).re );
-	(*ctl).re = NULL; (*ctl).re_extra = NULL;
+	//(*ctl).re = NULL; (*ctl).re_extra = NULL;
+	(*ctl).re = NULL; // 21.10.2015
 
 	//fprintf(stderr,"\ntest_compare_get_matchctl: pattern [");
 	//err = cb_print_ucs_chrbuf( &(*pattern), patsize, patsize );
@@ -244,20 +280,27 @@ int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options
 	sage.
 */
 
-	sptr = &(* (PCRE_SPTR32)  *pattern); // vastaa sptr = &(**pattern)
+	////ptr  = &(* (int*) *pattern);
+	////sptr = &(* (PCRE_SPTR32)  ptr); // vastaa sptr = &(**pattern)
+	//sptr = &(* (PCRE_SPTR32)  *pattern); // vastaa sptr = &(**pattern)
 
-	//fprintf(stderr,"\ntest_compare_get_matchctl: pattern [");
-	//err = cb_print_ucs_chrbuf( &(*pattern), patsize, patsize );
-	//fprintf(stderr,"] err %i, patsize %i.", err, patsize );
+	//fprintf(stderr,"\ntest_compare_get_matchctl: pattern before compile: [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*pattern), patsize, patsize );
+	//fprintf(stderr,"] patsize %i.\n", patsize );
 
 	//re = pcre32_compile2( &(*sptr), options, &errcode, &errptr, &erroffset, NULL ); // PCRE_SPTR32 vastaa unsigned int*
 	//(*ctl).re = &(* (int*) re); // cast to pointer size
-	(*ctl).re = &(* (int*) pcre32_compile2( &(*sptr), options, &errcode, &errptr, &erroffset, NULL ) ); // PCRE_SPTR32 vastaa unsigned int*, 29.5.2014
-
+	//(*ctl).re = &(* (int*) pcre32_compile2( &(*sptr), options, &errcode, &errptr, &erroffset, NULL ) ); // PCRE_SPTR32 vastaa unsigned int*, 29.5.2014
+#ifndef PCRE2
+	(*ctl).re = &(* (int*) pcre32_compile2( (* (PCRE_SPTR32*) pattern) , (int) options, &errcode, &errptr, &erroffset, NULL ) ); // PCRE_SPTR32 vastaa unsigned int*, 29.5.2014, 20.10.2015
+#else
+	sptr = &(** (PCRE2_SPTR32*)  pattern);
+	(*ctl).re = &(* (PSIZE) pcre2_compile_32( sptr, (PCRE2_SIZE) (patsize/4), (uint32_t) options, &errcode, &erroffset, NULL ) );
+#endif
 	fprintf(stderr,"\ntest_compare_get_matchctl: pcre32_compile2, errcode %i.", errcode); // man pcreapi # /COMPILATION ERROR CODES
-	fprintf(stderr,"\ntest_compare_get_matchctl: compiled pattern: [");
-	cb_print_ucs_chrbuf(&(*pattern), patsize, patsize);
-	fprintf(stderr,"]");
+	fprintf(stderr,"\ntest_compare_get_matchctl: same pattern after compile: [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*pattern), patsize, patsize);
+	fprintf(stderr,"], errcode %i.", errcode);
 
 	//if( re==NULL ){
 	if( (*ctl).re==NULL ){
@@ -265,10 +308,10 @@ int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options
           return CBERRREGEXCOMP;
         }else{
 	  //re_extra = pcre32_study( re, 0, &errptr ); // constant pointers can not change
-	  (*ctl).re_extra = &(* (int*)  pcre32_study( (*ctl).re, 0, &errptr ) ); // constant pointers can not change, 29.5.2014
-	  if( (*ctl).re_extra==NULL ){
-            fprintf(stderr,"\ntest_compare_get_matchctl: studied re_extra was null: \"%s\" .", errptr );
-	  }
+	  // 21.10.2015 (*ctl).re_extra = &(* (int*)  pcre32_study( (*ctl).re, 0, &errptr ) ); // constant pointers can not change, 29.5.2014
+	  //if( (*ctl).re_extra==NULL ){
+          //  fprintf(stderr,"\ntest_compare_get_matchctl: studied re_extra was null: \"%s\" .", errptr );
+	  //}
 	  if(errptr!=NULL){
             fprintf(stderr,"\ntest_compare_get_matchctl: at study, errptr was \"%s\" .", errptr );
 	  }
@@ -283,30 +326,50 @@ int  test_compare_get_matchctl(unsigned char **pattern, int patsize, int options
 }
 /*
  * Compares compiled regexp to 4-byte string name2 using 32-bit functions. */
-int  test_compare_regexp(unsigned char **name2, int len2, int startoffset, int options, cb_match *mctl){
-	int opt=0, err=CBSUCCESS, pcrerc=0;
+int  test_compare_regexp(unsigned char **name2, int len2, int startoffset, unsigned int options, cb_match *mctl){
+	int err=CBSUCCESS, pcrerc=0;
+#ifndef PCRE2
+	pcre32_extra *re_extra = NULL;
+	int ovecsize=OVECSIZE;
+#else
+	int oveccount=-1;
+        pcre2_match_data_32 *match_data=NULL;
+        const pcre2_code_32 *pcrecode = NULL;
+#endif
+	int ovec[OVECSIZE+1];
+	unsigned int opt=0;
 	int matchcount=0, groupcount=0;
-	int ovec[OVECSIZE+1]; int ovecsize=OVECSIZE;
 	if( name2==NULL || *name2==NULL || mctl==NULL || (*mctl).re==NULL ){ 
 	  fprintf(stderr,"\ntest_compare_regexp: allocation error."); 
 	  return CBERRALLOC;
 	}
+	opt = opt | options;
 
 	memset(&(ovec), (int) 0x20, (size_t) OVECSIZE); // zero
 	ovec[OVECSIZE] = '\0';
 
-	//cb_compare_print_fullinfo( &(*mctl) );
+#ifndef PCRE2
+	test_compare_print_fullinfo( &(*mctl) );
+#endif
 
+#ifndef PCRE2
 pcre_match_another:
+#endif
 	// 3. const PCRE_SPTR32 subject
-	pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, ( (PCRE_SPTR32) *name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
-
-	fprintf(stderr,"\ntest_compare_regexp: block:[");
-	cb_print_ucs_chrbuf(&(*name2), len2, len2);
-	fprintf(stderr,"]");
-
-	//if(pcrerc!=-1)
-	// fprintf(stderr,"\n [pcrerc=%i]", pcrerc);
+	//pcrerc = pcre32_exec( (pcre32*) (*mctl).re, (pcre32_extra*) (*mctl).re_extra, (* (PCRE_SPTR32*) name2), len2, startoffset, opt, &(* (int*) ovec), ovecsize );
+#ifndef PCRE2
+	pcrerc = pcre32_exec( (pcre32*) (*mctl).re, re_extra, (* (PCRE_SPTR32*) name2), len2, startoffset, (int) opt, &(* (int*) ovec), ovecsize );
+#else
+	pcrecode = &(* (const pcre2_code_32*) (*mctl).re );
+	match_data = &(* (pcre2_match_data_32*) pcre2_match_data_create_from_pattern_32( pcrecode, NULL ) );
+        pcrerc = pcre2_match_32( pcrecode, (* (PCRE2_SPTR32*) name2 ), (PCRE2_SIZE) (len2/4), \
+                (PCRE2_SIZE) startoffset, (uint32_t) opt, &(*match_data), NULL );
+        oveccount = (int) pcre2_get_ovector_count( &(*match_data) );
+#endif
+	fprintf(stderr,"\ntest_compare_regexp: result: PCRERC %i.", pcrerc);
+	//fprintf(stderr,"\ntest_compare_regexp: block:[");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2);
+	//fprintf(stderr,"], length %i.", len2);
 
 	if( pcrerc >= 0 ){ // one|many or groupmatch
 	  ++matchcount;
@@ -329,6 +392,11 @@ pcre_match_another:
        returned by pcre_exec() is one more than the highest numbered pair that
        has been set. 
  */
+#ifdef PCRE2
+	}else if( pcrerc < 0){
+	  err = CBNOTFOUND;
+	}
+#else
 	  startoffset = ovec[1];
 	  fprintf(stderr, "\ntest_compare_regexp: next, startoffset=%i.", startoffset);
 	  goto pcre_match_another;
@@ -341,6 +409,36 @@ pcre_match_another:
 	  if(err==CBSUCCESS)
 	    err = CBERRREGEXEC;
 	}
+#endif
 	fprintf(stderr, "\ntest_compare_regexp: returning %i, matchcount=%i, groupcount=%i.", err, matchcount, groupcount);
 	return err;
 }
+/*
+ * pcre info. */  
+#ifndef PCRE2
+int  test_compare_print_fullinfo(cb_match *mctl){
+        int res=0;
+        const pcre32_extra *rextra = NULL;
+        const pcre32       *re = NULL;
+        unsigned char *cres = NULL;   
+        unsigned char  errmsg[6] = {'e','r','r','o','r','\0'};
+        cres = &(*errmsg);
+        
+        if(mctl==NULL){  return CBERRALLOC; }
+ 
+        if((*mctl).re!=NULL){ re = &(* (const pcre32*) (*mctl).re); } // 20.10.2015
+
+        cb_clog( CBLOGINFO, "\ncb_match:");
+        cb_clog( CBLOGINFO, "\n\tmatchctl=%i", (*mctl).matchctl );
+        if( re != NULL ){ // const
+          res = pcre32_fullinfo( re, rextra, PCRE_INFO_SIZE, &(* (PSIZE) cres) );
+          if(res==0){   cb_clog( CBLOGINFO, "\n\tsize=%i (, %i, %i)", cres[0], cres[1], cres[2] ); }
+          res = pcre32_fullinfo( re, rextra, PCRE_INFO_NAMECOUNT, &(* (PSIZE) cres) );
+          if(res==0){   cb_clog( CBLOGINFO, "\n\tsubpatterns=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
+          res = pcre32_fullinfo( re, rextra, PCRE_INFO_OPTIONS, &(* (PSIZE) cres) );
+          if(res==0){   cb_clog( CBLOGINFO, "\n\toptions=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
+        }
+        return CBSUCCESS;
+        
+}       
+#endif

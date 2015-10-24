@@ -301,7 +301,7 @@ int main (int argc, char *argv[]) {
 				}
 
 				fromend++;
-				fprintf(stderr," [%li/%li] setting cursor to name [", (name_list.namecount-fromend+1), name_list.namecount );
+				fprintf(stderr," [%lli/%lli] setting cursor to name [", (name_list.namecount-fromend+1), name_list.namecount );
 				err = cb_print_ucs_chrbuf( CBLOGDEBUG, &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
 				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %lli.", err); }
 				fprintf(stderr,"], length %i, [%li/", (*nameptr).namelen, (*nameptr).nameoffset);

@@ -194,6 +194,7 @@ int cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int 
 		return err; // 4.7.2015
 	   }else{
              cb_clog( priority, "%c", (unsigned char) chr ); // %wc is missing, %C prints null wide character
+             //cb_clog( priority, "(0x%.2x)", (unsigned int) chr ); // 21.10.2015
              //cb_clog( priority, "(0x%lx)", chr ); // 8.6.2014
              //cb_clog( priority, "(%#x)", (unsigned int) chr ); // 10.6.2014
 	   }

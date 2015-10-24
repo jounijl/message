@@ -34,6 +34,9 @@ int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, 
 int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
 	int err = CBSUCCESS;
 	if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+#ifdef CBBENCHMARK
+          ++(**cbs).bm.reads;
+#endif    
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 	if( (**cbs).cf.searchstate!=CBSTATETREE )
 		return err;
@@ -710,12 +713,16 @@ unsigned char  cb_reverse_char8_bits(unsigned char from){
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
+	//cb_clog( CBLOGDEBUG, "\ncb_reverse_four_bytes: from 0x%.4x to: ", from );
 	upper = from>>16; // 16 upper bits
+	//cb_clog( CBLOGDEBUG, " 0x%.4x ", upper );
 	lower = 0xFFFF & from; // 16 lower bits
+	//cb_clog( CBLOGDEBUG, " 0x%.4x ", lower );
         lower = cb_reverse_two_bytes(lower);
 	upper = cb_reverse_two_bytes(upper);
 	new = lower; new = new<<16;
 	new = new | upper;
+	//cb_clog( CBLOGDEBUG, "\ncb_reverse_four_bytes: return 0x%.4x.", new );
 	return new;
 }
 unsigned int  cb_reverse_two_bytes(unsigned int  from){
@@ -739,6 +746,7 @@ unsigned int  cb_from_host_byte_order_to_ucs( unsigned int chr ){
 unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
 	int test = cb_test_cpu_endianness();
         if( test == CBBIGENDIAN ){ 
+	  cb_clog( CBLOGDEBUG, "\ncb_from_ucs_to_host_byte_order: cb_test_cpu_endianness, big endian." );
           return chr;
         }else if( test == CBLITTLEENDIAN ){ 
           return cb_reverse_four_bytes( chr );

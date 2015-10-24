@@ -66,13 +66,14 @@
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, parambufsize=0, indx=0, chrbufindx=0;
+        int bufindx=0, err=CBSUCCESS, indx=0, chrbufindx=0;
+	unsigned int parambufsize=0, opt=0;
         unsigned char *ucsname = NULL; 
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
 
 	/*
 	 * Arguments. */
@@ -90,62 +91,57 @@ int main (int argc, char *argv[]) {
 	chrbuf[BLKSIZE*4]='\0';
 
 	/* Regular expression pattern */
-        parambufsize = strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
+        parambufsize = (unsigned int) strnlen( &(argv[1][0]), (size_t) (BLKSIZE*4) );
 	ucsname = (unsigned char*) malloc( sizeof(char)*( (parambufsize*4)+1 ) ); // '\0' + argumentsize*4 // bom is ignored
         if( ucsname==NULL ){ fprintf(stderr,"\nAllocation error, ucsname."); return CBERRALLOC; }
 	memset( &(*ucsname), (int) 0x20, (size_t) (parambufsize*4));
 	ucsname[parambufsize*4]='\0';
 
 	/* Copy */
-	for( indx=0; indx<parambufsize && err==CBSUCCESS && indx<strlen( argv[1] ); ++indx ){
-	  err = cb_put_ucs_chr( (unsigned long int) argv[1][indx], &ucsname, &chrbufindx, (parambufsize*4));
-	  //err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned long int) argv[1][indx] ), &ucsname, &chrbufindx, (parambufsize*4)); // 13.7.2014
+	for( indx=0; indx<(int)parambufsize && err==CBSUCCESS && indx<(int)strlen( argv[1] ); ++indx ){
+	  err = cb_put_ucs_chr( (unsigned long int) argv[1][indx], &ucsname, &chrbufindx, ( (int) parambufsize*4));
+	  //err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned long int) argv[1][indx] ), &ucsname, &chrbufindx, ( (int) parambufsize*4)); // 13.7.2014
 	}
-	parambufsize = chrbufindx;
+	if(chrbufindx<0){ cb_clog( CBLOGERR, "\nOverflow, hrbufindex."); return CBOVERFLOW; }
+	parambufsize = (unsigned int) chrbufindx;
 	ucsname[ parambufsize+1 ]='\0';
 
 	fprintf(stderr,"\n%s parameter: [", argv[0]);
-	cb_print_ucs_chrbuf(&ucsname, chrbufindx, parambufsize);
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &ucsname, chrbufindx, (int) parambufsize);
 	fprintf(stderr,"] length = %i , chrbufindx=%i.", strlen( argv[1] ), chrbufindx );
 
 
 	/*
 	 * Compiling regexp  */
-	fprintf(stderr,"\n cb_compare_get_matchctl( &ucsname, %i, 0, &mctl, -7 );", parambufsize);
-	err = cb_compare_get_matchctl( &ucsname, parambufsize, 0, &mctl, -7 ); // 12.4.2014
-	//err = cb_compare_get_matchctl_host_byte_order( &ucsname, parambufsize, 0, &mctl, -7 ); // testi 13.7.2014
+	err = cb_compare_get_matchctl( &ucsname, (int) parambufsize, 0, &mctl, -7 ); // 12.4.2014
 	if(err!=CBSUCCESS){ fprintf(stderr,"\nError in cb_compare_get_matchctl, %i.", err); }
 
-	fprintf(stderr,"\n From cb_compare_get_matchctl, err %i :", err);
-	fprintf(stderr,"\n mctl.matchctl=%i", mctl.matchctl);
-	if(mctl.re==NULL)
-	  fprintf(stderr,"\n mctl.re was null, err from cb_compare_get_matchctl, %i.", err);
-	else
-	  fprintf(stderr,"\n mctl.re was not null.");
-	if(mctl.re_extra==NULL)
-	  fprintf(stderr,"\n mctl.re_extra was null, err from cb_compare_get_matchctl, %i.", err);
-	else
-	  fprintf(stderr,"\n mctl.re_extra was not null.");
+	//fprintf(stderr,"\n From cb_compare_get_matchctl, err %i :", err);
+	//fprintf(stderr,"\n mctl.matchctl=%i", mctl.matchctl);
+	//if(mctl.re==NULL)
+	//  fprintf(stderr,"\n mctl.re was null, err from cb_compare_get_matchctl, %i.", err);
+	//else
+	//  fprintf(stderr,"\n mctl.re was not null.");
 
 	/*
 	 * Matching the input stream as overlapped blocks */
 	chr = (unsigned long int) getc(stdin); 	// bom is not needed [pcre.txt, "CHARACTER CODES"], pcre ignores bom and assumes host byte order
 	//fprintf(stderr,"\nregexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
-	while( chr!=EOF && bufindx<BLKSIZE ){
+	while( chr!=(unsigned long int)EOF && bufindx<BLKSIZE ){
 	  //cb_put_ucs_chr(chr, &chrbuf, &bufindx, BLKSIZE);
 	  cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( chr ), &chrbuf, &bufindx, BLKSIZE); // 13.7.2014
 	  chr = (unsigned long int) getc(stdin);
 	  //fprintf(stderr,"\nregexp_search: chr=%X bufindx=%d BLKSIZE=%d", chr, bufindx, BLKSIZE);
-	  if(bufindx>=(BLKSIZE-6) || chr==EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
+	  if(bufindx>=(BLKSIZE-6) || chr==(unsigned long int)EOF){ // '\0' + last 4-bytes = 5 bytes, can be set to 5..7
 
             if( chr!=(unsigned char)EOF ){ // Last one char has to be searched still
 	      /*
 	       * First block or in between blocks. */
-              opt = opt | PCRE_NOTEOL; // Subject string is not the end of a line	    
+              opt = opt | PCRE2_NOTEOL; // Subject string is not the end of a line	    
 	    }else{
 	      /*
 	       * Last block. */
-	      opt = opt & ~PCRE_NOTEOL;
+	      opt = opt & ~PCRE2_NOTEOL;
 	    }
 	    err = cb_compare_regexp_one_block(&chrbuf, bufindx, 0, &mctl, &mcount);
 	    //fprintf(stderr,"\n regexp_search main: after cb_compare_regexp,");
@@ -172,7 +168,7 @@ int main (int argc, char *argv[]) {
 	    if(err!=CBSUCCESS){ fprintf(stderr,"\nError in cb_copy_from_end_to_start: %i.", err); }
 	    /*
 	     * Next block. */
-            opt = opt | PCRE_NOTBOL; // Subject string is not the beginning of a line
+            opt = opt | PCRE2_NOTBOL; // Subject string is not the beginning of a line
  
 	  }
 	}

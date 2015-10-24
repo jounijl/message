@@ -37,7 +37,8 @@ int  cb_find_every_name(CBFILE **cbs){
 	name = &chrs[0];
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
-	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
+	//err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
+	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 0, -1 ); // no match, 24.10.2015
 	// int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl)
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
@@ -118,7 +119,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
  */
 int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namelength, int *ocoffset, int matchctl ){
 	cb_match mctl;
-	mctl.re = NULL; mctl.re_extra = NULL; mctl.matchctl = matchctl;
+	mctl.re = NULL; mctl.matchctl = matchctl;
 	return cb_find_leaf_from_current_matchctl( &(*cbs), &(*ucsname), &(*namelength), &(*ocoffset), &mctl);
 }
 
@@ -461,7 +462,7 @@ int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, 
 	cb_match mctl;
 	emptydata[0]='\0';
 	emptyname = &emptydata[0];
-	mctl.matchctl=1; mctl.re=NULL; mctl.re_extra=NULL; mctl.resmcount=0;
+	mctl.matchctl=1; mctl.re=NULL; mctl.resmcount=0;
 
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_search_leaf_from_currentname: cbf or it's buffer was null."); return CBERRALLOC; }
 	if( (*(**cbf).cb).list.current==NULL ) return CBNOTFOUND;
@@ -491,7 +492,7 @@ int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int 
         //fprintf(stderr,"\ncb_get_long_int: value string [");
         //if( ucsnumber!=NULL && ucsnumlen>0 )
         //        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsnumber), ucsnumlen, CBNAMEBUFLEN );
-        //fprintf(stderr,"]");
+        //fprintf(stderr,"], length %i.", ucsnumlen);
 
 	for(indx=0; indx<ucsnumlen && indx>=0 && err<CBNEGATION && maxcounter<11; ){
 		++maxcounter; // minus sign plus characters 4294967295, together 11, without minus, 10

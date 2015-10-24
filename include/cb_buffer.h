@@ -52,6 +52,7 @@
 #define CBNOTJSON              70
 #define CBNAMEVALUEWASREAD     71    // name value (all the leaves) had been already read (because the length of last leaf was >= 0 ), at the same time telling "not found"
 #define CBLEAFVALUEWASREAD     72    // value (all the leaves) had been already read to last rend '&' 
+#define CBMISMATCH             73
 
 #define CBERROR	              100
 #define CBERRALLOC            101
@@ -68,6 +69,8 @@
 #define CBLITTLEENDIAN        112
 #define CBUNKNOWNENDIANNESS   113
 #define CBOVERFLOW            114
+#define CBOVERMAXNAMES        115    // 19.10.2015
+#define CBOVERMAXLEAVES       116    // 19.10.2015
 
 /*
  * Log priorities (log verbosity).
@@ -96,9 +99,19 @@
  too much before without a cause. Size is multiple of 4 (4-bytes characters).
  */
 
+/*
+ * Proportional to maximum memory would be better than static defines:
+ */
 
-#define CBMAXLEAVES          1000  // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
-                                   // (this can be set to a maximum number of unsigned integer)
+// TEST 22.10.2015:
+//#define CBMAXNAMES          2147480000
+//#define CBMAXLEAVES         2147480000
+
+/*
+ * Memory has to be restricted otherwice. Numbers below should be maximum size of an unsigned integer. */
+#define CBMAXNAMES          10000        // Tested value 10000 with max leaves 4 19.10.2015 (CBSTATETREE) (*next is not anymore unbounded, it's counted)
+#define CBMAXLEAVES         10000        // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
+                                         // (this can be set to a maximum number of unsigned integer)
 
 #define CBRESULTSTART       '='
 #define CBRESULTEND         '&'
@@ -109,6 +122,11 @@
 #define CBSUBRESULTSTART    '='  // If set to another, in CBSTATETREE, swithes every other separator (every odd separator)
 #define CBSUBRESULTEND      '&'  // 
 
+/*
+ * Collect benchmark data.
+ */
+#define CBBENCHMARK
+//#undef CBBENCHMARK
 
 /*
  * Configuration options
@@ -274,6 +292,16 @@
 /* Pointer size */
 #define PSIZE                 void*
 
+#ifdef CBBENCHMARK
+typedef struct cb_benchmark {
+	long long int reads;       // characters read (cb_get_chr)
+	long long int bytereads;   // bytes read (cb_get_ch)
+	long long int malloccount; // number of malloc operations (malloc)
+	long long int mallocsize;  // bits together of mallocs (malloc size)
+	long long int freecount;   // number of free operations (free)
+} cb_benchmark;
+#endif
+
 /*
  * Reader function state to update the level of the tree
  * correctly in cb_get_chr. A method to communicate with
@@ -298,8 +326,7 @@ typedef struct cb_read {
 typedef struct cb_match {
         int matchctl; // If match function is not regexp match, next can be NULL
 	int resmcount; // Place to save the matchcount by cb_compare. If matchctl -9 or -10 is used, this value can be used to evaluate the result of the comparison.
-        void *re; // cast to pcre32 (void here to be able to compile the files without pcre)
-        void *re_extra; // cast to pcre_extra32
+        void *re; // cast to pcre2_code (void here to be able to compile the files without pcre)
 } cb_match;
 
 /*
@@ -365,13 +392,13 @@ typedef struct cb_name{
 } cb_name;
 
 typedef struct cb_namelist{
-        cb_name            *name;
-	cb_name            *current;
-	cb_name            *last;
-	signed long int     namecount;
-	signed int          toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeros this.
-	cb_read             rd;
-	cb_name            *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
+        cb_name              *name;
+	cb_name              *current;
+	cb_name              *last;
+	signed long long int  namecount;
+	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeros this.
+	cb_read               rd;
+	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
 
 typedef struct cbuf{
@@ -395,6 +422,9 @@ typedef struct CBFILE{
         cb_conf             cf;         // All configurations, 20.8.2013
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
 	int                 encoding;   // list of encodings is in file cb_encoding.h 
+#ifdef CBBENCHMARK
+	cb_benchmark        bm;
+#endif
 } CBFILE;
 
 /*
@@ -494,7 +524,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  *
  * Return values:
  *
- * Returns on success: CBSUCCESS, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
+ * Returns on success: CBSUCCESS, CBSUCCESSLEAVESEXIST, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
  * CB2822HEADEREND it was set.
  * May return: CBNOTFOUND, CBVALUEEND, CBSTREAMEND
  * Possible errors: CBERRALLOC, CBOPERATIONNOTALLOWED (offsets)
@@ -599,7 +629,7 @@ int  cb_free_names_from(cb_name **cbn);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
-int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
+int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
@@ -654,6 +684,9 @@ int  cb_print_names(CBFILE **str, char priority);
 int  cb_print_leaves(cb_name **cbn, char priority); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
 void cb_print_counters(CBFILE **str, char priority);
 int  cb_print_conf(CBFILE **str, char priority);
+#ifdef CBBENCHMARK
+int  cb_print_benchmark(cb_benchmark *bm);
+#endif
 
 // Log writing (as in fprintf)
 int  cb_log( CBFILE **cbn, char priority, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html

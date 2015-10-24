@@ -29,6 +29,7 @@
 #include "../../include/cb_buffer.h"  // main functions, struct cb_match
 #include "../../include/cb_compare.h" // inner utilities, search function
 
+
 // multiples of 4-bytes
 #define BLKSIZE		128
 #define OVERLAPSIZE     64
@@ -66,13 +67,14 @@
 int  main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-        int bufindx=0, err=CBSUCCESS, opt=0, indx=0, chrbufindx=0, parambufsize=0; 
+        int bufindx=0, err=CBSUCCESS, indx=0, chrbufindx=0, parambufsize=0; 
+	unsigned int opt=0;
         unsigned char *ucsname = NULL; 
 	unsigned long int chr = 0x20;
 	unsigned char *chrbuf = NULL;
 	cb_match mctl; int mcount=0;
 	int res=-1;
-	mctl.re = NULL; mctl.re_extra=NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
+	mctl.re = NULL; mctl.matchctl=-7; mctl.resmcount=0; // these has to be initialized, otherwice free causes memory leak
 
 	/*
 	 * Arguments. */
@@ -123,10 +125,6 @@ int main (int argc, char *argv[]) {
 	  fprintf(stderr,"\n mctl.re was null, err from cb_compare_get_matchctl, %i.", err);
 	else
 	  fprintf(stderr,"\n mctl.re was not null.");
-	if(mctl.re_extra==NULL)
-	  fprintf(stderr,"\n mctl.re_extra was null, err from cb_compare_get_matchctl, %i.", err);
-	else
-	  fprintf(stderr,"\n mctl.re_extra was not null.");
 
 	/*
 	 * Matching the input stream as overlapped blocks */
@@ -142,11 +140,11 @@ int main (int argc, char *argv[]) {
             if( chr!=(unsigned char)EOF ){ // Last one char has to be searched still
 	      /*
 	       * First block or in between blocks. */
-              opt = opt | PCRE_NOTEOL; // Subject string is not the end of a line	    
+              opt = opt | PCRE2_NOTEOL; // Subject string is not the end of a line	    
 	    }else{
 	      /*
 	       * Last block. */
-	      opt = opt & ~PCRE_NOTEOL;
+	      opt = opt & ~PCRE2_NOTEOL;
 	    }
 	    err = cb_compare_regexp(&chrbuf, bufindx, &mctl, &mcount);
 	    fprintf(stderr,"\n After cb_compare_regexp,");
@@ -169,7 +167,7 @@ int main (int argc, char *argv[]) {
 	    if(err!=CBSUCCESS){ fprintf(stderr,"\nError in cb_copy_from_end_to_start: %i.", err); }
 	    /*
 	     * Next block. */
-            opt = opt | PCRE_NOTBOL; // Subject string is not the beginning of a line
+            opt = opt | PCRE2_NOTBOL; // Subject string is not the beginning of a line
  
 	  }
 	}
