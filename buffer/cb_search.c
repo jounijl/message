@@ -513,6 +513,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
 	    return CBOVERMAXNAMES;
 	  }
 
+          ++(*(**str).cb).list.nodecount; // 28.10.2015
 	  
 	  // Add leaf or name to a leaf, 2.12.2013
 	  if(openpairs>1){ // first '=' is openpairs==1 (used only in CBSTATETREE)
@@ -944,6 +945,9 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 		  }else if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend ){
 		    wasjsonrend=0; wasjsonsubrend=1;
 		  }
+		  (*(**cbs).cb).list.rd.lastchr=(**cbs).cf.rend+1; // just in case removes the character (not needed, 6.11.2015)
+		  if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend )
+		     (*(**cbs).cb).list.rd.lastchr=(**cbs).cf.rend+2;
 		}
 		(*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015 lastreadchrwasfromoutside=0; // zero the flag after addition (not more additions are needed)
 	}
@@ -1143,6 +1147,7 @@ cb_set_cursor_reset_name_index:
 		injsonquotes=0;
 		injsonarray=0;
 		++jsonemptybracket; // 3.10.2015, from '{' to '}' without a name or '{' '{' '}' '}' without a name
+		//cb_clog( CBLOGDEBUG, "\n subrstart, ++jsonemptybracket (%i) ", jsonemptybracket );
 	        tovalue=0;
 	        goto cb_set_cursor_reset_name_index; // update openpairs only from ':' (JSON rstart is ':')
 	      } // /21.2.2015
@@ -1158,7 +1163,7 @@ cb_set_cursor_reset_name_index:
 	      if( (**cbs).cf.searchstate==CBSTATETREE ){ // saves leaves
 	        tovalue=1;
 	      }
-	      //cb_clog( CBLOGDEBUG, "\nopenpairs=%i", openpairs );
+	      //cb_clog( CBLOGDEBUG, "\nopenpairs=%i (rstart, subrstart)", openpairs );
 	    }
 	  }else if( (**cbs).cf.searchstate==CBSTATEFUL ){
 	    if( ( chprev!=(**cbs).cf.bypass && chr==(**cbs).cf.rstart ) && atvalue!=1 ) // '=', save name, 13.4.2013, do not save when = is in value
@@ -1325,15 +1330,21 @@ cb_set_cursor_reset_name_index:
 	      if( (**cbs).cf.json!=1 || ( ( jsonemptybracket<=0 && chr==(**cbs).cf.subrend ) || chr==(**cbs).cf.rend ) ) // '}' ',' json-condition added 3.10.2015, kolmas
 	        cb_increase_terminalcount( &(*cbs) );
 
+
 	      if( chr==(**cbs).cf.rend ){
 		rstartflipflop=0;
 		if( (**cbs).cf.json==1 )
 	          jsonemptybracket=0;
-	      }else if( (**cbs).cf.json==1 ){
+	      }
+
+// Siirretty taman lohkon loppuun 6.11.2015
+/**
+	      if( chr==(**cbs).cf.subrend && (**cbs).cf.json==1 ){
 	        --jsonemptybracket;
 	        if(jsonemptybracket<0)
 		   jsonemptybracket=0; // 3.10.2015, last
 	      }
+ **/
 
 	      /*
 	       * '&', start a new name, 27.2.2015: solution to '}' + ',' -> --openpairs once
@@ -1345,7 +1356,12 @@ cb_set_cursor_reset_name_index:
 		  wasjsonsubrend=1;
 		  if( wasjsonrend==0 && injsonarray<=0 ){ // array: [ <value>[<,><value> [...] ] ], no curly braces - injsonarray is not necessary here
 			previousopenpairs = openpairs;
-			--openpairs;
+// XVIX
+			if(jsonemptybracket<=0){ // 6.11.2015
+			  //cb_clog( CBLOGDEBUG, "\n jsonemptybracket!=1 (%i), --openpairs", jsonemptybracket );
+			  --openpairs;
+			}//else
+			//  cb_clog( CBLOGDEBUG, "\n jsonemptybracket>=1 (%i)", jsonemptybracket );
 			cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 28.9.2015
 			// subrend was in place of rend, special condition:
 			// 1. reduce with '}' '}' but not with ',' in ',' '}' '}'
@@ -1361,13 +1377,21 @@ cb_set_cursor_reset_name_index:
 		  // 3. If previous '}' reduced the openpairs count, do not reduce again with ','
 		  if( (**cbs).cf.json!=1 || ( injsonarray<=0 && (**cbs).cf.json==1 ) ){	// 28.9.2015 1
 		  	previousopenpairs = openpairs;
+// XVIX
 	          	--openpairs; // reader must read similarly, with openpairs count or otherwice
 			cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 28.9.2015
 		  }
                   wasjsonsubrend=0;
 		}
-	        //cb_clog( CBLOGDEBUG, "\nopenpairs=%i", openpairs );
+	        //cb_clog( CBLOGDEBUG, "\nopenpairs=%i (rend, subrend)", openpairs );
 	      }
+// Siirto 6.11.2015
+	      if( chr==(**cbs).cf.subrend && (**cbs).cf.json==1 ){
+	        --jsonemptybracket;
+	        if(jsonemptybracket<0)
+		   jsonemptybracket=0; // 3.10.2015, last
+	      }
+// /Siirto 6.11.2015
 	      atvalue=0;
 	      cb_free_name(&fname);
 	      fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
