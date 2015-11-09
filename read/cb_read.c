@@ -123,23 +123,6 @@ int  cb_find_leaf_from_current(CBFILE **cbs, unsigned char **ucsname, int *namel
 	return cb_find_leaf_from_current_matchctl( &(*cbs), &(*ucsname), &(*namelength), &(*ocoffset), &mctl);
 }
 
-int  TEST_cb_read_value_leaves( CBFILE **cbs );
-int  TEST_cb_read_value_leaves( CBFILE **cbs ){
-	// TEST
-	int err = CBSUCCESS;
-	unsigned char *testname = NULL;
-	int testnamelen = 1;
-	unsigned char testdata[2] = { 0x20, '\0' };
-	testname = &testdata[0];
-	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
-	// Is is not known where the cursor is. If ocoffset is set to 1, how to know if all of the value is 
-	// read in the list to the next name? The next function call can not be used.
-	err = cb_set_cursor_match_length_ucs( &(*cbs), &testname, &testnamelen, 0, -1 ); 
-	if(err<CBNEGATION)
-		return CBSUCCESS;
-	else
-		return err;
-}
 /*
  * Requires atomic operation, sets searchmethod to "nextnames" and back.
  *
@@ -355,7 +338,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
-	char injsonquotes=0;
+	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0; // injsonarray 9.11.2015
         int openpairs=1; char found=0;
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
@@ -371,9 +354,14 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
 		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 
+		if( chr=='[' ) // 9.11.2015
+			injsonarray=1;
+		else if( chr==']' )
+			injsonarray=0;
+
                 if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ) // 1.7.2015
                         ++openpairs;
-                if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rend || chr==(**cbf).cf.subrend ) ) // 1.7.2015
+                if( chprev!=(**cbf).cf.bypass && ( ( chr==(**cbf).cf.rend && injsonarray!=1 ) || chr==(**cbf).cf.subrend ) ) // 1.7.2015, 9.11.2015
                         --openpairs;
                 if( openpairs<=0 && ( (**cbf).cf.searchstate==CBSTATETREE || (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ){
                         lindx=maxlength; // stop
@@ -386,16 +374,25 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
                         continue;
                 }
                 if( err<CBERROR ){
-			if( chprev!=(**cbf).cf.bypass &&  chr==(unsigned long int)'\"' ){ // value without quotes 1
+			/* If JSON, Removes white space characters before content. */
+			if( (**cbf).cf.json==1 && atstart==1 && ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
+				continue; // 8.11.2015
+			else
+				atstart=0;
+			/*
+			 * If JSON and not quotes, jsonstring==0. */
+			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring>=1 ){ // value without quotes 1
               		  if( injsonquotes==1 ) // second quote
                 	    injsonquotes=2; // ready to save the name (or after value)
-			}
-			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && injsonquotes==1 ) ) {
+			}else if(jsonstring==1)
+			  jsonstring=0;
+			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( injsonquotes==1 || jsonstring==0 ) ) ) {
 			 	//cb_clog( CBLOGDEBUG, "[%c]", (char) chr ); // BEST
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
-			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' ){ // value without quotes 2
+			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring==1 ){ // value without quotes 2
+			  jsonstring=2;
              		  if( injsonquotes==0 ) // first quote
  		            injsonquotes=1; // 1
   	          	}
@@ -407,11 +404,20 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 
 	if(ucsbufindx<maxlen) // 14.2.2015, terminating '\0'
 	  (*ucscontent)[ucsbufindx+1]='\0';
-
+	
         if( found==1 && (**cn).length<0 && err<CBNEGATION){
                 (**cn).length = ucsbufindx/4;
         }
 
+	//cb_clog( CBLOGDEBUG, "\ncb_copy_content: content: [" );
+	//if( ucscontent!=NULL && *ucscontent!=NULL && clength!=NULL && (*clength)>0 )
+	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucscontent), (*clength), maxlength);
+	//cb_clog( CBLOGDEBUG, "]");
+
+	/*
+	 * Typecheck if needed without quotes. */
+	if(injsonquotes==2)
+		return CBSUCCESSQUOTES;
         return CBSUCCESS;
 }
 

@@ -28,6 +28,7 @@
 #define CBMATCHMULTIPLE        11    // regexp multiple occurences 03/2014
 #define CBMATCHGROUP           12    // regexp group 03/2014
 #define CBSUCCESSLEAVESEXIST   13
+#define CBSUCCESSQUOTES        14    // cb_read cb_copy_content returns this if JSON string, quotes removed
 
 #define CBNEGATION             50
 #define CBSTREAMEND            51
@@ -103,14 +104,14 @@
  * Proportional to maximum memory would be better than static defines:
  */
 
-// TEST 22.10.2015:
-//#define CBMAXNAMES          2147480000
-//#define CBMAXLEAVES         2147480000
+// TEST 22.10.2015, 27.10.2015:
+#define CBMAXNAMES          2147480000
+#define CBMAXLEAVES         2147480000
 
 /*
  * Memory has to be restricted otherwice. Numbers below should be maximum size of an unsigned integer. */
-#define CBMAXNAMES          10000        // Tested value 10000 with max leaves 4 19.10.2015 (CBSTATETREE) (*next is not anymore unbounded, it's counted)
-#define CBMAXLEAVES         10000        // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
+//#define CBMAXNAMES          10000        // Tested value 10000 with max leaves 4 19.10.2015 (CBSTATETREE) (*next is not anymore unbounded, it's counted)
+//#define CBMAXLEAVES         10000        // If CBSTATETREE is set, count of leaves one name can have (*next is unbounded and uncounted). 
                                          // (this can be set to a maximum number of unsigned integer)
 
 #define CBRESULTSTART       '='
@@ -276,6 +277,10 @@
                                                     ( (prev) == 0x20 || (prev) == 0x09 )     ) && \
                                                     ( (chr) == 0x20 || (chr)  == 0x09 )      )
 
+/* JSON control characters if JSON is used, http://www.json.org . */
+#define JSON_CTRL( chr )                       ( chr=='"' || chr=='\\' || chr=='/' || chr=='b' || chr=='f' || chr=='n' || chr=='r' || chr=='t' || chr=='u' )
+#define JSON_HEX( chr )                        ( ( chr>='0' && chr<='9' ) || ( chr>='A' && chr<='F' ) || ( chr>='a' && chr<='f' ) )
+
 /*
  * Characters to remove from name: BOM. Comment string is removed elsewhere.
  * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
@@ -354,14 +359,15 @@ typedef struct cb_conf{
         unsigned char       unfold:2;               // Search names unfolding the text first, RFC 2822
         unsigned char       asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
-        unsigned char       removewsp:2;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
-        unsigned char       removecrlf:2;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
+        unsigned char       removewsp:1;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        unsigned char       removecrlf:1;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
 	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
 	unsigned char       removenamewsp:1;        // Remove white space characters inside name
 	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
 	unsigned char       jsonnamecheck:1;        //
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+	unsigned char       removecommentsinname:2; // Remove comments inside names (JSON can't do this, it does not have comments)
 	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	unsigned char       logpriority:4;          // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 
@@ -395,7 +401,8 @@ typedef struct cb_namelist{
         cb_name              *name;
 	cb_name              *current;
 	cb_name              *last;
-	signed long long int  namecount;
+	signed long long int  namecount;        // names
+	signed long long int  nodecount;        // names and leaves, 28.10.2015
 	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeros this.
 	cb_read               rd;
 	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
@@ -631,6 +638,10 @@ int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
 int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
+/* Name structure type. */
+int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from ); // from is the index in 4-byte ucsname in bytes
+int  cb_check_json_string_content( unsigned char **ucsname, int namelength, int *from);
+
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart); // comment start character inside valuename, '#'
@@ -643,7 +654,7 @@ int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
 int  cb_get_encoding(CBFILE **str, int *number); 
 
-/* Functions to remember the settings (see source if forgotten). */
+/* Functions to remember the settings (see the source if forgotten). */
 int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, jsonnamecheck, rstart, rend, substart, subrend, cstart, cend, UTF-8 and CBSTATETREE.
 int  cb_set_to_conf( CBFILE **str ); // Sets doubledelim, CBSTATETREE, unique names, zeroes other options and sets default values of rstart, rend, substart, subrend, cstart and cend.
 int  cb_set_to_rfc2822( CBFILE **str ); // Remove CR. Sets new line as rend, rstart ':', folding, ending at header end, (ASCII) case insensitive names, comments as '(' and ')'.

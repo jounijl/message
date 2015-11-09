@@ -61,7 +61,17 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, "\ncbypass:             \t[%c]\n", (char) (**str).cf.bypass );
 	return CBSUCCESS;
 }
-
+#ifdef CBBENCHMARK
+int  cb_print_benchmark(cb_benchmark *bm){
+	if(bm==NULL) return CBERRALLOC;
+        cb_clog( CBLOGDEBUG, "reads %lli ", (*bm).reads );
+        cb_clog( CBLOGDEBUG, "bytereads %lli ", (*bm).bytereads );
+        cb_clog( CBLOGDEBUG, "mallocs %lli ", (*bm).malloccount );
+        cb_clog( CBLOGDEBUG, "mallocbytes %lli ", (*bm).mallocsize );
+        cb_clog( CBLOGDEBUG, "frees %lli ", (*bm).freecount );
+	return CBSUCCESS;
+}
+#endif
 int  cb_print_leaves(cb_name **cbn, char priority){ 
 	cb_name *ptr = NULL;
 	if(cbn==NULL || *cbn==NULL)
@@ -131,7 +141,7 @@ int  cb_print_names(CBFILE **str, char priority){
             if(iter!=NULL){
               do{
 	        ++names;
-	        cb_log( &(*str), priority, " [%i/%li]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
+	        cb_log( &(*str), priority, " [%i/%lli]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
 	        if(iter!=NULL)
 	          cb_print_name( &iter, priority);
 	        if( (**str).cf.searchstate==CBSTATETREE ){
@@ -156,7 +166,7 @@ int  cb_print_names(CBFILE **str, char priority){
 // Debug
 void cb_print_counters(CBFILE **cbf, char priority){
         if(cbf!=NULL && *cbf!=NULL){
-          cb_log( &(*cbf), priority, "\nnamecount:%li \t index:%li \t contentlen:%li \t  buflen:%li ", \
+          cb_log( &(*cbf), priority, "\nnamecount:%lli \t index:%li \t contentlen:%li \t  buflen:%li ", \
 	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
 	  cb_log( &(*cbf), priority, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
 	  if( (*(**cbf).cb).list.name==NULL ){  cb_log( &(*cbf), priority, "name was null, \t");  }else{  cb_log( &(*cbf), priority, "name was not null, \t"); }
@@ -169,6 +179,7 @@ void cb_print_counters(CBFILE **cbf, char priority){
 int  cb_copy_name( cb_name **from, cb_name **to ){
 	int index=0;
 	if( from!=NULL && *from!=NULL && to!=NULL && *to!=NULL ){
+	  if( (**from).namebuf==NULL || (**to).namebuf==NULL ) return CBERRALLOC; // 23.10.2015
 	  for(index=0; index<(**from).namelen && index<(**to).buflen ; ++index)
 	    (**to).namebuf[index] = (**from).namebuf[index];
 	  (**to).namelen = index;
@@ -187,10 +198,10 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
 	if( cbn==NULL ){
-	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: parameter cbn was null.");
-	  return CBERRALLOC;
+	  cbn = (void*) malloc( sizeof( cb_name* ) ); // 8.11.2015, pointer size
+	  if( cbn==NULL ){ cb_clog( CBLOGDEBUG, "\ncb_allocate_name: parameter cbn was null."); return CBERRALLOC; }
 	}
-	*cbn = (cb_name*) malloc(sizeof(cb_name));
+	*cbn = (cb_name*) malloc( sizeof(cb_name) );
 	if( *cbn==NULL){
 	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
@@ -368,6 +379,9 @@ int  cb_set_to_json( CBFILE **str ){
 	(**str).cf.json = 1;
 	(**str).cf.jsonnamecheck = 1; // check name before saving it to list or tree
 	(**str).cf.doubledelim = 1; 
+	/* JSON can't remove comments: JSON does not have comments and comments are attached to the array [ ] (8.11.2015)
+	 * Arrays have commas inside them. inside array has been added and it is not tested without brackets as comment characters. */
+	(**str).cf.removecommentsinname = 0; // JSON can't remove comments: JSON does not have comments and comments are attached to the array [ ] 
 	(**str).cf.removecrlf = 1; // remove cr and lf character between value and name
 	(**str).cf.removewsp = 1; // remove linear white space characters between value and name
 	// (**str).cf.leadnames = 1; // leadnames are not in effect in CBSTATETREE
@@ -396,6 +410,7 @@ int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 int  cb_allocate_empty_cbfile(CBFILE **str, int fd){ 
 	int err = CBSUCCESS;
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
+
 	if(*str==NULL)
 	  return CBERRALLOC;
 	(**str).cb = NULL; (**str).blk = NULL;
@@ -455,9 +470,11 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #endif
 	(**str).cf.json=0;
 	(**str).cf.jsonnamecheck=0;
+	(**str).cf.removecommentsinname = 1;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
 	(**str).cf.jsonnamecheck=1;
+	(**str).cf.removecommentsinname = 0;
 #endif
 	//(**str).cf.leadnames=1; // test
 	(**str).cf.findleaffromallnames=0;
@@ -467,6 +484,12 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
 	cb_fifo_init_counters( &(**str).ahd );
+
+#ifdef CBBENCHMARK
+        ++(**str).bm.malloccount;
+        (**str).bm.mallocsize+= sizeof(CBFILE);
+#endif
+
 	return err;
 }
 
@@ -476,12 +499,24 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	if(err!=CBSUCCESS){ return err; }
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
 	if(err!=CBSUCCESS){ return err; }
+#ifdef CBBENCHMARK
+        (**str).bm.malloccount+=2;
+        (**str).bm.mallocsize+= sizeof(cbuf);
+        (**str).bm.mallocsize+= bufsize;
+#endif
 	if(*blk==NULL){
 	  err = cb_allocate_buffer(&(**str).blk, blklen);
+#ifdef CBBENCHMARK
+          ++(**str).bm.malloccount;
+          (**str).bm.mallocsize+= blklen+1;
+#endif
 	}else{
 	  err = cb_allocate_buffer(&(**str).blk, 0); // blk
 	  if(err==-1){ return CBERRALLOC;}
 	  free( (*(**str).blk).buf );
+#ifdef CBBENCHMARK
+          ++(**str).bm.freecount;
+#endif
 	  (*(**str).blk).buf = &(**blk);
 	  (*(**str).blk).buflen = (long) blklen;
 	  (*(**str).blk).contentlen = (long) blklen;
@@ -517,9 +552,9 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).buflen=blksize;
 	(**cbf).contentlen=0;
 	(**cbf).list.namecount=0;
+	(**cbf).list.nodecount=0;   // 28.10.2015
 	(**cbf).list.toterminal=0;
 	//(**cbf).list.openpairs=0; // 28.9.2015
-	//(**cbf).list.nodecount=0;
 	(**cbf).list.rd.lastchr=0; // 7.10.2015
 	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
@@ -537,19 +572,28 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 int  cb_reinit_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL ){ return CBERRALLOC; }
+#ifdef CBBENCHMARK
+	if( buf!=NULL && *buf!=NULL && (**buf).cb!=NULL)
+          (**buf).bm.freecount+=(*(**buf).cb).list.namecount;
+	//if( buf!=NULL && *buf!=NULL && (**buf).blk!=NULL)
+        //  (**buf).bm.freecount+=(*(**buf).blk).list.namecount;
+        (**buf).bm.freecount+=4;
+#endif
 	err = cb_reinit_buffer(&(**buf).cb);
 	err = cb_reinit_buffer(&(**buf).blk);
 	return err;
 }
 
-int  cb_free_cbfile(CBFILE **buf){ 
-	int err=CBSUCCESS; 
+int  cb_free_cbfile(CBFILE **buf){ // benchmark added here increasing a counter causing fault
+	int err=CBSUCCESS;
 	cb_reinit_buffer(&(**buf).cb); // free names
-	if((*(**buf).cb).buf!=NULL)
+	if((*(**buf).cb).buf!=NULL){
 	  free( (*(**buf).cb).buf ); // free buffer data
+	}
 	free((**buf).cb); // free buffer
-	if((*(**buf).blk).buf!=NULL)
+	if((*(**buf).blk).buf!=NULL){
           free((*(**buf).blk).buf); // free block data
+	}
 	free((**buf).blk); // free block
 	if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	  err = close((**buf).fd); // close stream
@@ -559,7 +603,8 @@ int  cb_free_cbfile(CBFILE **buf){
 	return err;
 }
 
-int  cb_free_buffer(cbuf **buf){
+
+int  cb_free_buffer(cbuf **buf){	// CBBENCHMARK  ++(**buf).bm.freecount;  ++(**buf).bm.freecount;
         int err=CBSUCCESS;
         err = cb_reinit_buffer( &(*buf) );
         free( (**buf).buf );
@@ -881,6 +926,10 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	unsigned char chr=' '; int err=0; 
 	if( cbs!=NULL && *cbs!=NULL ){ 
 
+#ifdef CBBENCHMARK
+	  ++(**cbs).bm.bytereads;
+#endif
+
 	  if( (*(**cbs).cb).index < (*(**cbs).cb).contentlen){
 	     ++(*(**cbs).cb).index;
 	     *ch = (*(**cbs).cb).buf[ (*(**cbs).cb).index ];
@@ -941,7 +990,7 @@ int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, in
 	return cb_free_cbfile( cbf );
 }
 
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){ 
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){  // CBBENCHMARK ++(**cbs).bm.malloccount; (**cbs).bm.mallocsize+= ( sizeof(char)*( (unsigned long int)  *size+1 ) );
         long int from=0, to=0;
         to = *size;
         return cb_get_buffer_range(cbs,buf,size,&from,&to);
@@ -1074,6 +1123,10 @@ int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **s
 
         // Allocate and copy characterarray
         *stg = (unsigned char*) malloc( (size_t) sizeof( char )*( (unsigned int) (*stgsize) + 1 ) );
+#ifdef CBBENCHMARK        
+        ++(**cbf).bm.malloccount;        
+        (**cbf).bm.mallocsize+= ( (size_t) sizeof( char )*( (unsigned int) (*stgsize) + 1 ) );
+#endif       
         if(*stg==NULL){ return CBERRALLOC; }
         (*stg)[*stgsize] = '\0';
         for( bcount=(*stgsize-1) ; bcount>=0; --bcount){
@@ -1119,6 +1172,9 @@ int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signe
         }
 
 	free(cdata);                
+#ifdef CBBENCHMARK
+        ++(**cbf).bm.freecount;
+#endif
         return err;
 }
 
@@ -1165,6 +1221,9 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
           // Deallocate previous CBFILE:s buffers (without closing filedescriptor)
           err2 = cb_reinit_buffer(&(**cbf).cb); // free names, reset buffer
           err2 = cb_reinit_buffer(&(**cbf).blk); // reset block
+#ifdef CBBENCHMARK
+          (**cbf).bm.freecount+=4;
+#endif
           return err2;
         }
         return err2;
