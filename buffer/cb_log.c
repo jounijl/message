@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>                        // abort
 #include "../include/cb_buffer.h"
 
 /*
@@ -27,7 +28,7 @@
 
 /*
  * Log if CBFILE can be attached to it. */
-int  cb_log( CBFILE **cbn, char priority, const char* restrict format, ... ){
+int  cb_log( CBFILE **cbn, char priority, int errtype, const char* restrict format, ... ){
 	va_list argptr;
 	if( cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
 	if( (**cbn).cf.logpriority<priority )
@@ -35,17 +36,21 @@ int  cb_log( CBFILE **cbn, char priority, const char* restrict format, ... ){
 	va_start( argptr, format );
 	vfprintf( stderr, format, argptr );
 	va_end( argptr );
+	if( priority==CBLOGDEBUG && errtype==CBERRALLOC )
+		abort();
 	return CBSUCCESS;
 }
 /*
  * Common log. */
-int  cb_clog( char priority, const char* restrict format, ... ){
+int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
 	va_list argptr;
 	if( CBDEFAULTLOGPRIORITY<priority )
 		return CBSUCCESS;
 	va_start( argptr, format );
 	vfprintf( stderr, format, argptr );
 	va_end( argptr );
+	if( priority==CBLOGDEBUG && errtype==CBERRALLOC )
+		abort();
 	return CBSUCCESS;
 }
 

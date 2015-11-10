@@ -102,7 +102,7 @@ int main (int argc, char *argv[]) {
 	  err = cb_put_ucs_chr( (unsigned long int) argv[1][indx], &ucsname, &chrbufindx, ( (int) parambufsize*4));
 	  //err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned long int) argv[1][indx] ), &ucsname, &chrbufindx, ( (int) parambufsize*4)); // 13.7.2014
 	}
-	if(chrbufindx<0){ cb_clog( CBLOGERR, "\nOverflow, hrbufindex."); return CBOVERFLOW; }
+	if(chrbufindx<0){ cb_clog( CBLOGERR, CBOVERFLOW, "\nOverflow, hrbufindex."); return CBOVERFLOW; }
 	parambufsize = (unsigned int) chrbufindx;
 	ucsname[ parambufsize+1 ]='\0';
 

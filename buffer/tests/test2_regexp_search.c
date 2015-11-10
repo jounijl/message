@@ -428,15 +428,15 @@ int  test_compare_print_fullinfo(cb_match *mctl){
  
         if((*mctl).re!=NULL){ re = &(* (const pcre32*) (*mctl).re); } // 20.10.2015
 
-        cb_clog( CBLOGINFO, "\ncb_match:");
-        cb_clog( CBLOGINFO, "\n\tmatchctl=%i", (*mctl).matchctl );
+        cb_clog( CBLOGINFO, CBNEGATION, "\ncb_match:");
+        cb_clog( CBLOGINFO, CBNEGATION, "\n\tmatchctl=%i", (*mctl).matchctl );
         if( re != NULL ){ // const
           res = pcre32_fullinfo( re, rextra, PCRE_INFO_SIZE, &(* (PSIZE) cres) );
-          if(res==0){   cb_clog( CBLOGINFO, "\n\tsize=%i (, %i, %i)", cres[0], cres[1], cres[2] ); }
+          if(res==0){   cb_clog( CBLOGINFO, CBNEGATION, "\n\tsize=%i (, %i, %i)", cres[0], cres[1], cres[2] ); }
           res = pcre32_fullinfo( re, rextra, PCRE_INFO_NAMECOUNT, &(* (PSIZE) cres) );
-          if(res==0){   cb_clog( CBLOGINFO, "\n\tsubpatterns=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
+          if(res==0){   cb_clog( CBLOGINFO, CBNEGATION, "\n\tsubpatterns=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
           res = pcre32_fullinfo( re, rextra, PCRE_INFO_OPTIONS, &(* (PSIZE) cres) );
-          if(res==0){   cb_clog( CBLOGINFO, "\n\toptions=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
+          if(res==0){   cb_clog( CBLOGINFO, CBNEGATION, "\n\toptions=%i", (unsigned int) ( (0|cres[0])<<8 | cres[1] ) ); }
         }
         return CBSUCCESS;
         

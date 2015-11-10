@@ -54,6 +54,8 @@
 #define CBNAMEVALUEWASREAD     71    // name value (all the leaves) had been already read (because the length of last leaf was >= 0 ), at the same time telling "not found"
 #define CBLEAFVALUEWASREAD     72    // value (all the leaves) had been already read to last rend '&' 
 #define CBMISMATCH             73
+//#define CBCOMMA                74    // Last chr was ','. Array typecheck can verify with this value, either not JSON or an array and verify the next value
+//#define CBCLOSEBRACKET         75    // Last chr was ']'. Array typecheck can verify with this value, either not JSON or an array and verify the next value
 
 #define CBERROR	              100
 #define CBERRALLOC            101
@@ -700,8 +702,10 @@ int  cb_print_benchmark(cb_benchmark *bm);
 #endif
 
 // Log writing (as in fprintf)
-int  cb_log( CBFILE **cbn, char priority, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
-int  cb_clog( char priority, const char * restrict format, ... ) __attribute__ ((format (printf, 2, 3))); 
+//int  cb_log( CBFILE **cbn, char priority, char errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+//int  cb_clog( char priority, char errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 2, 3))); 
+int  cb_log( CBFILE **cbn, char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 4, 5))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+int  cb_clog( char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); 
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013

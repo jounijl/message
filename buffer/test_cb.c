@@ -238,7 +238,7 @@ int main (int argc, char *argv[]) {
 
 			/* 21.2.2015: cb_free_name error from encoding 2 onwards: CBSTATETREE, not: CBSTATELESS, CBSTATEFUL, CBSTATETOPOLOGY. */
 	  	        err2 = cb_reinit_cbfile(&in); // free unused name_list_ptr and zero buffer counters
-			if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, "\ntest_cb: cb_reinit_cbfile(&in) returned %i.", err2 );  }
+			if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, err2, "\ntest_cb: cb_reinit_cbfile(&in) returned %i.", err2 );  }
 
 			//
  			// Output encoding
@@ -308,22 +308,22 @@ int main (int argc, char *argv[]) {
 				fprintf(stderr,"%li/%i].\n", (*nameptr).offset, (*nameptr).length);
 
 				if(in==NULL)
-					cb_clog( CBLOGDEBUG, "\n in was null." );
+					cb_clog( CBLOGDEBUG, CBNEGATION, "\n in was null." );
 				if( nameptr==NULL )
-					cb_clog( CBLOGDEBUG, "\n nameptr was null." );
+					cb_clog( CBLOGDEBUG, CBNEGATION, "\n nameptr was null." );
 				if( (*nameptr).namebuf==NULL )
-					cb_clog( CBLOGDEBUG, "\n (*nameptr).namebuf was null." );
+					cb_clog( CBLOGDEBUG, CBNEGATION, "\n (*nameptr).namebuf was null." );
 				if( (*in).cb==NULL)
-					cb_clog( CBLOGDEBUG, "\n (*in).cb was null." );
+					cb_clog( CBLOGDEBUG, CBNEGATION, "\n (*in).cb was null." );
 				if( (*in).blk==NULL)
-					cb_clog( CBLOGDEBUG, "\n (*in).blk was null." );
-				//cb_clog( CBLOGDEBUG, "\ncalling cb_set_cursor_ucs length %i, errno %i.", (*nameptr).namelen, errno );
+					cb_clog( CBLOGDEBUG, CBNEGATION, "\n (*in).blk was null." );
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncalling cb_set_cursor_ucs length %i, errno %i.", (*nameptr).namelen, errno );
 
 		//		if(encodingstested>=1){				exit(-1); } // DEBUG TMP
 				tmp_gdb_test_call( encoding );
 
 			        err = cb_set_cursor_ucs( &in, &(*nameptr).namebuf, &(*nameptr).namelen );
-				//cb_clog( CBLOGDEBUG, "\n ERR %lli.", err);
+				//cb_clog( CBLOGDEBUG, err, "\n ERR %lli.", err);
 
 				if(err==CBNOTFOUND){
 			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
@@ -415,7 +415,7 @@ int main (int argc, char *argv[]) {
 			//
 			// Return
 			err2 = cb_reinit_cbfile(&out);
-			if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, "\ntest_cb: cb_reinit_cbfile(&out) returned %i.", err2 );  }
+			if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, err2, "\ntest_cb: cb_reinit_cbfile(&out) returned %i.", err2 );  }
 	                ++encoding;
 	                ++encodingstested;
 
@@ -423,7 +423,7 @@ int main (int argc, char *argv[]) {
                 
 		} // while (encodings)
 		err2 = cb_free_names_from( &name_list.name ); // 25.2.2015
-		if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, "\ntest_cb: cb_free_buffer(&name_list) returned %i.", err2 );  }
+		if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, err2, "\ntest_cb: cb_free_buffer(&name_list) returned %i.", err2 );  }
 	} // for (files)
 
 	// Close input file

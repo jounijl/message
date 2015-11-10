@@ -237,7 +237,7 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	  byte = (unsigned char) chr_tmp;
 	  // err = cb_put_ch(cbs, &byte); byteswritten++;
 	  err = cb_put_ch(cbs, byte); byteswritten++; // 12.8.2013
-	  if(err>CBNEGATION){ cb_clog( CBLOGNOTICE, "\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
+	  if(err>CBNEGATION){ cb_clog( CBLOGNOTICE, err, "\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
 	  if(byteswritten==1){
 	        if(byteisutf8head2( byte )){  utfbytes=2;
 		}else if(byteisutf8head3( byte )){  utfbytes=3;
@@ -283,13 +283,13 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	  }
 	}
 cb_put_utf8_ch_return_not_utf:
-	cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf8_ch: not utf, writecount: %i, high: 0x%X low: 0x%X.", byteswritten, (int) *chr_high, (int) *chr);
+	cb_log( &(*cbs), CBLOGNOTICE, CBERROR, "\ncb_put_utf8_ch: not utf, writecount: %i, high: 0x%X low: 0x%X.", byteswritten, (int) *chr_high, (int) *chr);
 	*bytecount = byteswritten;
         *storedbytes = byteswritten; // uusi
         return CBNOTUTF;
 
 cb_put_utf8_ch_return_bytecount_error:
-	cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf8_ch: bytecount %i is over the allowed limit %i or %i, chr_high: 0x%X chr: 0x%X.", \
+	cb_log( &(*cbs), CBLOGNOTICE, CBERROR, "\ncb_put_utf8_ch: bytecount %i is over the allowed limit %i or %i, chr_high: 0x%X chr: 0x%X.", \
 		byteswritten, (**cbs).encodingbytes, *bytecount, (int) *chr_high, (int) *chr);
 	*bytecount = byteswritten;
         *storedbytes = byteswritten; // uusi
@@ -326,7 +326,7 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	else if( byteisutf8head5( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=5 ))  state=5;
 	else if( byteisutf8head6( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=6 ))  state=6;
 	else{  // not utf
-	  cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: first byte was not in utf format.");
+	  cb_log( &(*cbs), CBLOGNOTICE, CBNOTUTF, "\ncb_get_utf8_ch: first byte was not in utf format.");
 	  *storedbytes = 1; // 6.12.2014, compiler warning: storedbytes was unused
           return CBNOTUTF;
 	}
@@ -348,11 +348,11 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	      *chr_high=*chr_high<<8; *chr_high+=byte;
 	    }
 	    if( err > CBNEGATION ){
-	      cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
+	      cb_log( &(*cbs), CBLOGNOTICE, err, "\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
 	      return err;
 	    }
 	    if( ! byteisutf8tail( byte ) ){
-	      cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_utf8_ch: byte after header is not in utf format, bytecount %i.", *bytecount);
+	      cb_log( &(*cbs), CBLOGNOTICE, CBNOTUTF, "\ncb_get_utf8_ch: byte after header is not in utf format, bytecount %i.", *bytecount);
 	      return CBNOTUTF;
 	    }
 	  }
@@ -424,7 +424,7 @@ int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	if(bytes==6){ result = tmp1 & 0x7FFFFFFF; *bytecount=4;
 	  goto cb_get_ucs_ch_return; // 31 bits needed, 0x7FFFFFFF	  
 	}else{
-	  cb_log( &(*cbs), CBLOGNOTICE, "\ncb_get_ucs_ch: error, bytes over 6.");
+	  cb_log( &(*cbs), CBLOGNOTICE, CBNEGATION, "\ncb_get_ucs_ch: error, bytes over 6.");
 	}
 cb_get_ucs_ch_return:
 	if(*bytecount==0) *bytecount=1;
@@ -578,7 +578,7 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
           }
           return err;
         }else{
-          cb_log( &(*cbs), CBLOGNOTICE, "\ncb_put_utf16_ch: char %lX was out of range, err=%i.", *chr, err);
+          cb_log( &(*cbs), CBLOGNOTICE, err, "\ncb_put_utf16_ch: char %lX was out of range, err=%i.", *chr, err);
           return CBUCSCHAROUTOFRANGE;
         }
         return CBWRONGENCODINGCALL;
@@ -597,7 +597,7 @@ cb_get_utf16_ch_get_next_chr:
         if( (**cbs).encoding==CBENCUTF16BE ) // moved here 6.12.2014
           *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
 #endif            
-        if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
+        if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
         if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800 ; (msb)
           upper = *chr & 0x3FF;
           goto cb_get_utf16_ch_get_next_chr;
@@ -656,7 +656,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
 	  if(err<CBERROR){
              *chr = cb_reverse_four_bytes(rev);
           }else{
-             cb_log( &(*cbs), CBLOGERR, "cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
+             cb_log( &(*cbs), CBLOGERR, err, "cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
           }
           return err;
         }
@@ -713,16 +713,16 @@ unsigned char  cb_reverse_char8_bits(unsigned char from){
 }
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
-	//cb_clog( CBLOGDEBUG, "\ncb_reverse_four_bytes: from 0x%.4x to: ", from );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_four_bytes: from 0x%.4x to: ", from );
 	upper = from>>16; // 16 upper bits
-	//cb_clog( CBLOGDEBUG, " 0x%.4x ", upper );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, " 0x%.4x ", upper );
 	lower = 0xFFFF & from; // 16 lower bits
-	//cb_clog( CBLOGDEBUG, " 0x%.4x ", lower );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, " 0x%.4x ", lower );
         lower = cb_reverse_two_bytes(lower);
 	upper = cb_reverse_two_bytes(upper);
 	new = lower; new = new<<16;
 	new = new | upper;
-	//cb_clog( CBLOGDEBUG, "\ncb_reverse_four_bytes: return 0x%.4x.", new );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_four_bytes: return 0x%.4x.", new );
 	return new;
 }
 unsigned int  cb_reverse_two_bytes(unsigned int  from){
@@ -746,7 +746,7 @@ unsigned int  cb_from_host_byte_order_to_ucs( unsigned int chr ){
 unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
 	int test = cb_test_cpu_endianness();
         if( test == CBBIGENDIAN ){ 
-	  cb_clog( CBLOGDEBUG, "\ncb_from_ucs_to_host_byte_order: cb_test_cpu_endianness, big endian." );
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_from_ucs_to_host_byte_order: cb_test_cpu_endianness, big endian." );
           return chr;
         }else if( test == CBLITTLEENDIAN ){ 
           return cb_reverse_four_bytes( chr );
@@ -780,7 +780,7 @@ int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, l
           return CBERRALLOC;
 
 	if( (**cbs).ahd.ahead>0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead ) !=(*(**cbs).cb).index )
-		cb_clog( CBLOGWARNING, "\ncb_get_chr_unfold_sub: warning, trying to read from unempty ring buffer with different index." );
+		cb_clog( CBLOGWARNING, CBERROR, "\ncb_get_chr_unfold_sub: warning, trying to read from unempty ring buffer with different index." );
 
         if( (**cbs).ahd.ahead == 0){
           err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
@@ -826,7 +826,7 @@ cb_get_chr_unfold_try_another:
             }
           }
           //if(err>=CBNEGATION){
-            //cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
+            //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_unfold: read error %i, chr:[%c].", err, (int) *chr); 
             //cb_fifo_print_counters(&(**cbs).ahd);
           //}
           // Stream, file, buffer
@@ -855,7 +855,7 @@ cb_get_chr_unfold_try_another:
           }
 
           if(err>=CBNEGATION){
-            cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
+            cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
                storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, *storedbytes, (int) *chr); 
             cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
           }

@@ -34,41 +34,45 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset);
 int  cb_set_search_method(CBFILE **cbf, unsigned char method);
 int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
+/* Todo:
+ * if(err>=CBERROR){ ...; abort() }
+ */
+
 /*
  * Debug
  */
 
 int cb_print_conf(CBFILE **str, char priority){
-	if(str==NULL || *str==NULL){ cb_log(&(*str), CBLOGALERT, "\ncb_print_conf: str was null."); return CBERRALLOC; }
-	cb_log(&(*str), priority, "\ntype:                \t0x%.2X", (**str).cf.type);
-	cb_log(&(*str), priority, "\nsearchmethod:        \t0x%.2X", (**str).cf.searchmethod);
-	cb_log(&(*str), priority, "\nleafsearchmeathod:   \t0x%.2X", (**str).cf.leafsearchmethod);
-	cb_log(&(*str), priority, "\nunfold:              \t0x%.2X", (**str).cf.unfold);
-	cb_log(&(*str), priority, "\nasciicaseinsensitive:\t0x%.2X", (**str).cf.asciicaseinsensitive);
-	cb_log(&(*str), priority, "\nrfc2822headerend:    \t0x%.2X", (**str).cf.rfc2822headerend);
-	cb_log(&(*str), priority, "\nremovewsp:           \t0x%.2X", (**str).cf.removewsp);
-	cb_log(&(*str), priority, "\nremovecrlf:          \t0x%.2X", (**str).cf.removecrlf);
-	cb_log(&(*str), priority, "\nremovenamewsp:       \t0x%.2X", (**str).cf.removenamewsp);
-	cb_log(&(*str), priority, "\nleadnames:           \t0x%.2X", (**str).cf.leadnames);
-	cb_log(&(*str), priority, "\njson:                \t0x%.2X", (**str).cf.json);
-	cb_log(&(*str), priority, "\ndoubledelim:         \t0x%.2X", (**str).cf.doubledelim);
-	cb_log(&(*str), priority, "\nrstart:              \t[%c]", (char) (**str).cf.rstart );
-	cb_log(&(*str), priority, "\nrstop:               \t[%c]", (char) (**str).cf.rend );
-	cb_log(&(*str), priority, "\nsubrstart:           \t[%c]", (char) (**str).cf.subrstart );
-	cb_log(&(*str), priority, "\nsubrstop:            \t[%c]", (char) (**str).cf.subrend );
-	cb_log(&(*str), priority, "\ncstart:              \t[%c]", (char) (**str).cf.cstart );
-	cb_log(&(*str), priority, "\ncstop:               \t[%c]", (char) (**str).cf.cend );
-	cb_log(&(*str), priority, "\ncbypass:             \t[%c]\n", (char) (**str).cf.bypass );
+	if(str==NULL || *str==NULL){ cb_log(&(*str), CBLOGALERT, CBERRALLOC, "\ncb_print_conf: str was null."); return CBERRALLOC; }
+	cb_log(&(*str), priority, CBNEGATION, "\ntype:                \t0x%.2X", (**str).cf.type);
+	cb_log(&(*str), priority, CBNEGATION, "\nsearchmethod:        \t0x%.2X", (**str).cf.searchmethod);
+	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmeathod:   \t0x%.2X", (**str).cf.leafsearchmethod);
+	cb_log(&(*str), priority, CBNEGATION, "\nunfold:              \t0x%.2X", (**str).cf.unfold);
+	cb_log(&(*str), priority, CBNEGATION, "\nasciicaseinsensitive:\t0x%.2X", (**str).cf.asciicaseinsensitive);
+	cb_log(&(*str), priority, CBNEGATION, "\nrfc2822headerend:    \t0x%.2X", (**str).cf.rfc2822headerend);
+	cb_log(&(*str), priority, CBNEGATION, "\nremovewsp:           \t0x%.2X", (**str).cf.removewsp);
+	cb_log(&(*str), priority, CBNEGATION, "\nremovecrlf:          \t0x%.2X", (**str).cf.removecrlf);
+	cb_log(&(*str), priority, CBNEGATION, "\nremovenamewsp:       \t0x%.2X", (**str).cf.removenamewsp);
+	cb_log(&(*str), priority, CBNEGATION, "\nleadnames:           \t0x%.2X", (**str).cf.leadnames);
+	cb_log(&(*str), priority, CBNEGATION, "\njson:                \t0x%.2X", (**str).cf.json);
+	cb_log(&(*str), priority, CBNEGATION, "\ndoubledelim:         \t0x%.2X", (**str).cf.doubledelim);
+	cb_log(&(*str), priority, CBNEGATION, "\nrstart:              \t[%c]", (char) (**str).cf.rstart );
+	cb_log(&(*str), priority, CBNEGATION, "\nrstop:               \t[%c]", (char) (**str).cf.rend );
+	cb_log(&(*str), priority, CBNEGATION, "\nsubrstart:           \t[%c]", (char) (**str).cf.subrstart );
+	cb_log(&(*str), priority, CBNEGATION, "\nsubrstop:            \t[%c]", (char) (**str).cf.subrend );
+	cb_log(&(*str), priority, CBNEGATION, "\ncstart:              \t[%c]", (char) (**str).cf.cstart );
+	cb_log(&(*str), priority, CBNEGATION, "\ncstop:               \t[%c]", (char) (**str).cf.cend );
+	cb_log(&(*str), priority, CBNEGATION, "\ncbypass:             \t[%c]\n", (char) (**str).cf.bypass );
 	return CBSUCCESS;
 }
 #ifdef CBBENCHMARK
 int  cb_print_benchmark(cb_benchmark *bm){
 	if(bm==NULL) return CBERRALLOC;
-        cb_clog( CBLOGDEBUG, "reads %lli ", (*bm).reads );
-        cb_clog( CBLOGDEBUG, "bytereads %lli ", (*bm).bytereads );
-        cb_clog( CBLOGDEBUG, "mallocs %lli ", (*bm).malloccount );
-        cb_clog( CBLOGDEBUG, "mallocbytes %lli ", (*bm).mallocsize );
-        cb_clog( CBLOGDEBUG, "frees %lli ", (*bm).freecount );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "reads %lli ", (*bm).reads );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "bytereads %lli ", (*bm).bytereads );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "mallocs %lli ", (*bm).malloccount );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "mallocbytes %lli ", (*bm).mallocsize );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "frees %lli ", (*bm).freecount );
 	return CBSUCCESS;
 }
 #endif
@@ -83,31 +87,31 @@ int  cb_print_leaves_inner(cb_name **cbn, char priority){
 	int err = CBSUCCESS;
 	cb_name *iter = NULL, *leaf = NULL;
 	if(cbn==NULL || *cbn==NULL){ 
-	  //cb_clog( CBLOGDEBUG, "\ncb_print_leaves_inner: cbn was null."); 
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_print_leaves_inner: cbn was null."); 
 	  return CBSUCCESS; 
 	}
 
 	iter = &(**cbn);
-	if(iter==NULL){ cb_clog( CBLOGINFO, "\ncb_print_leaves_inner: iter was null."); return CBSUCCESS; }
+	if(iter==NULL){ cb_clog( CBLOGINFO, CBNEGATION, "\ncb_print_leaves_inner: iter was null."); return CBSUCCESS; }
         if( iter!=NULL ){ // Name
 	  // Self
 	  if(iter!=NULL){
 	    if((*iter).namelen!=0){
-	      cb_clog( priority, "\"");
+	      cb_clog( priority, CBNEGATION, "\"");
 	      cb_print_ucs_chrbuf( priority, &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
-	      cb_clog( priority, "\"");
+	      cb_clog( priority, CBNEGATION, "\"");
 	      if( (*iter).leaf==NULL && (*iter).next!=NULL)
-	        cb_clog( priority, ",");
+	        cb_clog( priority, CBNEGATION, ",");
 	      else if( (*iter).leaf!=NULL)
-	        cb_clog( priority, ":");
+	        cb_clog( priority, CBNEGATION, ":");
 	    }
 	  }
 	  // Left
 	  if( (*iter).leaf != NULL ){
 	    leaf = &(* (cb_name*) (*iter).leaf);
-	    cb_clog( priority, "{");
+	    cb_clog( priority, CBNEGATION, "{");
 	    err = cb_print_leaves_inner( &leaf, priority ); // LEFT
-	    cb_clog( priority, "}");
+	    cb_clog( priority, CBNEGATION, "}");
 	  }
 	  // Right
 	  if( (*iter).next != NULL ){
@@ -122,57 +126,57 @@ int  cb_print_name(cb_name **cbn, char priority){
 	int err=CBSUCCESS;
 	if( cbn==NULL || *cbn==NULL) return CBERRALLOC;
 
-        cb_clog( priority, " name [" );
+        cb_clog( priority, CBNEGATION, " name [" );
 	if( (**cbn).namebuf!=NULL && (**cbn).buflen>0 )
           cb_print_ucs_chrbuf( priority, &(**cbn).namebuf, (**cbn).namelen, (**cbn).buflen);
-        cb_clog( priority, "] namelen [%i] offset [%li] length [%i]",  (**cbn).namelen, (**cbn).offset, (**cbn).length); // 6.12.2014
-        cb_clog( priority, " nameoffset [%li]\n", (**cbn).nameoffset);
-        cb_clog( priority, " matchcount [%li]", (**cbn).matchcount);
-        cb_clog( priority, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
-        cb_clog( priority, " last used [%li]\n", (**cbn).lasttimeused);
+        cb_clog( priority, CBNEGATION, "] namelen [%i] offset [%li] length [%i]",  (**cbn).namelen, (**cbn).offset, (**cbn).length); // 6.12.2014
+        cb_clog( priority, CBNEGATION, " nameoffset [%li]\n", (**cbn).nameoffset);
+        cb_clog( priority, CBNEGATION, " matchcount [%li]", (**cbn).matchcount);
+        cb_clog( priority, CBNEGATION, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
+        cb_clog( priority, CBNEGATION, " last used [%li]\n", (**cbn).lasttimeused);
         return err;
 }
 int  cb_print_names(CBFILE **str, char priority){ 
 	cb_name *iter = NULL; int names=0;
-	cb_log( &(*str), priority, "\n cb_print_names: \n");
+	cb_log( &(*str), priority, CBNEGATION, "\n cb_print_names: \n");
 	if(str!=NULL){
 	  if( *str !=NULL){
             iter = &(*(*(**str).cb).list.name);
             if(iter!=NULL){
               do{
 	        ++names;
-	        cb_log( &(*str), priority, " [%i/%lli]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
+	        cb_log( &(*str), priority, CBNEGATION, " [%i/%lli]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
 	        if(iter!=NULL)
 	          cb_print_name( &iter, priority);
 	        if( (**str).cf.searchstate==CBSTATETREE ){
-	          cb_log( &(*str), priority, "         tree: ");
+	          cb_log( &(*str), priority, CBNEGATION, "         tree: ");
 	          cb_print_leaves( &iter, priority );
-	          cb_log( &(*str), priority, "\n");
+	          cb_log( &(*str), priority, CBNEGATION, "\n");
 	        }
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
               return CBSUCCESS;
 	    }else{
-	      cb_log( &(*str), priority, "\n namelist was empty");
+	      cb_log( &(*str), priority, CBNEGATION, "\n namelist was empty");
 	    }
 	  }else{
-	    cb_log( &(*str), priority, "\n *str was null "); 
+	    cb_log( &(*str), priority, CBNEGATION, "\n *str was null "); 
 	  }
 	}else{
-	  cb_log( &(*str), priority, "\n str was null "); 
+	  cb_log( &(*str), priority, CBNEGATION, "\n str was null "); 
 	}
         return CBERRALLOC;
 }
 // Debug
 void cb_print_counters(CBFILE **cbf, char priority){
         if(cbf!=NULL && *cbf!=NULL){
-          cb_log( &(*cbf), priority, "\nnamecount:%lli \t index:%li \t contentlen:%li \t  buflen:%li ", \
+          cb_log( &(*cbf), priority, CBNEGATION, "\nnamecount:%lli \t index:%li \t contentlen:%li \t  buflen:%li ", \
 	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
-	  cb_log( &(*cbf), priority, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
-	  if( (*(**cbf).cb).list.name==NULL ){  cb_log( &(*cbf), priority, "name was null, \t");  }else{  cb_log( &(*cbf), priority, "name was not null, \t"); }
-	  if( (*(**cbf).cb).list.last==NULL ){  cb_log( &(*cbf), priority, "last was null, \t");  }else{  cb_log( &(*cbf), priority, "last was not null, \t"); }
-	  if( (*(**cbf).cb).list.current==NULL ){  cb_log( &(*cbf), priority, "\ncurrent was null, \t");  }else{  cb_log( &(*cbf), priority, "\ncurrent was not null, \t"); }
-	  if( (*(**cbf).cb).list.currentleaf==NULL ){  cb_log( &(*cbf), priority, "currentleaf was null, \t");  }else{  cb_log( &(*cbf), priority, "currentleaf was not null, \t"); }
+	  cb_log( &(*cbf), priority, CBNEGATION, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
+	  if( (*(**cbf).cb).list.name==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "name was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "name was not null, \t"); }
+	  if( (*(**cbf).cb).list.last==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "last was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "last was not null, \t"); }
+	  if( (*(**cbf).cb).list.current==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "\ncurrent was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "\ncurrent was not null, \t"); }
+	  if( (*(**cbf).cb).list.currentleaf==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "currentleaf was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "currentleaf was not null, \t"); }
 	}
 }
 
@@ -199,11 +203,11 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
 	if( cbn==NULL ){
 	  cbn = (void*) malloc( sizeof( cb_name* ) ); // 8.11.2015, pointer size
-	  if( cbn==NULL ){ cb_clog( CBLOGDEBUG, "\ncb_allocate_name: parameter cbn was null."); return CBERRALLOC; }
+	  if( cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: parameter cbn was null."); return CBERRALLOC; }
 	}
 	*cbn = (cb_name*) malloc( sizeof(cb_name) );
 	if( *cbn==NULL){
-	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc error, CBERRALLOC.");
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
 	}
 	(**cbn).offset=0; 
@@ -218,7 +222,7 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 
 	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL){
-	  cb_clog( CBLOGDEBUG, "\ncb_allocate_name: malloc CBERRALLOC." );
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc CBERRALLOC." );
 	  return CBERRALLOC;
 	}
 	memset( &(**cbn).namebuf[0], 0x20, (size_t) namelen ); // 22.2.2015
@@ -259,7 +263,7 @@ int  cb_set_search_state(CBFILE **str, unsigned char state){
 	if( state==CBSTATETREE || state==CBSTATELESS || state==CBSTATEFUL || state==CBSTATETOPOLOGY )
 		(**str).cf.searchstate = state;
 	else
-		cb_log( &(*str), CBLOGWARNING, "\nState not known.");
+		cb_log( &(*str), CBLOGWARNING, CBERROR, "\nState not known.");
 	return CBSUCCESS;
 }
 int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart){ // sublist value start
@@ -673,7 +677,7 @@ int  cb_empty_block(CBFILE **buf, char reading ){
 	(*(**buf).blk).contentlen = 0;
 	(*(**buf).blk).index = 0;
 	if( lerr==-1 ){
-	  cb_log( &(*buf), CBLOGALERT, "\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
+	  cb_log( &(*buf), CBLOGALERT, CBERROR, "\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
 	  return CBERRFILEOP;
 	}
 	return CBSUCCESS;
@@ -684,15 +688,15 @@ int  cb_empty_names(cbuf **buf){
 	  return CBERRALLOC;
 
 	//if( (**buf).list.name==NULL )
-	//  cb_clog( CBLOGWARNING, "\ncb_empty_names: list.name was null.");
+	//  cb_clog( CBLOGWARNING, CBNEGATION, "\ncb_empty_names: list.name was null.");
 
 	if( (**buf).list.name!=NULL ){
 	  err = cb_empty_names_from_name( &(*buf), &( (**buf).list.name ) );
-	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, "\ncb_empty_names: cb_empty_names_from_name returned %i.", err ); }
+	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_empty_names: cb_empty_names_from_name returned %i.", err ); }
 	}
 	if( (**buf).list.name!=NULL ){
 	  err = cb_free_name( &( (**buf).list.name ) );
-	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, "\ncb_empty_names: cb_free_name returned %i.", err ); }
+	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_empty_names: cb_free_name returned %i.", err ); }
 	}
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
 	(**buf).list.name = NULL;
@@ -787,7 +791,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	blk = (**cbf).blk;
 	if( cbf==NULL || *cbf==NULL || ch==NULL ){ return CBERRALLOC; }
 	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-		cb_log( &(*cbf), CBLOGERR, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
+		cb_log( &(*cbf), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	}
 
@@ -852,7 +856,7 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	  }
 	}
 	if(err<0){
-	  cb_clog( CBLOGINFO, "\ncb_flush_cbfile_to_offset: errno %i .", errno);
+	  cb_clog( CBLOGINFO, CBERRFILEWRITE, "\ncb_flush_cbfile_to_offset: errno %i .", errno);
 	  err = CBERRFILEWRITE ; 
 	}else{
 	  err = CBSUCCESS;
@@ -867,7 +871,7 @@ int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
 	    if((**cbs).blk!=NULL){
 	      if( offset > 0 && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){
-		cb_log( &(*cbs), CBLOGERR, "\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
+		cb_log( &(*cbs), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	      }
 	      return cb_flush_cbfile_to_offset( &(**cbs).blk, (**cbs).fd, offset);
@@ -1001,7 +1005,7 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long in
         long int index=0;
         if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
         *buf = (unsigned char *) malloc( sizeof(char)*( (unsigned long int)  *size+1 ) );
-        if(*buf==NULL){ cb_clog( CBLOGALERT, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
+        if(*buf==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
         (*buf)[(*size)] = '\0';
         for(index=0;(index<(*to-*from) && index<(*size) && (index+*from)<(*cbs).contentlen); ++index){
           (*buf)[index] = (*cbs).buf[index+*from];
@@ -1029,7 +1033,7 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *
 	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || byteswritten==NULL ){ return CBERRALLOC; }
 	if( ucsbuf==NULL || *ucsbuf==NULL ){ return CBERRALLOC; }
 	if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-	  cb_log( &(*cbf), CBLOGALERT, "\ncb_write_to_offset: attempt to write to unseekable file, type %i. Returning CBOPERATIONNOTALLOWED .", (**cbf).cf.type );
+	  cb_log( &(*cbf), CBLOGALERT, CBOPERATIONNOTALLOWED, "\ncb_write_to_offset: attempt to write to unseekable file, type %i. Returning CBOPERATIONNOTALLOWED .", (**cbf).cf.type );
 	  return CBOPERATIONNOTALLOWED;
 	}
 	*byteswritten=0;
@@ -1047,11 +1051,11 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *
 		(**cbf).blk = &(*cb);
 	}
 
-	//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_write_to_offset: data size %i, offset %li, offsetlimit %li, ", ucssize, offset, offsetlimit );
-	//cb_log( &(*cbf), CBLOGDEBUG, "blocksize %li .", (*(**cbf).blk).buflen );
-	//cb_log( &(*cbf), CBLOGDEBUG, ,"\ncb_write_to_offset: writing from %li size %i characters (r: %i) %i bytes [", offset, (ucssize/4), (ucssize%4), ucssize);
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_write_to_offset: data size %i, offset %li, offsetlimit %li, ", ucssize, offset, offsetlimit );
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "blocksize %li .", (*(**cbf).blk).buflen );
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_write_to_offset: writing from %li size %i characters (r: %i) %i bytes [", offset, (ucssize/4), (ucssize%4), ucssize);
 	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsbuf), ucssize, ucssize);
-	//cb_log( &(*cbf), CBLOGDEBUG, "] :\n");
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "] :\n");
         
 	// Write block length and flush to offset
 	while( ucssize>=0 && bufindx<ucssize && err<CBERROR && err!=CBNOFIT ){
@@ -1145,28 +1149,28 @@ int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signe
 
         if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
         if( offset<0 || offsetlimit<0 ){
-                cb_log( &(*cbf), CBLOGERR, "\ncb_erase: warning, a parameter was negative.");
+                cb_log( &(*cbf), CBLOGERR, CBOVERFLOW, "\ncb_erase: warning, a parameter was negative.");
                 return CBOVERFLOW;
         }
 
-        cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: erasing from %li to limit %li (bytes in buffer).", offset, offsetlimit );
+        cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_erase: erasing from %li to limit %li (bytes in buffer).", offset, offsetlimit );
  
         if( (**cbf).cf.type!=CBCFGSEEKABLEFILE )
                 if( (*(**cbf).cb).index >= (*(**cbf).cb).contentlen || (*(**cbf).cb).readlength>=(*(**cbf).cb).contentlen )
-                        cb_log( &(*cbf), CBLOGWARNING, "\ncb_erase: warning, attempting to erase a stream.");
+                        cb_log( &(*cbf), CBLOGWARNING, CBERROR, "\ncb_erase: warning, attempting to erase a stream.");
           
         /*
          * Character size. (Slow and consuming.) */
         err = cb_character_size( &(*cbf), chr, &cdata, &bcount);
         if( err!=CBSUCCESS || cdata==NULL || bcount==0 ){ return err; }
 
-	cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: charactersize %i .", bcount );
+	cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_erase: charactersize %i .", bcount );
           
         /*
          * Write (( offsetlimit-offset/bcount )) characters and remainder. */
 	err=0;
         while( err>=0 && offset <= ( offsetlimit - (bcount-1) ) ){
-		cb_log( &(*cbf), CBLOGDEBUG, "\ncb_erase: writing %i to %li .", bcount, offset );
+		cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_erase: writing %i to %li .", bcount, offset );
                 err = (int) pwrite( (**cbf).fd, &(*cdata), (size_t) bcount, (off_t) offset );
                 offset+=bcount;
         }
@@ -1193,7 +1197,7 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
 	long long int err=CBSUCCESS;
         if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
         if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-          cb_log( &(*cbf), CBLOGWARNING, "\ncb_seek: warning, trying to seek an unseekable file.");
+          cb_log( &(*cbf), CBLOGWARNING, CBOPERATIONNOTALLOWED, "\ncb_seek: warning, trying to seek an unseekable file.");
           return CBOPERATIONNOTALLOWED;
         }
         // Remove readahead
@@ -1201,9 +1205,9 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
         //err2 = cb_remove_ahead_offset( &(*cbf) ); // 27.7.2015, poistettu 2.8.2015
 	cb_fifo_init_counters( &(**cbf).ahd ); // lisatty 2.8.2015
 	if( err2>=CBNEGATION ){
-	  cb_clog( CBLOGNOTICE, "\ncb_reread_file: could not remove ahead offset, %i.", err2);
+	  cb_clog( CBLOGNOTICE, (char) err2, "\ncb_reread_file: could not remove ahead offset, %i.", err2);
 	  if( err2>=CBERROR )
-	    cb_clog( CBLOGWARNING, "\ncb_reread_file: Error %i.", err2);
+	    cb_clog( CBLOGWARNING, (char) err2, "\ncb_reread_file: Error %i.", err2);
 	}
 
         // Do not close old filedescriptor to use it's file elsewhere (for example in child processes), even if new descriptor was given
@@ -1214,7 +1218,7 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
         // Seek filedescriptor
         err = lseek( (**cbf).fd, (off_t) 0, SEEK_SET );
         if(err<0){
-          cb_clog( CBLOGNOTICE, "\ncb_reread_file: could not seek new file descriptor, lseek errno %i .", errno );
+          cb_clog( CBLOGNOTICE, CBERRFILEOP, "\ncb_reread_file: could not seek new file descriptor, lseek errno %i .", errno );
           err2=CBERRFILEOP;
         }else{
         

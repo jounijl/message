@@ -58,7 +58,7 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 	  if(ucsname==NULL)
 	    ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
 	  else if( *ucsname!=NULL ) 
-	    cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
+	    cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
 	  *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
 	  if( ucsname==NULL ) { return CBERRALLOC; }
 	  (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
@@ -74,7 +74,7 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current==NULL )
 	   return CBNOTFOUND;
 	else if( (**cbs).cb==NULL )
-	   cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_current_name: (**cbs).cb was null. ");
+	   cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: (**cbs).cb was null. ");
         if( ucsname==NULL || *ucsname==NULL ){ ret = CBERRALLOC; }
 	return ret;
 }
@@ -89,9 +89,9 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	unsigned char searchmethod=0;
 	name = &chrs[0];
 
-	if( cbs==NULL || *cbs==NULL ){	  cb_log( &(*cbs), CBLOGALERT, "\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL ){	  cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC; }
 	if( *ucsname!=NULL ){
-	  cb_log( &(*cbs), CBLOGERR, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
+	  cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
 	  return CBERRALLOC;
 	}
 
@@ -105,8 +105,8 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	*ucsname = NULL; // 11.12.2014
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM){ // returns only CBSUCCESS or CBSTREAM or error
 	  ret = cb_get_current_name( &(*cbs), &(*ucsname), &(*namelength) );
-	  if(ret>=CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
-	  if(ret>=CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
+	  if(ret>=CBERROR){ cb_log( &(*cbs), CBLOGERR, ret, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
+	  if(ret>=CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
 	}
 
 	/* May return CB2822HEADEREND if it was set */
@@ -140,7 +140,7 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 	unsigned char testdata[2] = { 0x20, '\0' };
 	testname = &testdata[0];
 	if( cbs==NULL || *cbs==NULL ){
-		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: allocation error."); 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_find_leaf_from_current: allocation error."); 
 		return CBERRALLOC; 
 	}
 
@@ -178,19 +178,19 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 	}
 
 /**
-        cb_log( &(*cbs), CBLOGDEBUG, "\ncb_read_value_leaves: err=%i moved current from [", err );
+        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_read_value_leaves: err=%i moved current from [", err );
 	if( (*(**cbs).cb).list.current!=NULL )
           cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
 	else
-	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
-        cb_log( &(*cbs), CBLOGDEBUG, "]");
+	  cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "<empty>");
+        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "]");
 
-	cb_log( &(*cbs), CBLOGDEBUG, " to [" );
+	cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, " to [" );
  	if( oldcurrent!=NULL )
           cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
 	else
-	  cb_log( &(*cbs), CBLOGDEBUG, "<empty>");
-        cb_log( &(*cbs), CBLOGDEBUG, "]");
+	  cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "<empty>");
+        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "]");
 **/
 	/*
 	 * Rewind to the previous name. */
@@ -203,9 +203,9 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	int err=CBNOTFOUND, safecount=0;
 	char atvalueend=0;
 	if( ocoffset==NULL)
-		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: ocoffset was null."); 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_find_leaf_from_current: ocoffset was null."); 
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL || ocoffset==NULL || mctl==NULL ){
-		cb_clog( CBLOGALERT, "\ncb_find_leaf_from_current: allocation error."); 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_find_leaf_from_current: allocation error."); 
 		return CBERRALLOC; 
 	}
 	safecount=0;
@@ -217,8 +217,8 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	/*
 	 * Read to the next name and move the current pointer to the previous name. */
 	err = cb_read_value_leaves( &(*cbs) );
-	if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, "\ncb_find_leaf_from_current: cb_read_value_leaves, error %i.", err); return err; }
-	if(err>CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_read_value_leaves returned %i.", err); }
+	if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_find_leaf_from_current: cb_read_value_leaves, error %i.", err); return err; }
+	if(err>CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, err, "\ncb_find_leaf_from_current: cb_read_value_leaves returned %i.", err); }
 
 	/*
 	 * Search first matching leaf from any ocoffset. */
@@ -232,7 +232,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
 			return CBSUCCESS;
 		}else if(err>=CBERROR){
-		   cb_log( &(*cbs), CBLOGALERT, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, error %i.", err);
+		   cb_log( &(*cbs), CBLOGALERT, err, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, error %i.", err);
 		   return err;
 		}else if(err==CBNOTFOUNDLEAVESEXIST || err==CBVALUEEND || err==CBSTREAMEND){
 		   if( err==CBVALUEEND || err==CBSTREAMEND ){
@@ -244,7 +244,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		    * Continue to search the next level leafs if some leafs existed. */
 	            *ocoffset+=1;
 		}else if(err>=CBNEGATION){
-		   ; // cb_log( &(*cbs), CBLOGDEBUG, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
+		   ; // cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
 		}
 	}
 	return CBNOTFOUND;
@@ -279,15 +279,15 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
 int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate ){
         int len = MAXCONTENTLEN;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.currentleaf==NULL || clength==NULL ){ 
-		//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
+		//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: error %i.", CBERRALLOC);
 		//if( (*(**cbf).cb).list.currentleaf==NULL )
-		// 	cb_log( &(*cbf), CBLOGDEBUG, " Currentleaf was null.");
+		// 	cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, " Currentleaf was null.");
 		return CBERRALLOC; 
 	}
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 ){
                 len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
 	}
-	//cb_log( &(*cbf), CBLOGDEBUG, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0)
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
 	else
@@ -305,12 +305,12 @@ int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucsco
  */
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int maxlen = maxlength;
-        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
-        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: cn was null."); return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_get_content: cn was null."); return CBERRALLOC; }
         
         if(ucscontent==NULL)
                 ucscontent = (unsigned char**) malloc( sizeof( PSIZE ) ); // pointer size
-        if(ucscontent==NULL){ cb_clog( CBLOGALERT, "\ncb_get_content: malloc returned null."); return CBERRALLOC; }                
+        if(ucscontent==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: malloc returned null."); return CBERRALLOC; }                
         /*
          * Count length */
         if( (**cn).length > 0 ) // Length from previous count
@@ -321,7 +321,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
          * Allocate buffer */
         *ucscontent = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) maxlen+2 ) );
         if( ucscontent==NULL ) {
-                cb_log( &(*cbf), CBLOGALERT, "\ncb_get_content: malloc returned null.");
+                cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_get_content: malloc returned null.");
                 return CBERRALLOC;
         }
         memset( &(**ucscontent), 0x20, (unsigned int) maxlen+1 );
@@ -341,10 +341,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0; // injsonarray 9.11.2015
         int openpairs=1; char found=0;
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
-        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
-        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
-	if( ucscontent==NULL || *ucscontent==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
-	if( (**cn).namebuf==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
+	if( ucscontent==NULL || *ucscontent==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
+	if( (**cn).namebuf==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
@@ -352,7 +352,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
         for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
-		if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
+		if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 
 		if( chr=='[' ) // 9.11.2015
 			injsonarray=1;
@@ -387,10 +387,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 			}else if(jsonstring==1)
 			  jsonstring=0;
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( injsonquotes==1 || jsonstring==0 ) ) ) {
-			 	//cb_clog( CBLOGDEBUG, "[%c]", (char) chr ); // BEST
+			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr ); // BEST
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 			}
-			if(err>CBERROR){ cb_clog( CBLOGERR, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
+			if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
 			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring==1 ){ // value without quotes 2
 			  jsonstring=2;
              		  if( injsonquotes==0 ) // first quote
@@ -409,10 +409,10 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
                 (**cn).length = ucsbufindx/4;
         }
 
-	//cb_clog( CBLOGDEBUG, "\ncb_copy_content: content: [" );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content: content: [" );
 	//if( ucscontent!=NULL && *ucscontent!=NULL && clength!=NULL && (*clength)>0 )
 	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucscontent), (*clength), maxlength);
-	//cb_clog( CBLOGDEBUG, "]");
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 
 	/*
 	 * Typecheck if needed without quotes. */
@@ -427,7 +427,7 @@ int cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, 
 	if( *ucsname!=NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ) return CBERRALLOC;
 	*ucsname = (unsigned char*) malloc( sizeof(unsigned char) * ( 1 + ( 4*( (unsigned int) *onebytenamelen) ) ) );
 	if(*ucsname==NULL){
-		cb_clog( CBLOGERR, "\ncb_allocate_ucsname_from_onebyte: malloc returned null.");
+		cb_clog( CBLOGERR, CBERRALLOC, "\ncb_allocate_ucsname_from_onebyte: malloc returned null.");
 		return CBERRALLOC;
 	}
 	*ucsnamelen = 4*(*onebytenamelen);
@@ -459,51 +459,17 @@ int cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsi
  *
  * May be removed if not used (27.8.2015).
  */
-/**
-int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen ){
-	int err=CBSUCCESS;
-	unsigned char *emptyname = NULL;
-	int emptynamelen = 0;
-	unsigned char emptydata[1];
-	cb_match mctl;
-	emptydata[0]='\0';
-	emptyname = &emptydata[0];
-	mctl.matchctl=1; mctl.re=NULL; mctl.resmcount=0;
+// int cb_search_leaf_from_currentname(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen ){
 
-        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_log( &(*cbf), CBLOGALERT, "\ncb_search_leaf_from_currentname: cbf or it's buffer was null."); return CBERRALLOC; }
-	if( (*(**cbf).cb).list.current==NULL ) return CBNOTFOUND;
-**/
-//	if( (*(*(**cbf).cb).list.current).length<0 ){ // next name to current has not been searched before
-		/*
-		 * Search until the next name. */
-//		err = cb_set_cursor_match_length_ucs( &(*cbf), &emptyname, &emptynamelen, 1, -1 ); // all leaves of current name
-//	}
-	/*
-	 * Search from the leaves. */
-//	return err;	
-//}
-//int cb_search_leaf_from_currentleaf(CBFILE **cbf, unsigned char **ucsparameter, int ucsparameterlen, int levelfromprevious ){
-//        if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ){ cb_clog( CBLOGALERT, "\ncb_search_leaf_from_currentleaf: cbf or it's buffer was null."); return CBERRALLOC; }
-//	return CBSUCCESS;
-//}
-
-/*
- * Get int nmbr from text describing the number. */
 int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int *nmbr){
 	int indx=0, err=CBSUCCESS, maxcounter=0; unsigned long int nm=0;
 	char first=1, minus=0;
 	if( ucsnumber==NULL || *ucsnumber==NULL || nmbr==NULL ) return CBERRALLOC;
 	*nmbr=0;
 
-        //fprintf(stderr,"\ncb_get_long_int: value string [");
-        //if( ucsnumber!=NULL && ucsnumlen>0 )
-        //        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsnumber), ucsnumlen, CBNAMEBUFLEN );
-        //fprintf(stderr,"], length %i.", ucsnumlen);
-
 	for(indx=0; indx<ucsnumlen && indx>=0 && err<CBNEGATION && maxcounter<11; ){
 		++maxcounter; // minus sign plus characters 4294967295, together 11, without minus, 10
 		err = cb_get_ucs_chr( &nm, &(*ucsnumber), &indx, ucsnumlen);
-		//cb_clog( CBLOGDEBUG, "\ncb_get_long_int: nm %li, nmbr %li.", nm, *nmbr );
 		if(err<CBNEGATION){ // 16 bits largest number 655536
 			if(first==0){
 				*nmbr = (*nmbr)*10;
