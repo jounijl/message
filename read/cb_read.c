@@ -356,7 +356,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 		if( (**cbf).cf.json==1 ){
 		   if( chr=='}' && firstjsonbracket==1 && injsonquotes!=1 ) // 12.11.2015
 		   	firstjsonbracket=0;
-		   else if( injsonquotes!=1 && chr!='}' && ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
+		   else if( injsonquotes!=1 && chr!='}' && ! ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
 		   	firstjsonbracket=1;
 		}
 
