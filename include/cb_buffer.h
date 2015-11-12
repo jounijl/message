@@ -28,7 +28,8 @@
 #define CBMATCHMULTIPLE        11    // regexp multiple occurences 03/2014
 #define CBMATCHGROUP           12    // regexp group 03/2014
 #define CBSUCCESSLEAVESEXIST   13
-#define CBSUCCESSQUOTES        14    // cb_read cb_copy_content returns this if JSON string, quotes removed
+#define CBSUCCESSJSONQUOTES    14    // cb_read cb_copy_content returns this if JSON string, quotes removed
+#define CBSUCCESSJSONARRAY     15    // cb_read cb_copy_content returns this if JSON array
 
 #define CBNEGATION             50
 #define CBSTREAMEND            51

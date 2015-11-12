@@ -339,7 +339,8 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
 	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0; // injsonarray 9.11.2015
-        int openpairs=1; char found=0;
+        //int openpairs=0; char found=0, firstjsonbracket=1;
+        int openpairs=1; char found=0, firstjsonbracket=1; // 12.11.2015
         int maxlen = maxlength, lindx=0; // lindx 14.2.2015
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
@@ -349,21 +350,38 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-        for(lindx=0 ; lindx<maxlen && lindx<maxlength && err<CBERROR && ucsbufindx<maxlength; ++lindx ){
+        for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength; ++lindx ){
                 chprev = chr;
-                err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize);
+
+		if( (**cbf).cf.json==1 ){
+		   if( chr=='}' && firstjsonbracket==1 && injsonquotes!=1 ) // 12.11.2015
+		   	firstjsonbracket=0;
+		   else if( injsonquotes!=1 && chr!='}' && ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
+		   	firstjsonbracket=1;
+		}
+
+                err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
 		if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 
-		if( chr=='[' ) // 9.11.2015
+		if( (**cbf).cf.json==1 ){
+		   if( chr=='[' && injsonquotes==0 ) // 9.11.2015, 10.11.2015
 			injsonarray=1;
-		else if( chr==']' )
-			injsonarray=0;
+		   else if( chr==']' && injsonarray==1 && ( injsonquotes==0 || injsonquotes>=2 ) ) // 10.11.2015
+			injsonarray=2;
+		}
 
-                if( chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ) // 1.7.2015
+                if( injsonquotes!=1 && chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ){ // 1.7.2015, 12.11.2015
                         ++openpairs;
-                if( chprev!=(**cbf).cf.bypass && ( ( chr==(**cbf).cf.rend && injsonarray!=1 ) || chr==(**cbf).cf.subrend ) ) // 1.7.2015, 9.11.2015
+			//cb_clog( CBLOGDEBUG, CBNEGATION, " ++openpairs=%i ", openpairs );
+		}
+                if( injsonquotes!=1 && chprev!=(**cbf).cf.bypass && ( ( chr==(**cbf).cf.rend && injsonarray!=1 ) || chr==(**cbf).cf.subrend ) ){ // 1.7.2015, 9.11.2015
                         --openpairs;
+			if( chr==(**cbf).cf.subrend && firstjsonbracket==1 ){ --openpairs; firstjsonbracket=0; }
+			//cb_clog( CBLOGDEBUG, CBNEGATION, " --openpairs=%i ", openpairs );
+		}
                 if( openpairs<=0 && ( (**cbf).cf.searchstate==CBSTATETREE || (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ){
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content: openpairs==0, stop.");
                         lindx=maxlength; // stop
                         found=1;
                         continue;
@@ -381,21 +399,25 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 				atstart=0;
 			/*
 			 * If JSON and not quotes, jsonstring==0. */
-			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring>=1 ){ // value without quotes 1
-              		  if( injsonquotes==1 ) // second quote
-                	    injsonquotes=2; // ready to save the name (or after value)
-			}else if(jsonstring==1)
-			  jsonstring=0;
-			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( injsonquotes==1 || jsonstring==0 ) ) ) {
-			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr ); // BEST
+			if( (**cbf).cf.json==1 ){
+			  if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring>=1 ){ // value without quotes 1
+              		    if( injsonquotes==1 ) // second quote
+                	  	injsonquotes=2; // ready to save the name (or after value)
+			  }else if(jsonstring==1)
+				jsonstring=0;
+			}
+			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( ( injsonquotes==1 || injsonarray==1 || jsonstring==0 ) ) ) ) { // 10.11.2015
+			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr, '\"' ); // BEST
                         	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
-			if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring==1 ){ // value without quotes 2
-			  jsonstring=2;
-             		  if( injsonquotes==0 ) // first quote
- 		            injsonquotes=1; // 1
-  	          	}
+			if( (**cbf).cf.json==1 ){
+			  if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring==1 ){ // value without quotes 2
+			    jsonstring=2;
+             		    if( injsonquotes==0 || ( injsonquotes==2 && injsonarray==1 ) ) // first quote, or second quote if an array, 10.11.2015
+ 		        	injsonquotes=1; // 1
+  	          	  }
+			}
 		}
                 if( chprev==(**cbf).cf.bypass && chr==(**cbf).cf.bypass )
                         chr = (**cbf).cf.rstart; // any chr not bypass
@@ -404,7 +426,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 
 	if(ucsbufindx<maxlen) // 14.2.2015, terminating '\0'
 	  (*ucscontent)[ucsbufindx+1]='\0';
-	
+
         if( found==1 && (**cn).length<0 && err<CBNEGATION){
                 (**cn).length = ucsbufindx/4;
         }
@@ -412,12 +434,14 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content: content: [" );
 	//if( ucscontent!=NULL && *ucscontent!=NULL && clength!=NULL && (*clength)>0 )
 	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucscontent), (*clength), maxlength);
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "] injsonquotes: %i, injsonarray: %i.", injsonquotes, injsonarray );
 
 	/*
 	 * Typecheck if needed without quotes. */
-	if(injsonquotes==2)
-		return CBSUCCESSQUOTES;
+	if(injsonquotes>=2)
+		return CBSUCCESSJSONQUOTES;
+	if(injsonarray>=2)
+		return CBSUCCESSJSONARRAY;
         return CBSUCCESS;
 }
 
