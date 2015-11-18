@@ -302,11 +302,8 @@
 
 #ifdef CBBENCHMARK
 typedef struct cb_benchmark {
-	long long int reads;       // characters read (cb_get_chr)
-	long long int bytereads;   // bytes read (cb_get_ch)
-	long long int malloccount; // number of malloc operations (malloc)
-	long long int mallocsize;  // bits together of mallocs (malloc size)
-	long long int freecount;   // number of free operations (free)
+	long long int reads;       // characters reads (cb_get_chr)
+	long long int bytereads;   // bytes reads (cb_get_ch)
 } cb_benchmark;
 #endif
 
@@ -628,14 +625,14 @@ int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize);
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
-int  cb_empty_names(cbuf **buf); // frees names and zero namecount
-int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn); // free names from name and count names to namecount (leafs are not counted)
 int  cb_empty_block(CBFILE **buf, char reading); // reading=1 to read (rewind) or 0 to append.
 int  cb_reinit_cbfile(CBFILE **buf);
 int  cb_free_cbfile(CBFILE **buf);
 int  cb_free_buffer(cbuf **buf);
-int  cb_free_name(cb_name **name);
-int  cb_free_names_from(cb_name **cbn);
+int  cb_empty_names(cbuf **buf); // frees names and zero cbuf namecount
+int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn); // free names from name and cbuf is updated 
+int  cb_free_name(cb_name **name, int *freecount); 
+int  cb_free_names_from(cb_name **cbn, int *freecount);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2

@@ -124,13 +124,9 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  err = cb_get_matchctl( &(*cbs), &(*name1), len1, 0, &newmctl, (*mctl).matchctl ); // 13.4.2014
 	  if(err!=CBSUCCESS){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
 	  err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
-#ifdef CBBENCHMARK
-          ++(**cbs).bm.malloccount;
-          (**cbs).bm.mallocsize+= ( sizeof(char)*( CBREGSUBJBLOCK+1 ) );
-          ++(**cbs).bm.freecount;
-#endif
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015
+	  pcre2_code_free_32( (pcre2_code_32*) newmctl.re ); // 15.11.2015, free just compiled re
 	}else if( (*mctl).matchctl==-7 || (*mctl).matchctl==-9 ){ // new 18.3.2014, not yet tested 18.3.2014
 	  /*
 	   * Uses only compiled regexp inside mctl.
@@ -140,14 +136,10 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * to be NULL terminated.
 	   */
 	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\nerror in cb_compare, -7: re was null.");  return CBERRALLOC; }
-	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount);
-#ifdef CBBENCHMARK
-          ++(**cbs).bm.malloccount;
-          (**cbs).bm.mallocsize+= ( sizeof(char)*( CBREGSUBJBLOCK+1 ) );
-          ++(**cbs).bm.freecount;
-#endif
+	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount); 
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015
+	  // 15.11.2015, do not free parameter re.
 	}else if( (*mctl).matchctl==-6 ){ // %am%
 	  if( len2 < len1 ){
 	    dfr = len1-len2; // if len2-len1 is negative
@@ -318,11 +310,6 @@ int  cb_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigne
         /** You should include PCRE2_UTF for proper UTF-8, UTF-16, or UTF-32 support. If you omit 
             it, you get pure 8-bit, or UCS-2, or UCS-4 character handling. [http://www.regular-expressions.info/pcre2.html] **/
 	// UCS-4, options =  options | (unsigned int) PCRE2_UTF; // pcre2_utf is different in pcre2 (?) 21.10.2015
-#ifdef CBBENCHMARK
-        ++(**cbf).bm.malloccount;
-        (**cbf).bm.mallocsize+= ( sizeof(char)*( (unsigned int) patsize+1 ) );
-        ++(**cbf).bm.freecount;
-#endif  
 	return cb_compare_get_matchctl(&(*pattern), patsize, options, &(*ctl), matchctl);
 }
 

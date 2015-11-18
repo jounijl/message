@@ -34,16 +34,12 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset);
 int  cb_set_search_method(CBFILE **cbf, unsigned char method);
 int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
-/* Todo:
- * if(err>=CBERROR){ ...; abort() }
- */
-
 /*
  * Debug
  */
 
 int cb_print_conf(CBFILE **str, char priority){
-	if(str==NULL || *str==NULL){ cb_log(&(*str), CBLOGALERT, CBERRALLOC, "\ncb_print_conf: str was null."); return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_print_conf: str was null."); return CBERRALLOC; }
 	cb_log(&(*str), priority, CBNEGATION, "\ntype:                \t0x%.2X", (**str).cf.type);
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchmethod:        \t0x%.2X", (**str).cf.searchmethod);
 	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmeathod:   \t0x%.2X", (**str).cf.leafsearchmethod);
@@ -67,20 +63,17 @@ int cb_print_conf(CBFILE **str, char priority){
 }
 #ifdef CBBENCHMARK
 int  cb_print_benchmark(cb_benchmark *bm){
-	if(bm==NULL) return CBERRALLOC;
+        if(bm==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_benchmark: allocation error (%i).", CBERRALLOC); return CBERRALLOC; }
         cb_clog( CBLOGDEBUG, CBNEGATION, "reads %lli ", (*bm).reads );
         cb_clog( CBLOGDEBUG, CBNEGATION, "bytereads %lli ", (*bm).bytereads );
-        cb_clog( CBLOGDEBUG, CBNEGATION, "mallocs %lli ", (*bm).malloccount );
-        cb_clog( CBLOGDEBUG, CBNEGATION, "mallocbytes %lli ", (*bm).mallocsize );
-        cb_clog( CBLOGDEBUG, CBNEGATION, "frees %lli ", (*bm).freecount );
-	return CBSUCCESS;
+        return CBSUCCESS;
 }
 #endif
 int  cb_print_leaves(cb_name **cbn, char priority){ 
 	cb_name *ptr = NULL;
-	if(cbn==NULL || *cbn==NULL)
-	  return CBERRALLOC;
-	ptr = &(* (cb_name*) (**cbn).leaf);
+	if(cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_leaves: allocation error (%i).", CBERRALLOC); return CBERRALLOC; }
+	if( (**cbn).leaf==NULL ) return CBEMPTY; // 14.11.2015
+	ptr = &(* (cb_name*) (**cbn).leaf );
 	return cb_print_leaves_inner( &ptr, priority );
 }
 int  cb_print_leaves_inner(cb_name **cbn, char priority){ 
@@ -98,7 +91,8 @@ int  cb_print_leaves_inner(cb_name **cbn, char priority){
 	  if(iter!=NULL){
 	    if((*iter).namelen!=0){
 	      cb_clog( priority, CBNEGATION, "\"");
-	      cb_print_ucs_chrbuf( priority, &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
+	      if( (*iter).namebuf!=NULL && (*iter).namelen>0 && (*iter).buflen>0 ) // 14.11.2015
+	        cb_print_ucs_chrbuf( priority, &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
 	      cb_clog( priority, CBNEGATION, "\"");
 	      if( (*iter).leaf==NULL && (*iter).next!=NULL)
 	        cb_clog( priority, CBNEGATION, ",");
@@ -124,7 +118,7 @@ int  cb_print_leaves_inner(cb_name **cbn, char priority){
 
 int  cb_print_name(cb_name **cbn, char priority){ 
 	int err=CBSUCCESS;
-	if( cbn==NULL || *cbn==NULL) return CBERRALLOC;
+	if( cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_name: cbn was null." ); return CBERRALLOC; }
 
         cb_clog( priority, CBNEGATION, " name [" );
 	if( (**cbn).namebuf!=NULL && (**cbn).buflen>0 )
@@ -138,11 +132,12 @@ int  cb_print_name(cb_name **cbn, char priority){
 }
 int  cb_print_names(CBFILE **str, char priority){ 
 	cb_name *iter = NULL; int names=0;
+	if( str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_names: str was null." ); return CBERRALLOC; }
 	cb_log( &(*str), priority, CBNEGATION, "\n cb_print_names: \n");
 	if(str!=NULL){
-	  if( *str !=NULL){
-            iter = &(*(*(**str).cb).list.name);
-            if(iter!=NULL){
+	  if( *str!=NULL && (**str).cb!=NULL ){
+            if( (*(**str).cb).list.name!=NULL ){
+              iter = &(*(*(**str).cb).list.name);
               do{
 	        ++names;
 	        cb_log( &(*str), priority, CBNEGATION, " [%i/%lli]", names, (*(**str).cb).list.namecount ); // [%.2i/%.2li]
@@ -153,6 +148,8 @@ int  cb_print_names(CBFILE **str, char priority){
 	          cb_print_leaves( &iter, priority );
 	          cb_log( &(*str), priority, CBNEGATION, "\n");
 	        }
+		if( (*iter).next==NULL )
+		  break;
                 iter = &(* (cb_name *) (*iter).next );
               }while( iter != NULL );
               return CBSUCCESS;
@@ -160,11 +157,12 @@ int  cb_print_names(CBFILE **str, char priority){
 	      cb_log( &(*str), priority, CBNEGATION, "\n namelist was empty");
 	    }
 	  }else{
-	    cb_log( &(*str), priority, CBNEGATION, "\n *str was null "); 
+	    cb_clog( priority, CBNEGATION, "\n *str was null "); 
 	  }
 	}else{
-	  cb_log( &(*str), priority, CBNEGATION, "\n str was null "); 
+	  cb_clog( priority, CBNEGATION, "\n str was null "); 
 	}
+	//cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_names: str was null.");
         return CBERRALLOC;
 }
 // Debug
@@ -197,14 +195,16 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
           (**to).lasttimeused = (**from).lasttimeused;
 	  return CBSUCCESS;
 	}
+	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_copy_name: parameter was null." );
 	return CBERRALLOC;
 }
 
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
-	if( cbn==NULL ){
-	  cbn = (void*) malloc( sizeof( cb_name* ) ); // 8.11.2015, pointer size
-	  if( cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: parameter cbn was null."); return CBERRALLOC; }
-	}
+	//if( cbn==NULL ){
+	//  cbn = (void*) malloc( sizeof( cb_name* ) ); // 8.11.2015, pointer size
+	//  if( cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: allocation error, malloc returned null."); return CBERRALLOC; }
+	//}
+	if( cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: cbn was null."); return CBERRALLOC; }
 	*cbn = (cb_name*) malloc( sizeof(cb_name) );
 	if( *cbn==NULL){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc error, CBERRALLOC.");
@@ -222,7 +222,7 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 
 	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL){
-	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc CBERRALLOC." );
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc returned null (namebuf)." );
 	  return CBERRALLOC;
 	}
 	memset( &(**cbn).namebuf[0], 0x20, (size_t) namelen ); // 22.2.2015
@@ -234,32 +234,32 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 }
 
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart){ // comment start
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_cstart: str was null." ); return CBERRALLOC; }
 	(**str).cf.cstart=cstart;
 	return CBSUCCESS;
 }
 int  cb_set_cend(CBFILE **str, unsigned long int cend){ // comment end
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_cend: str was null." ); return CBERRALLOC; }
 	(**str).cf.cend=cend;
 	return CBSUCCESS;
 }
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart){ // value start
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_rstart: str was null." ); return CBERRALLOC; }
 	(**str).cf.rstart=rstart;
 	return CBSUCCESS;
 }
 int  cb_set_rend(CBFILE **str, unsigned long int rend){ // value end
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_rend: str was null." ); return CBERRALLOC; }
 	(**str).cf.rend=rend;
 	return CBSUCCESS;
 }
 int  cb_set_bypass(CBFILE **str, unsigned long int bypass){ // bypass , new - added 19.12.2009
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_bypass: str was null." ); return CBERRALLOC; }
 	(**str).cf.bypass=bypass;
 	return CBSUCCESS;
 }
 int  cb_set_search_state(CBFILE **str, unsigned char state){
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_search_state: str was null." ); return CBERRALLOC; }
 	if( state==CBSTATETREE || state==CBSTATELESS || state==CBSTATEFUL || state==CBSTATETOPOLOGY )
 		(**str).cf.searchstate = state;
 	else
@@ -267,12 +267,12 @@ int  cb_set_search_state(CBFILE **str, unsigned char state){
 	return CBSUCCESS;
 }
 int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart){ // sublist value start
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_subrstart: str was null." ); return CBERRALLOC; }
 	(**str).cf.subrstart=subrstart;
 	return CBSUCCESS;
 }
 int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value end
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_subrend: str was null." ); return CBERRALLOC; }
 	(**str).cf.subrend=subrend;
 	return CBSUCCESS;
 }
@@ -297,6 +297,7 @@ int  cb_set_search_method(CBFILE **cbf, unsigned char method){
             return CBSUCCESS;
           }
         }
+	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_search_method: cbf was null." );
         return CBERRALLOC;  
 }         
 int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
@@ -306,6 +307,7 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
             return CBSUCCESS;
           }
         }
+	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_search_method: cbf was null." );
         return CBERRALLOC;  
 }         
 
@@ -320,20 +322,15 @@ int  cb_set_to_conf( CBFILE **str ){
 	//    name3 { name4 = value4 ; }
 	// }
 	//
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
         cb_set_search_state( &(*str), CBSTATETREE );
         cb_use_as_file( &(*str) );
-        //cb_set_to_unique_names( &(*str) );
         cb_set_to_polysemantic_names( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
         cb_set_to_polysemantic_leaves( &(*str) ); // 30.6.2015 (needed inside values, in leafs)
         cb_set_rstart( &(*str), (unsigned long int) '=' ); // BEFORE TEST 18.8.2015
         cb_set_rend( &(*str), (unsigned long int) ';' ); // BEFORE TEST 18.8.2015
-        //cb_set_rstart( &(*str), (unsigned long int) '{' );
-        //cb_set_rend( &(*str), (unsigned long int) '}' );  
         cb_set_subrstart( &(*str), (unsigned long int) '{' ); // BEFORE TEST 18.8.2015
         cb_set_subrend( &(*str), (unsigned long int) '}' ); // BEFORE TEST 18.8.2015
-        //cb_set_subrstart( &(*str), (unsigned long int) '=' );
-        //cb_set_subrend( &(*str), (unsigned long int) ';' );
         cb_set_cstart( &(*str), (unsigned long int) '#' );
         cb_set_cend( &(*str), (unsigned long int) 0x0A ); // new line
         cb_set_bypass( &(*str), (unsigned long int) '\\' );
@@ -349,7 +346,7 @@ int  cb_set_to_conf( CBFILE **str ){
 	return CBSUCCESS;
 }
 int  cb_set_to_rfc2822( CBFILE **str ){
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_rfc2822: str was null." ); return CBERRALLOC; }
         cb_set_rstart( &(*str), (unsigned long int) ':' );
         cb_set_rend( &(*str), (unsigned long int) 0x0A );
         cb_set_cstart( &(*str), (unsigned long int) '(' ); // rfc 2822 allowed comment, comments are folded [2822 3.2.3]
@@ -368,7 +365,7 @@ int  cb_set_to_rfc2822( CBFILE **str ){
 	return CBSUCCESS;	
 }
 int  cb_set_to_json( CBFILE **str ){
-	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_json: str was null." ); return CBERRALLOC; }
 	/*
 	 * Tree structure of JSON is made with object curls. */
 	cb_set_rstart( &(*str), (unsigned long int) ':'  );
@@ -413,10 +410,13 @@ int  cb_allocate_cbfile(CBFILE **str, int fd, int bufsize, int blocksize){
 
 int  cb_allocate_empty_cbfile(CBFILE **str, int fd){ 
 	int err = CBSUCCESS;
-	*str = (CBFILE*) malloc(sizeof(CBFILE));
+	//if(str==NULL)
+	//	str = (void*) malloc( sizeof( CBFILE* ) ); // 13.11.2015, pointer size
+	if(str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_empty_cbfile: str was null." ); return CBERRALLOC; }
 
-	if(*str==NULL)
-	  return CBERRALLOC;
+	*str = (CBFILE*) malloc(sizeof(CBFILE));
+	if(*str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_empty_cbfile: malloc returned null." ); return CBERRALLOC; }
+
 	(**str).cb = NULL; (**str).blk = NULL;
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
@@ -490,8 +490,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	cb_fifo_init_counters( &(**str).ahd );
 
 #ifdef CBBENCHMARK
-        ++(**str).bm.malloccount;
-        (**str).bm.mallocsize+= sizeof(CBFILE);
+        (**str).bm.reads=0;
+        (**str).bm.bytereads=0;
 #endif
 
 	return err;
@@ -503,24 +503,12 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	if(err!=CBSUCCESS){ return err; }
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
 	if(err!=CBSUCCESS){ return err; }
-#ifdef CBBENCHMARK
-        (**str).bm.malloccount+=2;
-        (**str).bm.mallocsize+= sizeof(cbuf);
-        (**str).bm.mallocsize+= bufsize;
-#endif
 	if(*blk==NULL){
 	  err = cb_allocate_buffer(&(**str).blk, blklen);
-#ifdef CBBENCHMARK
-          ++(**str).bm.malloccount;
-          (**str).bm.mallocsize+= blklen+1;
-#endif
 	}else{
 	  err = cb_allocate_buffer(&(**str).blk, 0); // blk
 	  if(err==-1){ return CBERRALLOC;}
 	  free( (*(**str).blk).buf );
-#ifdef CBBENCHMARK
-          ++(**str).bm.freecount;
-#endif
 	  (*(**str).blk).buf = &(**blk);
 	  (*(**str).blk).buflen = (long) blklen;
 	  (*(**str).blk).contentlen = (long) blklen;
@@ -534,18 +522,22 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	return cb_allocate_buffer_from_blk( &(*cbf), &bl, bufsize );
 }
 int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
-	if( cbf==NULL ) 
+	if( cbf==NULL ){ 
+	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: cbf was null.");
 	  return CBERRALLOC;
+	}
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
+	if( *cbf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: allocation error, malloc (%i).", CBERRALLOC ); return CBERRALLOC; } // 13.11.2015
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
 }
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
-	if(cbf==NULL || *cbf==NULL)
-	  return CBERRALLOC;
+	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_buffer_from_blk: cbf was null." );  return CBERRALLOC; }
 	if( blk==NULL || *blk==NULL ){
 	  (**cbf).buf = (unsigned char *) malloc(sizeof(char)*( (unsigned int) blksize+1));
-	  if( (**cbf).buf == NULL )
-	    return CBERRALLOC;
+	  if( (**cbf).buf == NULL ){ 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_init_buffer_from_blk: malloc returned null." ); 
+		return CBERRALLOC; 
+	  }
 	  (**cbf).buf[blksize]='\0';
 	}else{
 	  (**cbf).buf = &(**blk);
@@ -575,23 +567,18 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 
 int  cb_reinit_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
-	if( buf==NULL || *buf==NULL ){ return CBERRALLOC; }
-#ifdef CBBENCHMARK
-	if( buf!=NULL && *buf!=NULL && (**buf).cb!=NULL)
-          (**buf).bm.freecount+=(*(**buf).cb).list.namecount;
-	//if( buf!=NULL && *buf!=NULL && (**buf).blk!=NULL)
-        //  (**buf).bm.freecount+=(*(**buf).blk).list.namecount;
-        (**buf).bm.freecount+=4;
-#endif
+	if( buf==NULL || *buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile: buf was null." ); return CBERRALLOC; }
+
 	err = cb_reinit_buffer(&(**buf).cb);
 	err = cb_reinit_buffer(&(**buf).blk);
 	return err;
 }
 
-int  cb_free_cbfile(CBFILE **buf){ // benchmark added here increasing a counter causing fault
+int  cb_free_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	cb_reinit_buffer(&(**buf).cb); // free names
 	if((*(**buf).cb).buf!=NULL){
+	  //memset( &(*(**buf).cb).buf, 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls
 	  free( (*(**buf).cb).buf ); // free buffer data
 	}
 	free((**buf).cb); // free buffer
@@ -608,39 +595,41 @@ int  cb_free_cbfile(CBFILE **buf){ // benchmark added here increasing a counter 
 }
 
 
-int  cb_free_buffer(cbuf **buf){	// CBBENCHMARK  ++(**buf).bm.freecount;  ++(**buf).bm.freecount;
+int  cb_free_buffer(cbuf **buf){
         int err=CBSUCCESS;
         err = cb_reinit_buffer( &(*buf) );
+	memset( &(**buf).buf, 0x20, (size_t) (**buf).buflen ); // 15.11.2015
+	(**buf).buf[ (**buf).buflen ] = '\0';
         free( (**buf).buf );
         free( *buf );
         return err;
 }
 
-int  cb_free_name(cb_name **name){
-	cb_name *leaf = NULL;
-	cb_name *next = NULL;
+int  cb_free_name(cb_name **name, int *freecount){
+	cb_name *nptr = NULL;
 
 	if( name==NULL || *name==NULL )
 	  return CBERRALLOC;
 
-	leaf = &(* (cb_name*) (**name).leaf );
-	if( leaf!=NULL )
-           cb_free_name( &leaf ); // deepest leaf first, 27.2.2015
-	if( leaf!=NULL ){
-	   next = &(* (cb_name*) (**name).next );
-	   cb_free_name( &next ); // 14.12.2014, nexts leafs
+	if( (**name).leaf!=NULL ){ // 15.11.2015
+	   nptr = &(* (cb_name*) (**name).leaf );
+           cb_free_name( &nptr, &(*freecount) ); // deepest leaf first, 27.2.2015
+	}
+	if( (**name).next!=NULL ){ // 15.11.2015
+	   nptr = &(* (cb_name*) (**name).next );
+	   cb_free_name( &nptr, &(*freecount) ); // 14.12.2014, nexts leafs
 	}
 	free( (**name).namebuf );
 	(**name).namebuf=NULL; (**name).namelen=0; (**name).buflen=0;
 	(**name).next=NULL; (**name).leaf=NULL; // 21.2.2015
 	/* Set last name to NULL */
 	free( (* (void**) name ) );
-	*name=NULL; 
+	*freecount+=1;
+	*name=NULL;
 	return CBSUCCESS;
 }
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
-	if(buf==NULL || *buf==NULL)
-	  return CBERRALLOC;
+	if(buf==NULL || *buf==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_buffer: buf was null." ); return CBERRALLOC; }
 
 	(**buf).index=0;
 	(**buf).contentlen=0;
@@ -653,6 +642,7 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	cb_empty_names(&(*buf));
 	(**buf).list.name=NULL; // 1.6.2013
 	(**buf).list.namecount=0; // 21.2.2015
+	(**buf).list.nodecount=0; // 15.11.2015
 	(**buf).list.toterminal=0; // 29.9.2015
 	//(**buf).list.openpairs=0; // 28.9.2015
 	return CBSUCCESS;
@@ -666,7 +656,7 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
  *
  */
 int  cb_empty_block(CBFILE **buf, char reading ){
-	if(buf==NULL || *buf==NULL || (**buf).blk==NULL ){ return CBERRALLOC; }
+	if(buf==NULL || *buf==NULL || (**buf).blk==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_empty_block: buf was null." ); return CBERRALLOC; }
 	off_t lerr=0;
 	if( (**buf).cf.type!=CBCFGSEEKABLEFILE )
 		return CBOPERATIONNOTALLOWED;
@@ -683,59 +673,49 @@ int  cb_empty_block(CBFILE **buf, char reading ){
 	return CBSUCCESS;
 }
 int  cb_empty_names(cbuf **buf){
-	int err=CBSUCCESS;
-	if( buf==NULL || *buf==NULL )
-	  return CBERRALLOC;
+	int err=CBSUCCESS, freecount=0;
+	if( buf==NULL || *buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_empty_names: buf was null." ); return CBERRALLOC; }
 
-	//if( (**buf).list.name==NULL )
-	//  cb_clog( CBLOGWARNING, CBNEGATION, "\ncb_empty_names: list.name was null.");
+	if( (**buf).list.name==NULL )
+		return CBSUCCESS; // 15.11.2015
 
 	if( (**buf).list.name!=NULL ){
-	  err = cb_empty_names_from_name( &(*buf), &( (**buf).list.name ) );
-	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_empty_names: cb_empty_names_from_name returned %i.", err ); }
-	}
-	if( (**buf).list.name!=NULL ){
-	  err = cb_free_name( &( (**buf).list.name ) );
+	  err = cb_free_name( &( (**buf).list.name ), &freecount );
 	  //if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_empty_names: cb_free_name returned %i.", err ); }
 	}
 	(**buf).list.namecount = 0; // namecount of main list (leafs are not counted)
+	(**buf).list.nodecount = 0; // 15.11.2015
 	(**buf).list.name = NULL;
-
-	//(**buf).list.openpairs = 0; // 28.9.2015
-	(**buf).list.toterminal = 0; // 29.9.2015
-	
-
 	(**buf).list.last = NULL; // 21.2.2015
 	(**buf).list.current = NULL; // 21.2.2015
 	(**buf).list.currentleaf = NULL; // 21.2.2015
 
+	(**buf).list.toterminal = 0; // 29.9.2015
+
 	return err;
 }
-int  cb_free_names_from(cb_name **cbn){
+int  cb_free_names_from(cb_name **cbn, int *freecount){
 	int err=CBSUCCESS;
 	cb_name *name = NULL;
-	cb_name *nextname = NULL;
-	if( cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
+	//cb_name *nextname = NULL;
+	if( cbn==NULL || *cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_free_names_from: cbn was null." ); return CBERRALLOC; }
+ 	if( (**cbn).next==NULL )
+		return CBSUCCESS;
 
 	name = &(* (cb_name*) (**cbn).next);
-	while(name != NULL){
-		nextname = &(* (cb_name*) (*name).next);
-		err = cb_free_name( &name ); // frees leaves
-		name = &(* nextname);
-	}
+	err = cb_free_name( &name, &(*freecount) ); // frees leaves and the names from the next
 	(**cbn).next = NULL;
-	(**cbn).leaf = NULL;
 
 	return err;
 }
 int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
-	int err=CBSUCCESS;
+	int err=CBSUCCESS, freecount=0;
 	cb_name *name = NULL;
 	cb_name *nextname = NULL;
-	if( buf==NULL || *buf==NULL || cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
+	if( buf==NULL || *buf==NULL || cbn==NULL || *cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_empty_names_from_name: parameter was null." ); return CBERRALLOC; }
 
-	err = cb_free_names_from( &(*cbn) );
-	if( err>=CBERROR ){	return err;  }
+	err = cb_free_names_from( &(*cbn), &freecount );
+	if( err>=CBERROR ){ cb_clog( CBLOGDEBUG, err, "\ncb_empty_names_from_name: cb_free_names_from, error %i", err); return err; }
 
 	(**buf).list.last = &(**cbn); // 21.2.2015
 	(*(**buf).list.last).next = NULL; // 25.2.2015
@@ -753,7 +733,9 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 		}
 	}
 	(**buf).list.namecount = err;
-	// terminaloffset is missing here
+	(**buf).list.nodecount -= freecount; // 15.11.2015
+
+	(**buf).list.toterminal = 0; // 15.11.2015, cbn must be a name, it is not verified here
 
 	return CBSUCCESS;
 }
@@ -778,21 +760,28 @@ int  cb_set_type(CBFILE **buf, unsigned char type){
 	    return CBSUCCESS;
 	  }
 	}
+	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_type: buf was null." );
 	return CBERRALLOC;
 }
 
 int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){ 
-	if( cbf==NULL || *cbf==NULL || ch==NULL ){ return CBERRALLOC; }
+	if( cbf==NULL || *cbf==NULL || ch==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_char_read_block: parameter was null." );
+	  return CBERRALLOC; 
+	}
 	return cb_get_char_read_offset_block( &(*cbf), &(*ch), -1);
 }
 int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset){ 
 	ssize_t sz=0; // int err=0;
 	cblk *blk = NULL; 
 	blk = (**cbf).blk;
-	if( cbf==NULL || *cbf==NULL || ch==NULL ){ return CBERRALLOC; }
+	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_char_read_offset_block: parameter was null." );
+	  return CBERRALLOC; 
+	}
 	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
-		cb_log( &(*cbf), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
-		return CBOPERATIONNOTALLOWED;
+	  cb_log( &(*cbf), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
+	  return CBOPERATIONNOTALLOWED;
 	}
 
 	if(blk!=NULL){
@@ -829,17 +818,23 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	    return CBSTREAMEND;
 	  }
 	  return CBSUCCESS;
-	}else
-	  return CBERRALLOC;
+	}
+	return CBERRALLOC;
 }
 
 int  cb_flush(CBFILE **cbs){
-	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush: cbs was null." );
+	  return CBERRALLOC; 
+	}
 	return cb_flush_to_offset( &(*cbs), -1 );
 }
 int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	int err = CBSUCCESS;
-	if(cb==NULL || *cb==NULL) return CBERRALLOC;
+	if(cb==NULL || *cb==NULL){
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_cbfile_to_offset: cb was null." ); 
+	  return CBERRALLOC;
+	}
 	if( (**cb).contentlen <= (**cb).buflen ){
 	  if( offset < 0 ){ // Append (usual)
 	    err = (int) write( fd, (**cb).buf, (size_t) (**cb).contentlen);
@@ -865,7 +860,10 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	return err;
 }
 int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
-	if( cbs==NULL || *cbs==NULL ){ return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_to_offset: cbs was null." );
+	  return CBERRALLOC; 
+	}
 
 	if( *cbs!=NULL ){
  	  if((**cbs).cf.type!=CBCFGBUFFER){
@@ -894,10 +892,14 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, long int size){
 	    return err;
 	  }
 	}
+ 	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_write: parameter was null." );
 	return CBERRALLOC;
 }
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf){
-	if( cbs==NULL || *cbs==NULL || cbf==NULL || (*cbf).buf==NULL ){ return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL || cbf==NULL || (*cbf).buf==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_write_cbuf: parameter was null." );
+	  return CBERRALLOC; 
+	}
 	return cb_write( &(*cbs), &(*(*cbf).buf), (*cbf).contentlen);
 }
 
@@ -908,7 +910,10 @@ int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf){
  */
 int  cb_put_ch(CBFILE **cbs, unsigned char ch){ // 12.8.2013
 	int err=CBSUCCESS;
-	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL || (**cbs).blk==NULL ){
+	   cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_put_ch: parameter was null." );
+	   return CBERRALLOC; 
+	}
 	if((**cbs).blk!=NULL){
 cb_put_ch_put:
 	  if((*(**cbs).blk).contentlen < (*(**cbs).blk).buflen ){
@@ -928,11 +933,10 @@ cb_put_ch_put:
 
 int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return it until end of buffer
 	unsigned char chr=' '; int err=0; 
-	if( cbs!=NULL && *cbs!=NULL ){ 
-
 #ifdef CBBENCHMARK
-	  ++(**cbs).bm.bytereads;
+          ++(**cbs).bm.bytereads;
 #endif
+	if( cbs!=NULL && *cbs!=NULL ){ 
 
 	  if( (*(**cbs).cb).index < (*(**cbs).cb).contentlen){
 	     ++(*(**cbs).cb).index;
@@ -976,6 +980,7 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	    return err; // at edge of buffer and stream
 	  }
 	}
+	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_ch: cbs was null." );
 	return CBERRALLOC;
 }
 
@@ -986,7 +991,10 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
  */
 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen){
-	if( blklen==NULL || blk==NULL || *blk==NULL || cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC;}
+	if( blklen==NULL || blk==NULL || *blk==NULL || cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_free_cbfile_get_block: parameter was null." );
+	  return CBERRALLOC;
+	}
 	(*blk) = &(*(**cbf).blk).buf[0];
 	(*(**cbf).blk).buf = NULL;
 	*contentlen = (*(**cbf).blk).contentlen;
@@ -994,7 +1002,7 @@ int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, in
 	return cb_free_cbfile( cbf );
 }
 
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){  // CBBENCHMARK ++(**cbs).bm.malloccount; (**cbs).bm.mallocsize+= ( sizeof(char)*( (unsigned long int)  *size+1 ) );
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){  
         long int from=0, to=0;
         to = *size;
         return cb_get_buffer_range(cbs,buf,size,&from,&to);
@@ -1003,7 +1011,13 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){  // CBBENCHM
 // Allocates new buffer (or a block if cblk)
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to){ 
         long int index=0;
-        if( cbs==NULL || (*cbs).buf==NULL ){ return CBERRALLOC;}
+        if( cbs==NULL || (*cbs).buf==NULL || from==NULL || to==NULL || size==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_buffer_range: parameter was null." );
+	  return CBERRALLOC;
+	}
+	//if(buf==NULL )
+	//  buf = (void*) malloc( sizeof( unsigned char* ) ); // 13.11.2015, pointer size
+        if(buf==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: buf was null."); return CBERRALLOC; }
         *buf = (unsigned char *) malloc( sizeof(char)*( (unsigned long int)  *size+1 ) );
         if(*buf==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
         (*buf)[(*size)] = '\0';
@@ -1030,8 +1044,10 @@ int  cb_write_to_offset(CBFILE **cbf, unsigned char **ucsbuf, int ucssize, int *
 	unsigned char *ubf = NULL;
 	long int offindex = offset, contentlen = 0;
 
-	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || byteswritten==NULL ){ return CBERRALLOC; }
-	if( ucsbuf==NULL || *ucsbuf==NULL ){ return CBERRALLOC; }
+	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || byteswritten==NULL || ucsbuf==NULL || *ucsbuf==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_write_to_offset: parameter was null." );
+	  return CBERRALLOC; 
+	}
 	if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
 	  cb_log( &(*cbf), CBLOGALERT, CBOPERATIONNOTALLOWED, "\ncb_write_to_offset: attempt to write to unseekable file, type %i. Returning CBOPERATIONNOTALLOWED .", (**cbf).cf.type );
 	  return CBOPERATIONNOTALLOWED;
@@ -1099,8 +1115,10 @@ int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **s
         unsigned char buf[6+1]; // longest known character+1
         unsigned char *ubf = NULL;
         
-        if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){ return CBERRALLOC; }
-        if( stg==NULL ){ return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || stg==NULL || stgsize==NULL ){
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_character_size: parameter was null." );
+	  return CBERRALLOC; 
+	}
         
         //cb_remove_ahead_offset( &(*cbf), &(**cbf).ahd );
         //cb_remove_ahead_offset( &(*cbf) ); // 27.7.2015, poistettu 2.8.2015
@@ -1119,7 +1137,7 @@ int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **s
 
         // Return the original block
         (**cbf).blk = &(*origcb);
-        
+
         if(err>=CBNEGATION){
                 *stgsize = 0;
                 return err;
@@ -1127,11 +1145,10 @@ int  cb_character_size(CBFILE **cbf, unsigned long int ucschr, unsigned char **s
 
         // Allocate and copy characterarray
         *stg = (unsigned char*) malloc( (size_t) sizeof( char )*( (unsigned int) (*stgsize) + 1 ) );
-#ifdef CBBENCHMARK        
-        ++(**cbf).bm.malloccount;        
-        (**cbf).bm.mallocsize+= ( (size_t) sizeof( char )*( (unsigned int) (*stgsize) + 1 ) );
-#endif       
-        if(*stg==NULL){ return CBERRALLOC; }
+        if(*stg==NULL){
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_character_size: malloc returned null (%i).", CBERRALLOC);
+	  return CBERRALLOC;
+	}
         (*stg)[*stgsize] = '\0';
         for( bcount=(*stgsize-1) ; bcount>=0; --bcount){
           (*stg)[bcount] = buf[bcount];
@@ -1147,7 +1164,7 @@ int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signe
         int err=CBSUCCESS, bcount=0;
         unsigned char *cdata = NULL;
 
-        if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_erase: cbf was null."); return CBERRALLOC; }
         if( offset<0 || offsetlimit<0 ){
                 cb_log( &(*cbf), CBLOGERR, CBOVERFLOW, "\ncb_erase: warning, a parameter was negative.");
                 return CBOVERFLOW;
@@ -1176,9 +1193,6 @@ int  cb_erase(CBFILE **cbf, unsigned long int chr, signed long int offset, signe
         }
 
 	free(cdata);                
-#ifdef CBBENCHMARK
-        ++(**cbf).bm.freecount;
-#endif
         return err;
 }
 
@@ -1195,7 +1209,10 @@ int  cb_reread_file( CBFILE **cbf ){
 int  cb_reread_new_file( CBFILE **cbf, int newfd ){
         int err2=CBSUCCESS;
 	long long int err=CBSUCCESS;
-        if( cbf==NULL || *cbf==NULL ){ return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL ){ 
+	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reread_new_file: cbf was null." );
+	  return CBERRALLOC; 
+	}
         if( (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
           cb_log( &(*cbf), CBLOGWARNING, CBOPERATIONNOTALLOWED, "\ncb_seek: warning, trying to seek an unseekable file.");
           return CBOPERATIONNOTALLOWED;
@@ -1225,9 +1242,6 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
           // Deallocate previous CBFILE:s buffers (without closing filedescriptor)
           err2 = cb_reinit_buffer(&(**cbf).cb); // free names, reset buffer
           err2 = cb_reinit_buffer(&(**cbf).blk); // reset block
-#ifdef CBBENCHMARK
-          (**cbf).bm.freecount+=4;
-#endif
           return err2;
         }
         return err2;

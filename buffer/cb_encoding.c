@@ -36,7 +36,7 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 	if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
 #ifdef CBBENCHMARK
           ++(**cbs).bm.reads;
-#endif    
+#endif
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 	if( (**cbs).cf.searchstate!=CBSTATETREE )
 		return err;

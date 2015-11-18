@@ -81,7 +81,7 @@ int tmp_gdb_test_call(int num){
 
 int main (int argc, char *argv[]) {
 	unsigned char *nonexname;
-	int nonexnamelen = 7, err2=0;
+	int nonexnamelen = 7, err2=0, freecount=0;
 	CBFILE *in = NULL;
 	CBFILE *out = NULL;
 //	cbuf *name_list = NULL;
@@ -422,7 +422,7 @@ int main (int argc, char *argv[]) {
 			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
                 
 		} // while (encodings)
-		err2 = cb_free_names_from( &name_list.name ); // 25.2.2015
+		err2 = cb_free_names_from( &name_list.name, &freecount ); // 25.2.2015
 		if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, err2, "\ntest_cb: cb_free_buffer(&name_list) returned %i.", err2 );  }
 	} // for (files)
 

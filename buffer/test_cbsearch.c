@@ -25,7 +25,7 @@
  
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h> // strcmp
+#include <string.h> // strcmp, memset
 #include <errno.h>  // int errno
 
 #include "../include/cb_buffer.h"
@@ -475,6 +475,7 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
         /* Allocate new name to hold the name */
         ucsname = (unsigned char *) malloc( sizeof(char)*( (unsigned int) namelen+1 ) );
         if( ucsname == NULL ) { return CBERRALLOC; }
+	memset( &ucsname[0], 0x20, (size_t) namelen );
         ucsname[namelen] = '\0';
 
         origsearchstate = (**cbs).cf.searchstate;
@@ -482,30 +483,39 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
 
         /* Every name */
         undx = 0; indx=0;
-        while( indx<namelen && err<=CBNEGATION && err2<=CBNEGATION ){
+        while( indx<namelen && undx<namelen && err<=CBNEGATION && err2<=CBNEGATION && namelen>0 ){
           err2 = cb_get_ucs_chr( &chr, &(*dotname), &indx, namelen );
-          if( chr != (unsigned long int) '.')
+          if( chr != (unsigned long int) '.' )
             err = cb_put_ucs_chr( chr, &ucsname, &undx, namelen );
           if( chr == (unsigned long int) '.' || indx>=namelen ){ // Name
 
+// HERE
             err = cb_set_cursor_match_length_ucs( &(*cbs), &ucsname, &undx, namecount, matchctl );
-            if( ( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ) && (*(**cbs).cb).list.current!=NULL && (*(**cbs).cb).list.currentleaf!=NULL ){ // Debug
-              firstname = &(*(*(**cbs).cb).list.current);
-              leaf = &(*(*(**cbs).cb).list.currentleaf);
-              if(namecount==0){
+            if( ( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ) && (*(**cbs).cb).list.current!=NULL ){
+              if( (*(**cbs).cb).list.current!=NULL && namecount==0 ){
+                firstname = &(*(*(**cbs).cb).list.current);
                 fprintf(stderr,"\nFound \"");
 		if( firstname!=NULL && (*firstname).namebuf!=NULL && (*firstname).namelen>0 )
 	          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
 	        fprintf(stderr,"\", (from list)");
                 fprintf(stderr," leaves from currentleaf: ");
-                leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);
-                cb_print_leaves( &leaf, CBLOGDEBUG );
+		if( (*(*(**cbs).cb).list.currentleaf).leaf!=NULL ){ // 15.11.2015
+                  leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);
+                  cb_print_leaves( &leaf, CBLOGDEBUG );
+		}else{
+		  fprintf(stderr,"(empty)");
+		}
               }else{
-                fprintf(stderr,"\nFound leaf (currentleaf) \"");
-	        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
-	        fprintf(stderr,"\" (from tree).");
-                fprintf(stderr," leaves from currentleaf: ");
-                cb_print_leaves( &leaf, CBLOGDEBUG );
+		if( (*(**cbs).cb).list.currentleaf!=NULL ){ // 15.11.2015
+                  leaf = &(*(*(**cbs).cb).list.currentleaf);
+                  fprintf(stderr,"\nFound leaf (currentleaf) \"");
+  	          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
+	          fprintf(stderr,"\" (from tree).");
+                  fprintf(stderr," leaves from currentleaf: ");
+                  cb_print_leaves( &leaf, CBLOGDEBUG );
+		}else{
+		  fprintf(stderr,"(empty)");
+		}
 	      }
             }else{
 	      fprintf(stderr,"\n\"");
@@ -523,7 +533,8 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
           }
         }
         (**cbs).cf.searchstate = origsearchstate;
-        free(ucsname);
+        free(ucsname); 
+	ucsname=NULL;
         if(indx==namelen && (ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM) ) // Match and dotted name was searched through (cursor is at name), 13.12.2013
           return ret;
         else // Name was not searched through or no match (cursor is somewhere in value)

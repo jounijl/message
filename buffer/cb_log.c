@@ -30,27 +30,43 @@
  * Log if CBFILE can be attached to it. */
 int  cb_log( CBFILE **cbn, char priority, int errtype, const char* restrict format, ... ){
 	va_list argptr;
-	if( cbn==NULL || *cbn==NULL ){ return CBERRALLOC; }
-	if( (**cbn).cf.logpriority<priority )
+	if( cbn==NULL || *cbn==NULL ){ abort(); return CBERRALLOC; }
+	if( (**cbn).cf.logpriority<priority ){
+		if( errtype==CBERRALLOC )
+			exit( errtype );
 		return CBSUCCESS;
-	va_start( argptr, format );
-	vfprintf( stderr, format, argptr );
-	va_end( argptr );
-	if( priority==CBLOGDEBUG && errtype==CBERRALLOC )
+	}else{
+		va_start( argptr, format );
+		vfprintf( stderr, format, argptr );
+		va_end( argptr );
+	}
+	if( priority==CBLOGDEBUG && errtype==CBERRALLOC ){
+		fflush( stderr );
 		abort();
+	}else if( errtype==CBERRALLOC ){
+		exit( errtype );
+	}
 	return CBSUCCESS;
 }
 /*
  * Common log. */
 int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
 	va_list argptr;
-	if( CBDEFAULTLOGPRIORITY<priority )
+	if( CBDEFAULTLOGPRIORITY<priority ){
+		if( errtype==CBERRALLOC )
+			exit( errtype );
 		return CBSUCCESS;
-	va_start( argptr, format );
-	vfprintf( stderr, format, argptr );
-	va_end( argptr );
-	if( priority==CBLOGDEBUG && errtype==CBERRALLOC )
+	}else{
+		va_start( argptr, format );
+		vfprintf( stderr, format, argptr );
+		va_end( argptr );
+	}
+	if( priority==CBLOGDEBUG && errtype==CBERRALLOC ){
+		fflush( stderr );
 		abort();
+	}else if( errtype==CBERRALLOC ){
+		exit( errtype );
+	}
 	return CBSUCCESS;
 }
 
