@@ -1194,7 +1194,7 @@ cb_set_cursor_reset_name_index:
 		  //cb_clog( CBLOGDEBUG, CBNEGATION, "|, openpairs=%i, injsonquotes=%i ", openpairs, injsonquotes );
 	
 		  /*
-		   * fname is copied to new allocated name in the list. Time to free fname. */ /* 18.11.2015. */
+		   * 'fname' was copied to a new allocated name in the list. Time to free fname. 18.11.2015. */
 		  (*fname).next=NULL; (*fname).leaf=NULL; cb_free_name( &fname, &freecount ); fname=NULL;
 
 		  injsonquotes=0;
@@ -1319,7 +1319,7 @@ cb_set_cursor_reset_name_index:
 	          jsonemptybracket=0;
 	      }
 
-// Siirretty taman lohkon loppuun 6.11.2015
+// Moved to the end of this block 6.11.2015
 /**
 	      if( chr==(**cbs).cf.subrend && (**cbs).cf.json==1 ){
 	        --jsonemptybracket;
@@ -1367,13 +1367,13 @@ cb_set_cursor_reset_name_index:
 		}
 	        //cb_clog( CBLOGDEBUG, CBNEGATION, "\nopenpairs=%i (rend, subrend)", openpairs );
 	      }
-// Siirto 6.11.2015
+// Move 6.11.2015
 	      if( chr==(**cbs).cf.subrend && (**cbs).cf.json==1 ){
 	        --jsonemptybracket;
 	        if(jsonemptybracket<0)
 		   jsonemptybracket=0; // 3.10.2015, last
 	      }
-// /Siirto 6.11.2015
+// /Move 6.11.2015
 	      atvalue=0;
 	      if(fname!=NULL){ 
 		(*fname).next=NULL; (*fname).leaf=NULL; // 15.11.2015
@@ -1381,7 +1381,7 @@ cb_set_cursor_reset_name_index:
 	      }
 	      fname=NULL; // allocate_name is at put_leaf and put_name and at cb_save_name_from_charbuf (first: more accurate name, second: shorter length in memory)
 // JSON: XX
-// conf:issa on sama seuraavasti: (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) 
+// conf has the same like: (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) 
 	      if( ocoffset>0 && (**cbs).cf.json==1 && injsonquotes!=1 && openpairs<previousopenpairs && openpairs==0 ){ // TEST, 23.8.2015, 3.10.2015, toinen yritys. 8.10.2015
 		/*
 		 * JSON special: concecutive '}' and ',' */
@@ -1407,10 +1407,6 @@ cb_set_cursor_reset_name_index:
 	      /*
 	       * change \\ to one '\' 
 	       */
-
-// pre TEST 7.10.2015			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && 
-// pre TEST 8.10.2015			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset) ) && 
-// pre TEST 8.10.2015	 	          ( (**cbs).cf.json==1 && (openpairs<0 || openpairs<(ocoffset-1) ) ) && 
 
 	      chr=(**cbs).cf.bypass+1; // any char not '\'
 	  }else if(     ( \
