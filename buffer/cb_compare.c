@@ -100,16 +100,15 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
  	} // 24.10.2015
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: address of name1: %lx, address of name2: %lx.", (long int) *name1, (long int) *name2 );
-
-	/**
-	if( (*mctl).matchctl<=-7 && (*mctl).matchctl>=-10){
+/**
+	//if( (*mctl).matchctl<=-7 && (*mctl).matchctl>=-10){
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare, name1: [");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG,"], name2: [");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG,"] len1: %i, len2: %i, matchctl %i", len1, len2, (*mctl).matchctl );
+	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG, CBNEGATION, "], name2: [");
+	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG, CBNEGATION, "] len1: %i, len2: %i, matchctl %i", len1, len2, (*mctl).matchctl );
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: index %li, maxlength %li", (*(**cbs).cb).index, (*(**cbs).cb).maxlength );
 	  cb_clog( CBLOGDEBUG, CBNEGATION, " readlength %li, buflen %li, contentlen %li.", (*(**cbs).cb).readlength, (*(**cbs).cb).buflen, (*(**cbs).cb).contentlen );
-	}
-	**/
+	//}
+ **/
 
 	if((*mctl).matchctl==-1)
 	  return CBMISMATCH; // no match, 20.10.2015

@@ -1040,13 +1040,20 @@ cb_set_cursor_reset_name_index:
 	injsonquotes=0;
 	injsonarray=0;
 
+        /*
+         * 'fname' was copied to a new allocated name in the list and used the last time. Time to free fname. 18.11.2015 / 2. */
+	if(fname!=NULL){
+            (*fname).next=NULL; (*fname).leaf=NULL; cb_free_name( &fname, &freecount ); fname=NULL;
+	}
+
+
 	// Search for new name
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 
 	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
-	//Cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
 	//fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nset_cursor: new name, index (chr offset %li).", chroffset );
@@ -1188,15 +1195,11 @@ cb_set_cursor_reset_name_index:
 				cb_check_json_name( &charbufptr, &index )!=CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
 	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), if name is comparable, saves name and offset
 	          savenameerr = cb_put_name( &(*cbs), &fname, openpairs, previousopenpairs ); // (last in list), if name is comparable, saves name and offset
-
+// CB_PUT_NAME
 		  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n Put name |");
 		  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
 		  //cb_clog( CBLOGDEBUG, CBNEGATION, "|, openpairs=%i, injsonquotes=%i ", openpairs, injsonquotes );
 	
-		  /*
-		   * 'fname' was copied to a new allocated name in the list. Time to free fname. 18.11.2015. */
-		  (*fname).next=NULL; (*fname).leaf=NULL; cb_free_name( &fname, &freecount ); fname=NULL;
-
 		  injsonquotes=0;
 
 	          if( savenameerr==CBADDEDNAME || savenameerr==CBADDEDLEAF || savenameerr==CBADDEDNEXTTOLEAF){
@@ -1243,11 +1246,12 @@ cb_set_cursor_reset_name_index:
 
 // savenameerr
 // buferr1 ja buferr2 ?? , && buferr<CBERROR
-	    //if( fname!=NULL ){ // 22.10.2015
-	    if( fname!=NULL && (*fname).namebuf!=NULL ){ // 22.10.2015, 18.11.2015
+	    if( fname!=NULL ){ // 22.10.2015
 	      if( openpairs<=1 && ocoffset==0 ){ // 2.12.2013, 13.12.2013, name1 from name1.name2.name3
 	        //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nNAME COMPARE");
-	        cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
+		if( (*fname).namebuf!=NULL ) // 18.11.2015
+	          cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
+// CB_COMPARE 1.
 	        if( cis == CBMATCH ){ // 9.11.2013
 	          (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	          if( (*(**cbs).cb).list.last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
@@ -1272,6 +1276,7 @@ cb_set_cursor_reset_name_index:
 	         */
 	        //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nLEAF COMPARE");
 	        cis = cb_compare( &(*cbs), &(*ucsname), *namelength, &(*fname).namebuf, (*fname).namelen, &(*mctl) ); // 23.11.2013, 11.3.2014, 23.3.2014
+// CB_COMPARE 2.
 	        if( cis == CBMATCH ){ // 9.11.2013
 	          (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
 	          if( (*(**cbs).cb).list.currentleaf != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
@@ -1296,6 +1301,9 @@ cb_set_cursor_reset_name_index:
 	        // Debug (or verbose error messages)
 	        //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: error: not leaf nor name, reseting charbuf, namecount %ld.", (*(**cbs).cb).list.namecount );
 	      }
+	      /*
+	       * 'fname' was copied to a new allocated name in the list and used the last time. Time to free fname. 18.11.2015 / 2. */
+	       (*fname).next=NULL; (*fname).leaf=NULL; cb_free_name( &fname, &freecount ); fname=NULL;
 	    }
 	    /*
 	     * No match. Reset charbuf to search next name. 

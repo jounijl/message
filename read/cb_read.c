@@ -39,7 +39,7 @@ int  cb_find_every_name(CBFILE **cbs){
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	//err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
 	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 0, -1 ); // no match, 24.10.2015
-	// int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl)
+	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_find_every_name: cb_set_cursor_match_length_ucs returned %i.", err);
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
 }
