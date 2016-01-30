@@ -1,3 +1,14 @@
+Message library.
+
+Copyright (c) 2009, 2010, 2013, 2014, 2015 and 2016, Jouni Laakso
+All rights reserved.
+
+Redistributions in binary form must reproduce the above copyright   
+notice, this list of conditions and the following disclaimer in the 
+documentation and/or other materials provided with the distribution.
+
+Otherwice the following is used.
+
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
