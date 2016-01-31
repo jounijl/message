@@ -56,3 +56,7 @@ rm test_cbfindall.o
 #$CC $FLAGS -c test_cb_fifo.c &&
 #$LD $LDFLAGS test_cb_fifo.o $FOBJS -o test_cbfifo
 #rm test_cb_fifo.o
+
+$CC $FLAGS -c test_cbwords.c &&
+$LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
+rm test_cbwords.o

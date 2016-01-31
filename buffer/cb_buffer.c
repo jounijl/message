@@ -1,16 +1,19 @@
 /* 
  * Library to read and write streams. Valuepair list and search. Different character encodings.
  * 
- * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
- * 
- * This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General
- * Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
+ * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided with the distribution.
+ *
+ * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
+ * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
  * 
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
+ * 
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -311,7 +314,22 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
         return CBERRALLOC;  
 }         
 
-
+int  cb_set_to_word_search( CBFILE **str ){
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
+	(**str).cf.findwords=1;
+	(**str).cf.doubledelim=0;
+	(**str).cf.json=0;
+	(**str).cf.removewsp=1;
+	(**str).cf.removecrlf=1;
+	(**str).cf.removenamewsp=1;
+	(**str).cf.unfold=1;
+	(**str).cf.leadnames=0;
+	//cb_set_search_state( &(*str), CBSTATEFUL );
+	cb_set_search_state( &(*str), CBSTATELESS );
+	cb_set_rstart( &(*str), (unsigned long int) ',' ); // default value (SQL, ...), name separator (record start)
+	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (CSV, SQL, ...), record end, start of name
+	return CBSUCCESS;
+}
 int  cb_set_to_conf( CBFILE **str ){
 	//
 	// example:
@@ -343,6 +361,7 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.rfc2822headerend=0;
         (**str).cf.asciicaseinsensitive=0;
         (**str).cf.unfold=1;
+	(**str).cf.findwords=0;
 	return CBSUCCESS;
 }
 int  cb_set_to_rfc2822( CBFILE **str ){
@@ -362,6 +381,7 @@ int  cb_set_to_rfc2822( CBFILE **str ){
         (**str).cf.jsonnamecheck=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
+	(**str).cf.findwords=0;
 	return CBSUCCESS;	
 }
 int  cb_set_to_json( CBFILE **str ){
@@ -387,6 +407,7 @@ int  cb_set_to_json( CBFILE **str ){
 	(**str).cf.removewsp = 1; // remove linear white space characters between value and name
 	// (**str).cf.leadnames = 1; // leadnames are not in effect in CBSTATETREE
 	(**str).cf.unfold = 0; // JSON is mostly used in values and larger aggregates (not in protocols)
+	(**str).cf.findwords=0;
 	/*
 	 * JSON is Unicode encoded. */
 	cb_set_encoding( &(*str), CBENCUTF8 );
@@ -421,6 +442,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
+	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
 	//(**str).cf.doubledelim=1; // default
 	(**str).cf.doubledelim=0; // test
 	(**str).cf.logpriority=CBLOGDEBUG; // 

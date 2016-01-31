@@ -1,10 +1,13 @@
 /*
  * Library to read and write streams. Valuepair searchlist with different encodings.
  * 
- * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
+ * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided with the distribution.
  * 
- * This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General
- * Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
+ * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser
+ * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
  * 
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
@@ -367,7 +370,8 @@ typedef struct cb_conf{
 	unsigned char       jsonnamecheck:1;        //
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	unsigned char       removecommentsinname:2; // Remove comments inside names (JSON can't do this, it does not have comments)
+	unsigned char       removecommentsinname:1; // Remove comments inside names (JSON can't do this, it does not have comments)
+	unsigned char       findwords:1;            // Compare WSP, CR, NL and rend characters and not only rend characters in order to find a word starting with a rstart character. Only CBSTATEFUL is used because every SP or TAB would alter the hight information of the tree. The value is not especially needed.
 	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	unsigned char       logpriority:4;          // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 
@@ -658,6 +662,7 @@ int  cb_get_encoding(CBFILE **str, int *number);
 int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, jsonnamecheck, rstart, rend, substart, subrend, cstart, cend, UTF-8 and CBSTATETREE.
 int  cb_set_to_conf( CBFILE **str ); // Sets doubledelim, CBSTATETREE, unique names, zeroes other options and sets default values of rstart, rend, substart, subrend, cstart and cend.
 int  cb_set_to_rfc2822( CBFILE **str ); // Remove CR. Sets new line as rend, rstart ':', folding, ending at header end, (ASCII) case insensitive names, comments as '(' and ')'.
+int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with trees because words can end to SP, TAB, CR or LF.
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize

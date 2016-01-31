@@ -1,10 +1,13 @@
 /* 
  * Library to read and write streams. Searches valuepairs locations to a list. Uses different character encodings.
  * 
- * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
+ * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided with the distribution.
  * 
- * This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General
- * Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
+ * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser
+ * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
  * 
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
@@ -19,11 +22,14 @@
 #include <unistd.h>
 #include <string.h> // memset
 #include <time.h>   // time (timestamp in cb_set_cursor)
+#include <stdbool.h> // C99 true/false
 #include "../include/cb_buffer.h"
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpairs);
 int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpairs);
+int  cb_is_rstart(CBFILE **cbs, unsigned long int chr);
+int  cb_is_rend(CBFILE **cbs, unsigned long int chr);
 int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs, int previousopenpairs); // 21.8.2015
 int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl); // 11.3.2014, 23.3.2014
@@ -767,6 +773,23 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	return CBERROR;
 }
 
+int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
+	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
+	if( chr==(**cbs).cf.rstart )
+	  return true;
+	if( (**cbs).cf.findwords==1 ){ // name end, record start
+	  if( WSP( chr ) || CR( chr ) || LF( chr ) )
+	    return true;
+	}
+	return false;
+}
+int  cb_is_rend(CBFILE **cbs, unsigned long int chr){
+	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
+	if( chr==(**cbs).cf.rend ) // '$', record end, name start
+	  return true;
+	return false;
+}
+
 /*
  * Name has one byte for each character.
  */
@@ -911,12 +934,11 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 		 * in cb_read or similar solution).
 		 *
 		 */
-		//if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend || (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend ){
-		if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend || ( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend && \
+		if( cb_is_rend( &(*cbs), (*(**cbs).cb).list.rd.lastchr ) || ( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend && \
 			( (**cbs).cf.doubledelim==1 || (**cbs).cf.json==1 ) ) ){ // 8.10.2015 (this can be done in any case and this line was not needed)
 		  previousopenpairs=CBMAXLEAVES; // 6.10.2015, from up to down
 		  cb_increase_terminalcount( &(*cbs) );
-		  if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.rend ){ // wasjsonsubrend is needed here because of '}' ','
+		  if( cb_is_rend( &(*cbs), (*(**cbs).cb).list.rd.lastchr ) ){ // wasjsonsubrend is needed here because of '}' ','
 		    wasjsonrend=1; wasjsonsubrend=0; rstartflipflop=0;
 		  }else if( (*(**cbs).cb).list.rd.lastchr==(**cbs).cf.subrend ){
 		    wasjsonrend=0; wasjsonsubrend=1;
@@ -1113,16 +1135,22 @@ cb_set_cursor_reset_name_index:
 	      }
 	    }
 
+	    //if(       (    ( chr==(**cbs).cf.rstart && (**cbs).cf.json!=1 ) 
+	    //            || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) 
+	    //            || ( chr==(**cbs).cf.subrstart && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) 
+	    //            || ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) 
+	    //          ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
+
 	    // Second is JSON comma problem ("na:me") prevention in name 21.2.2015
-	    if(       (    ( chr==(**cbs).cf.rstart && (**cbs).cf.json!=1 ) \
-	                || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) \
+	    if(       (    ( cb_is_rstart( &(*cbs), chr ) && (**cbs).cf.json!=1 ) \
+	                || ( cb_is_rstart( &(*cbs), chr ) && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) \
 	                || ( chr==(**cbs).cf.subrstart && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) \
 	                || ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) \
 	              ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
 	      wasjsonrend=0;
 	      wasjsonsubrend=0;
 
-	      if( chr==(**cbs).cf.rstart){ // 17.8.2015
+	      if( cb_is_rstart( &(*cbs), chr ) ){ // 17.8.2015
 		rstartflipflop=1;
 	        if( (**cbs).cf.json==1 )
 		  jsonemptybracket=0; // 3.10.2015, from '{' to '}' without a name or '{' '{' '}' '}' without a name
@@ -1151,10 +1179,10 @@ cb_set_cursor_reset_name_index:
 	      //cb_clog( CBLOGDEBUG, CBNEGATION, "\nopenpairs=%i (rstart, subrstart)", openpairs );
 	    }
 	  }else if( (**cbs).cf.searchstate==CBSTATEFUL ){
-	    if( ( chprev!=(**cbs).cf.bypass && chr==(**cbs).cf.rstart ) && atvalue!=1 ) // '=', save name, 13.4.2013, do not save when = is in value
+	    if( ( chprev!=(**cbs).cf.bypass && cb_is_rstart( &(*cbs), chr ) ) && atvalue!=1 ) // '=', save name, 13.4.2013, do not save when = is in value
 	      tovalue=1;
 	  }else{ // if( (**cbs).cf.searchstate==CBSTATELESS ){
-	    if( chprev!=(**cbs).cf.bypass && chr==(**cbs).cf.rstart ) // '=', save name, 5.4.2013
+	    if( chprev!=(**cbs).cf.bypass && cb_is_rstart( &(*cbs), chr ) ) // '=', save name, 5.4.2013
 	      tovalue=1;
 	  }
 
@@ -1313,15 +1341,19 @@ cb_set_cursor_reset_name_index:
 	    }else
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN); // write '='
 
-	  }else if( chprev!=(**cbs).cf.bypass && ( ( chr==(**cbs).cf.rend && (**cbs).cf.json!=1 ) || \
-	                           ( chr==(**cbs).cf.rend && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) || \
+	  //}else if( chprev!=(**cbs).cf.bypass && ( ( chr==(**cbs).cf.rend && (**cbs).cf.json!=1 ) || 
+	  //                         ( chr==(**cbs).cf.rend && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) || 
+	  //                         ( (**cbs).cf.json!=1 && chr==(**cbs).cf.subrend && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 ) || 
+	  //                         ( (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 && chr==(**cbs).cf.subrend ) ) ){
+	  }else if( chprev!=(**cbs).cf.bypass && ( ( cb_is_rend( &(*cbs), chr ) && (**cbs).cf.json!=1 ) || \
+	                           ( cb_is_rend( &(*cbs), chr ) && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) || \
 	                           ( (**cbs).cf.json!=1 && chr==(**cbs).cf.subrend && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 ) || \
 	                           ( (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 && chr==(**cbs).cf.subrend ) ) ){
 
-	      if( (**cbs).cf.json!=1 || ( ( jsonemptybracket<=0 && chr==(**cbs).cf.subrend ) || chr==(**cbs).cf.rend ) ) // '}' ',' json-condition added 3.10.2015, kolmas
+	      if( (**cbs).cf.json!=1 || ( ( jsonemptybracket<=0 && chr==(**cbs).cf.subrend ) || cb_is_rend( &(*cbs), chr ) ) ) // '}' ',' json-condition added 3.10.2015, kolmas
 	        cb_increase_terminalcount( &(*cbs) );
 
-	      if( chr==(**cbs).cf.rend ){
+	      if( cb_is_rend( &(*cbs), chr ) ){
 		rstartflipflop=0;
 		if( (**cbs).cf.json==1 )
 	          jsonemptybracket=0;
