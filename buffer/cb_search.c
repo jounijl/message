@@ -1222,7 +1222,8 @@ cb_set_cursor_reset_name_index:
 				( injsonquotes>=2 && (**cbs).cf.jsonnamecheck==1 && \
 				cb_check_json_name( &charbufptr, &index )!=CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
 	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), if name is comparable, saves name and offset
-	          savenameerr = cb_put_name( &(*cbs), &fname, openpairs, previousopenpairs ); // (last in list), if name is comparable, saves name and offset
+		  if( (**cbs).cf.searchnameonly!=1 )
+	            savenameerr = cb_put_name( &(*cbs), &fname, openpairs, previousopenpairs ); // (last in list), if name is comparable, saves name and offset
 // CB_PUT_NAME
 		  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n Put name |");
 		  //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*fname).namebuf, (*fname).namelen, (*fname).namelen);
@@ -1459,7 +1460,7 @@ cb_set_cursor_reset_name_index:
 
 // CONF: XX
 
-// 8.10.2015: added: openpairs<previousopenpairs , openpairs  must go up until it can go down.
+// 8.10.2015: added: openpairs<previousopenpairs , openpairs must go up until it can go down.
 
 	      /*
 	       * When reading inner name-value -pairs, read of outer value ended.

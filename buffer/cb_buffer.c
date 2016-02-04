@@ -326,8 +326,8 @@ int  cb_set_to_word_search( CBFILE **str ){
 	(**str).cf.leadnames=0;
 	//cb_set_search_state( &(*str), CBSTATEFUL );
 	cb_set_search_state( &(*str), CBSTATELESS );
-	cb_set_rstart( &(*str), (unsigned long int) ',' ); // default value (SQL, ...), name separator (record start)
-	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (CSV, SQL, ...), record end, start of name
+	cb_set_rstart( &(*str), (unsigned long int) ',' ); // default value (CSV, SQL, ...), name separator (record start)
+	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (shell), record end, start of name
 	return CBSUCCESS;
 }
 int  cb_set_to_conf( CBFILE **str ){
@@ -443,6 +443,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
         //(**str).cf.type=CBCFGFILE; // first test was ok
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
+	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	//(**str).cf.doubledelim=1; // default
 	(**str).cf.doubledelim=0; // test
 	(**str).cf.logpriority=CBLOGDEBUG; // 

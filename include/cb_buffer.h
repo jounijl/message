@@ -359,7 +359,7 @@ typedef struct cb_conf{
         unsigned char       type:4;                 // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
         unsigned char       searchmethod:2;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
         unsigned char       leafsearchmethod:2;     // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
-        unsigned char       unfold:2;               // Search names unfolding the text first, RFC 2822
+        unsigned char       unfold:1;               // Search names unfolding the text first, RFC 2822
         unsigned char       asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
         unsigned char       removewsp:1;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
@@ -371,7 +371,8 @@ typedef struct cb_conf{
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       removecommentsinname:1; // Remove comments inside names (JSON can't do this, it does not have comments)
-	unsigned char       findwords:1;            // Compare WSP, CR, NL and rend characters and not only rend characters in order to find a word starting with a rstart character. Only CBSTATEFUL is used because every SP or TAB would alter the hight information of the tree. The value is not especially needed.
+	unsigned char       findwords:1;            // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.)
+	unsigned char       searchnameonly:1;       // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
 	unsigned char       logpriority:4;          // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 
