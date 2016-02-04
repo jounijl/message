@@ -1,7 +1,15 @@
 #!/bin/sh
 
-CC="/usr/bin/cc"
+CC="/usr/bin/cc -std=c11 "
 LD="/usr/bin/clang"
+
+# clang -std=?? values: (8.1.2016)
+# https://github.com/llvm-mirror/clang/blob/master/include/clang/Frontend/LangStandards.def
+# - Because goto has been used across blocks, it is wise to choose C only: c11
+# - Goto problem may cause the stack to grow to too big and finally preventing the
+#   program to run after some count of loops. The maximum settings are important to 
+#   prevent this.
+
 
 #
 # Library archive
