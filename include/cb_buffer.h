@@ -664,6 +664,7 @@ int  cb_set_to_json( CBFILE **str ); // Sets doubledelim, json, jsonnamecheck, r
 int  cb_set_to_conf( CBFILE **str ); // Sets doubledelim, CBSTATETREE, unique names, zeroes other options and sets default values of rstart, rend, substart, subrend, cstart and cend.
 int  cb_set_to_rfc2822( CBFILE **str ); // Remove CR. Sets new line as rend, rstart ':', folding, ending at header end, (ASCII) case insensitive names, comments as '(' and ')'.
 int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with trees because words can end to SP, TAB, CR or LF.
+int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
 
 int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize

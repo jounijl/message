@@ -330,6 +330,22 @@ int  cb_set_to_word_search( CBFILE **str ){
 	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (shell), record end, start of name
 	return CBSUCCESS;
 }
+int  cb_set_to_search_one_name_only( CBFILE **str ){
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
+	(**str).cf.findwords=1;
+	(**str).cf.doubledelim=0;
+	(**str).cf.searchnameonly=1; // Stop at found name and never save any names to a list or tree
+	(**str).cf.json=0;
+	(**str).cf.removewsp=1;
+	(**str).cf.removecrlf=1;
+	(**str).cf.removenamewsp=1;
+	(**str).cf.unfold=1;
+	(**str).cf.leadnames=0;
+	cb_set_search_state( &(*str), CBSTATELESS );
+	cb_set_rstart( &(*str), (unsigned long int) '$' );
+	cb_set_rend( &(*str), (unsigned long int) '<' );
+	return CBSUCCESS;
+}
 int  cb_set_to_conf( CBFILE **str ){
 	//
 	// example:
