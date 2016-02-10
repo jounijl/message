@@ -1,10 +1,13 @@
 /* 
  * Library to read and write streams. Searches valuepairs locations to a list. Uses different character encodings.
  * 
- * Copyright (C) 2009, 2010 and 2013. Jouni Laakso
+ * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided with the distribution.
  * 
- * This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General
- * Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
+ * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser
+ * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
  * 
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
@@ -18,10 +21,12 @@
 #include <stdlib.h>
 #include <string.h> // strsep
 #include "../include/cb_buffer.h"
+#include "../include/cb_json.h"
 #include "../include/cb_read.h"
 
 int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
 int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
+int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
 
 /*
  * 1 or 4 -byte functions.
@@ -352,18 +357,41 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
 }
 
 /*
- * If (**cbf).cf.json==1, removes quotes around the content.
- */
+ * The same as cb_copy_content with JSON value form check if cb_conf checkjson is set. */
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
+	int err = CBSUCCESS, from = 0;
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
+	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
+	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
+	err = cb_copy_content_internal( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
+	if( err>=CBNEGATION || (**cbf).cf.jsonvaluecheck!=1 )
+		return err;
+	/*
+	 * Optional JSON value integrity check. */
+	if( *clength>maxlength )
+		return CBNOTJSON; // too long
+	if(err==CBSUCCESSJSONQUOTES)
+		return cb_check_json_string_content( &(*ucscontent), *clength , &from);
+	return cb_check_json_value( &(*cbf), &(*ucscontent), *clength, &from );
+}
+/*
+ * If (**cbf).cf.json==1, removes quotes around the content.
+ *
+ * Returns:  CBSUCCESSJSONQUOTES	- Was a JSON string, quotes removed.
+ *           CBSUCCESSJSONARRAY 	- Includes JSON array brackets.
+ *           CBSUCCESS          	- May have been a JSON value.
+ */
+int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20;
 	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0;
         int openpairs=1; char found=0, firstjsonbracket=1;
         int maxlen = maxlength, lindx=0;
-        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
-        if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
-	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
-	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
+        if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: cbf or clength was null."); return CBERRALLOC; }
+        if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: cn was null."); return CBERRALLOC; }
+	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
+	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
         /*
          * Copy contents and update length. */
         ucsbufindx=0;

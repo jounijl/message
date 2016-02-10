@@ -372,6 +372,7 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.removecrlf=1;
         (**str).cf.removewsp=1;
         (**str).cf.jsonnamecheck=0;
+        (**str).cf.jsonvaluecheck=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
         (**str).cf.rfc2822headerend=0;
@@ -395,6 +396,7 @@ int  cb_set_to_rfc2822( CBFILE **str ){
         (**str).cf.removewsp=0;
 	(**str).cf.removenamewsp=0;
         (**str).cf.jsonnamecheck=0;
+        (**str).cf.jsonvaluecheck=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
@@ -415,6 +417,7 @@ int  cb_set_to_json( CBFILE **str ){
 	cb_set_subrend( &(*str), (unsigned long int) '}' ); // object end
 	(**str).cf.json = 1;
 	(**str).cf.jsonnamecheck = 1; // check name before saving it to list or tree
+        (**str).cf.jsonvaluecheck = 1; // additionally check the value if it is read with the functions from cb_read.c
 	(**str).cf.doubledelim = 1; 
 	/* JSON can't remove comments: JSON does not have comments and comments are attached to the array [ ] (8.11.2015)
 	 * Arrays have commas inside them. inside array has been added and it is not tested without brackets as comment characters. */
@@ -513,10 +516,12 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 #endif
 	(**str).cf.json=0;
 	(**str).cf.jsonnamecheck=0;
+        (**str).cf.jsonvaluecheck=0;
 	(**str).cf.removecommentsinname = 1;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
 	(**str).cf.jsonnamecheck=1;
+        (**str).cf.jsonvaluecheck=1;
 	(**str).cf.removecommentsinname = 0;
 #endif
 	//(**str).cf.leadnames=1; // test

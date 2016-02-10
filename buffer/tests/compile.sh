@@ -3,7 +3,7 @@
 CC="/usr/bin/cc"
 LD="/usr/bin/clang"
 
-FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o "
+FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o ../cb_json.o "
 
 FLAGS=" -Weverything -g -O0 -I/usr/local/include -I. -I/usr/include -I../../include -I../../read "
 LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -I../../read -L/usr/lib -L/usr/local/lib -lc -lpcre2-32 "

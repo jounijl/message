@@ -361,13 +361,14 @@ typedef struct cb_conf{
         unsigned char       leafsearchmethod:2;     // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
         unsigned char       unfold:1;               // Search names unfolding the text first, RFC 2822
         unsigned char       asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        unsigned char       rfc2822headerend:2;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
+        unsigned char       rfc2822headerend:1;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
         unsigned char       removewsp:1;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         unsigned char       removecrlf:1;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
 	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
 	unsigned char       removenamewsp:1;        // Remove white space characters inside name
 	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
-	unsigned char       jsonnamecheck:1;        //
+	unsigned char       jsonnamecheck:1;        // Check the form of the name of the JSON attribute (in cb_search.c).
+	unsigned char       jsonvaluecheck:1;       // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
 	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       removecommentsinname:1; // Remove comments inside names (JSON can't do this, it does not have comments)

@@ -15,10 +15,10 @@ LD="/usr/bin/clang"
 # Library archive
 #
 
-LIBSRCS=" cb_buffer.c cb_compare.c ../read/cb_read.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
-LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
+LIBSRCS=" cb_buffer.c cb_compare.c ../read/cb_read.c ../read/cb_json.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
+LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_json.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
 LIBARCH="libcb.a"
-FLAGS=" -g -Weverything -I/usr/local/include -I. -I/usr/include -I../include -I../read -I../write "
+FLAGS=" -g -Weverything -I/usr/local/include -I. -I/usr/include -I../include -I../read "
 LDFLAGS=" -g -lc -I/usr/local/include -I. -I/usr/include -I../include -L/usr/lib -L/usr/local/lib -lpcre2-32 "
 
 rm $LIBARCH
