@@ -517,6 +517,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.json=0;
 	(**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.removecommentsinname = 1;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
@@ -543,7 +544,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err = CBSUCCESS;
-	err = cb_allocate_empty_cbfile(&(*str), fd);
+	if( str==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_cbfile_from_blk: str was null." ); return CBERRALLOC; }
+	err = cb_allocate_empty_cbfile( &(*str), fd);
 	if(err!=CBSUCCESS){ return err; }
 	err = cb_allocate_buffer(&(**str).cb, bufsize);
 	if(err!=CBSUCCESS){ return err; }
@@ -574,6 +576,31 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	if( *cbf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: allocation error, malloc (%i).", CBERRALLOC ); return CBERRALLOC; } // 13.11.2015
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
 }
+/*
+ * Outside reuse. 28.2.2016 */
+int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ){
+	static unsigned char  *eblk;
+	static unsigned char   eblkdata[5] = { 0x00, 0x00, 0x00, 0x20, '\0' };
+	static int             eblklen = 4, err = CBSUCCESS;
+	eblk = &eblkdata[0];
+	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: cbf was null." );  return CBERRALLOC; }
+	if( blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: parameter was null." );  return CBERRALLOC; }
+	if( (**cbf).cb==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: buffer was null." );  return CBERRALLOC; }
+	/*
+	 * Zero counters and attach to the buffer a new block. */
+	if( (*(**cbf).blk).buf != NULL ){
+		free( &(*(**cbf).blk).buf );
+		(*(**cbf).blk).buf = NULL;
+	}
+	if(blk!=NULL && *blk!=NULL && blksize>=0){
+	  cb_empty_names( &(**cbf).cb );
+	  err = cb_init_buffer_from_blk( &(**cbf).blk, &eblk, eblklen );
+	  (*(**cbf).blk).buf = &(**blk);
+	  (*(**cbf).blk).buflen = blksize;
+	}
+	return cb_init_buffer_from_blk( &(**cbf).cb, NULL, 0 );
+}
+
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
 	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_buffer_from_blk: cbf was null." );  return CBERRALLOC; }
 	if( blk==NULL || *blk==NULL ){
@@ -586,6 +613,8 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	}else{
 	  (**cbf).buf = &(**blk);
 	}
+
+	// 28.2.2016, here: cb_empty_names( &(**cbf).cb ); ?
 
 	memset( &(**cbf).buf[0], 0x20, (size_t) blksize ); // 21.2.2015 checked the place of memset is correct
 
@@ -630,7 +659,8 @@ int  cb_free_cbfile(CBFILE **buf){
           free((*(**buf).blk).buf); // free block data
 	}
 	free((**buf).blk); // free block
-	if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	//if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	if( (**buf).cf.type!=CBCFGBUFFER && (**buf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	  err = close((**buf).fd); // close stream
 	  if(err==-1){ err=CBERRFILEOP;}
 	}
@@ -787,6 +817,9 @@ int  cb_empty_names_from_name(cbuf **buf, cb_name **cbn){
 int  cb_use_as_buffer(CBFILE **buf){
         return cb_set_type(&(*buf), (unsigned char) CBCFGBUFFER);
 }
+int  cb_use_as_boundless_buffer(CBFILE **buf){ // only as a block, not tested yet: 28.2.2016
+        return cb_set_type(&(*buf), (unsigned char) CBCFGBOUNDLESSBUFFER);
+}
 int  cb_use_as_seekable_file(CBFILE **buf){
 	cb_use_as_file( &(*buf) );
 	return cb_set_type(&(*buf), (unsigned char) CBCFGSEEKABLEFILE);
@@ -833,7 +866,8 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	    // return char
 	    *ch = (*blk).buf[(*blk).index];
 	    ++(*blk).index;
-	  }else if((**cbf).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	  //}else if((**cbf).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	  }else if( (**cbf).cf.type!=CBCFGBUFFER && (**cbf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	    // read a block and return char
 	    /*
 	     * If write-operations are wanted in between file, the next is
@@ -910,7 +944,8 @@ int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
 	}
 
 	if( *cbs!=NULL ){
- 	  if((**cbs).cf.type!=CBCFGBUFFER){
+ 	  //if((**cbs).cf.type!=CBCFGBUFFER){
+ 	  if( (**cbs).cf.type!=CBCFGBUFFER && (**cbs).cf.type!=CBCFGBOUNDLESSBUFFER ){
 	    if((**cbs).blk!=NULL){
 	      if( offset > 0 && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){
 		cb_log( &(*cbs), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
@@ -963,11 +998,12 @@ cb_put_ch_put:
 	  if((*(**cbs).blk).contentlen < (*(**cbs).blk).buflen ){
             (*(**cbs).blk).buf[(*(**cbs).blk).contentlen] = ch; // 12.8.2013
 	    ++(*(**cbs).blk).contentlen;
-	  }else if((**cbs).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	  //}else if((**cbs).cf.type!=CBCFGBUFFER){ // 20.8.2013
+	  }else if( (**cbs).cf.type!=CBCFGBUFFER && (**cbs).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	    //err = cb_flush(cbs); // new block	
 	    err = cb_flush( &(*cbs) ); // new block, 10.12.2014
 	    goto cb_put_ch_put;
-	  }else if((**cbs).cf.type==CBCFGBUFFER){ // 20.8.2013
+	  }else if( (**cbs).cf.type==CBCFGBUFFER || (**cbs).cf.type==CBCFGBOUNDLESSBUFFER ){ // 20.8.2013
 	    return CBBUFFULL;
 	  }
 	  return err;

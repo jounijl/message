@@ -103,6 +103,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
  	} // 24.10.2015
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: address of name1: %lx, address of name2: %lx.", (long int) *name1, (long int) *name2 );
+
 /**
 	//if( (*mctl).matchctl<=-7 && (*mctl).matchctl>=-10){
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare, name1: [");
@@ -137,7 +138,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * to mctl before and elsewhere. name2 has
 	   * to be NULL terminated.
 	   */
-	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\nerror in cb_compare, -7: re was null.");  return CBERRALLOC; }
+	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\nerror in cb_compare, -7: re was null.");  return CBREWASNULL; }
 	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount); 
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015
@@ -422,9 +423,13 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	unsigned int opt=0;
 	int err=CBSUCCESS, err2=CBSUCCESS, terr=CBMISMATCH;
 
-	if( name2==NULL || *name2==NULL || mctl==NULL || (*mctl).re==NULL || matchcount==NULL){ 
+	if( name2==NULL || *name2==NULL || mctl==NULL || matchcount==NULL){ 
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare_regexp: allocation error."); 
 	  return CBERRALLOC;
+	}
+	if( (*mctl).re==NULL ){
+	  cb_clog( CBLOGINFO, CBREWASNULL, "\ncb_compare_regexp: re was null (possibly because of an error in the regular expression text)."); 
+	  return CBREWASNULL;
 	}
 
 	//fprintf(stderr,"\ncb_compare_regexp: [");
@@ -489,10 +494,14 @@ int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffse
 	PCRE2_SIZE *ovector=NULL; 
 	pcre2_match_data_32 *match_data=NULL;
 	const pcre2_code_32 *pcrecode = NULL; 
-        if( name2==NULL || *name2==NULL || mctl==NULL || (*mctl).re==NULL ){ 
+        if( name2==NULL || *name2==NULL || mctl==NULL ){ 
           cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_regexp: allocation error."); 
           return CBERRALLOC;
         }
+	if( (*mctl).re==NULL ){
+	  cb_clog( CBLOGINFO, CBREWASNULL, "\ncb_compare_regexp: re was null (possibly because of an error in the regular expression text).");
+	  return CBREWASNULL;
+	}
 
         //cb_compare_print_fullinfo( &(*mctl) );
 

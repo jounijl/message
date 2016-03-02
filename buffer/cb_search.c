@@ -24,6 +24,7 @@
 #include <time.h>   // time (timestamp in cb_set_cursor)
 #include <stdbool.h> // C99 true/false
 #include "../include/cb_buffer.h"
+#include "../include/cb_json.h"
 
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpairs);
@@ -47,7 +48,7 @@ int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
 int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
 int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
 
-int  cb_check_json_name( unsigned char **ucsname, int *namelength ); // 8.11.2016
+int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassremoved ); // 8.11.2016
 
 
 /*
@@ -155,7 +156,8 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
 
             if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUELEAVES ){ 
-              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE ){ // When used as only buffer, stream case does not apply
+              //if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE){ // When used as only buffer, stream case does not apply
+              if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGBOUNDLESSBUFFER){ // When used as only buffer, stream case does not apply, 28.2.2016
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
                    * Leafs content was out of memorybuffer, setting
@@ -164,7 +166,8 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
                   (*(**cbs).cb).index = (*(**cbs).cb).buflen; // set as a stream, 1.12.2013
                   return CBNAMEOUTOFBUF;
                 }
-	      } // this bracked added 17.8.2015 (the same as before)
+	      } // this curly brace added 17.8.2015 (the same as before)
+	      // index set here withoud boundary check if: CBCFGFILE, CBCFGSEEKABLEFILE, CBCFGBOUNDLESSBUFFER
               (*(**cbs).cb).index = (long int) (*leafptr).offset; // 1.12.2013
 
 	      if(nextlevelempty==0){ // 3.7.2015
@@ -497,7 +500,8 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
          * are out of buffer. When used as file (CBCFGFILE or CBCFGSEEKABLEFILE),
          * filesize limits the list and this is not necessary.
          */
-        if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE)
+        //if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE)
+        if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE && (**str).cf.type!=CBCFGBOUNDLESSBUFFER) // 28.2.2016
           if( (**cbn).offset >= ( (*(**str).cb).buflen-1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen-1 ) ) 
             return CBNAMEOUTOFBUF;
 
@@ -548,6 +552,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
           //++(*(**str).cb).list.nodecount;
 	  //if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
 	  //  (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
+	  //if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
 	  if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
             if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
               (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
@@ -705,7 +710,8 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
-	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // When used as only buffer, stream case does not apply
+	        //if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // When used as only buffer, stream case does not apply
+	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE && (**str).cf.type!=CBCFGBOUNDLESSBUFFER) // When used as only buffer, stream case does not apply, 28.2.2016
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
 	             * Do not return names in namechain if it's content is out of memorybuffer
@@ -716,6 +722,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	            (*(**str).cb).list.currentleaf = &(*iter); // 11.12.2013
 	            return CBNAMEOUTOFBUF;
 	          }
+		// 28.2.2106: adds here without boundary check if CBCFGFILE, CBCFGSEEKABLEFILE, CBCFGBOUNDLESSBUFFER
 	        (*(**str).cb).index=(*iter).offset; // 1.12.2013
 	        (*(**str).cb).list.current=&(*iter); // 1.12.2013
 	        (*(**str).cb).list.currentleaf=&(*iter); // 11.12.2013
@@ -983,6 +990,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	  }
 	}
 
+
         // 1.10.2015
         // VIII still too many set_length -functions. Excess has been marked with text "28.9.2015". Part of them can be removed.
         //      (7.10.2015: not fixed, 8.10.2015: not fixed)
@@ -993,7 +1001,6 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	else // unknown, cursor id between = and & 
 	  previousopenpairs=openpairs; // 7.10.2015
 	
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: openpairs at start %i (levels %i, ocoffset %i).", openpairs, levels, ocoffset);
 
 	if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST){ // 3.7.2015
 	  //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nName found from list.");
@@ -1045,6 +1052,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	charbuf[CBNAMEBUFLEN]='\0';
 	charbufptr = &charbuf[0];
 
+
 	// Set cursor to the end to search next names
 	(*(**cbs).cb).index = (*(**cbs).cb).contentlen; // -bytesahead ?
 
@@ -1061,6 +1069,7 @@ cb_set_cursor_reset_name_index:
 	index=0;
 	injsonquotes=0;
 	injsonarray=0;
+
 
         /*
          * 'fname' was copied to a new allocated name in the list and used the last time. Time to free fname. 18.11.2015 / 2. */
@@ -1095,6 +1104,8 @@ cb_set_cursor_reset_name_index:
 	nameoffset = chroffset;
 
 	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
+
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 
 	  if( (**cbs).encoding==CBENCAUTO )
 	  	cb_automatic_encoding_detection( &(*cbs) ); // set encoding automatically if it's set
@@ -1220,7 +1231,7 @@ cb_set_cursor_reset_name_index:
 
 		if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && ( ( injsonquotes>=2 && (**cbs).cf.jsonnamecheck!=1 ) || \
 				( injsonquotes>=2 && (**cbs).cf.jsonnamecheck==1 && \
-				cb_check_json_name( &charbufptr, &index )!=CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
+				cb_check_json_name( &charbufptr, &index, (**cbs).cf.jsonremovebypassfromcontent )<CBNOTJSON ) ) ) ){ // 19.2.2015, check json name with quotes 27.8.2015
 	          //buferr = cb_put_name(&(*cbs), &fname, openpairs, ocoffset); // (last in list), if name is comparable, saves name and offset
 		  if( (**cbs).cf.searchnameonly!=1 )
 	            savenameerr = cb_put_name( &(*cbs), &fname, openpairs, previousopenpairs ); // (last in list), if name is comparable, saves name and offset
@@ -1624,113 +1635,11 @@ cb_save_name_ucs_removals:
 	return err;
 }
 
-int  cb_check_json_name( unsigned char **ucsname, int *namelength ){
+int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassremoved ){
 	int from=0;
 	if( ucsname==NULL || *ucsname==NULL || namelength==NULL ){ cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_name: name was null."); return CBERRALLOC; }
-	return cb_check_json_string( &(*ucsname), *namelength, &from );
+	return cb_check_json_string( &(*ucsname), *namelength, &from, bypassremoved );
 }
-/*
- * http://www.json.org 
- *
- * This function checks that name has '"' at start and end. This way it was
- * not cut in between name. This check is put before cb_put_name in
- * cb_set_cursor.
- *
- * '\' may not appear alone, only before '\' or before control characters:
- *	'"' quotation
- *	'\' reverse solidus
- *	'/' solidus
- *	'b' backspace
- * 	'f' formfeed
- * 	'n' newline
- * 	'r' carriage return
- * 	't' horizontal tab
- * 	'u'+4 hexadecimal digits
- */
-int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from ){
-	int err=CBSUCCESS, indx=0;
-	unsigned long int chr=0x20;
-	if( from==NULL ||  ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
-
-        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: checking attribute [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-        //cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i.", namelength );
-
-	/*
-	 * Too short. */
-	if(namelength<2){
-	        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSON: [");
-		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-	        cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, name length was less than two (double quotes do not fit in), returning CBNOTJSON (%i).", namelength, CBNOTJSON );
-	        return CBNOTJSON;
-	}
-	/*
-	 * First '"'. */
-	indx = *from;
-	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
-	if( chr != (unsigned long int) '"' ){ // first quotation
-	        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSON: [");
-		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-		cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, first character was not quotation, returning CBNOTJSON (%i).", namelength, CBNOTJSON );
-	        return CBNOTJSON;
-	}
-	/*
-	 * Last '"'. */
-	indx = namelength-4;
-	err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength );
-	if( chr != (unsigned long int) '"' ){ // json bypass character 
-          cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: [");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-          cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, last was not quotation, returning CBNOTJSON (%i).", namelength, CBNOTJSON );
-	  *from = indx;
-	  return CBNOTJSON; // second quotation
-	}
-	*from = 4;
-	return cb_check_json_string_content( &(*ucsname), (namelength-4), &(*from) );
-}
-int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int *from){
-	int err=CBSUCCESS, indx=0;
-	unsigned long int chr=0x20, chprev=0x20;
-	char jsonfourhexadecimaldigits=-1;
-	if( ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; 
-}
-	/*
-	 * Bypass and control characters. */
-	indx = *from;
-	err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, namelength );
-	while( indx<namelength && indx<CBNAMEBUFLEN && err<CBNEGATION ){
-		err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
-		if( indx>(namelength-4) && ( chr=='"' && chprev=='\\' ) ){
-			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: trying to bypass last quotation.");
-			*from = indx;
-			return CBNOTJSON;
-		}else if( jsonfourhexadecimaldigits>=0 && jsonfourhexadecimaldigits<4 ){
-			if( ! JSON_HEX( chr) ){
-				cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: u+4 hex digits: digit was not in hexadecimal format (at place %i after \\u, char %c).", jsonfourhexadecimaldigits, (char) chr );
-				*from = indx;
-				return CBNOTJSON;
-			}
-			++jsonfourhexadecimaldigits;
-		}else if( chprev=='\\' && JSON_CTRL( chr ) ){
-			jsonfourhexadecimaldigits=-1;
-			if( chr=='u' ){
-				/* Four hexadecimal digits. */
-				jsonfourhexadecimaldigits=0;
-			}
-		}else if( chprev=='\\' ){
-			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: control characters '\\' and '\"' must be bypassed inside the string.");
-			*from = indx;
-			return CBNOTJSON;
-		}
-		if( chr=='\\' && chprev=='\\' )
-			chprev = 0x20; // any not bypass
-		else
-			chprev = chr;
-	}
-	*from = indx;
-	return CBSUCCESS;
-}
-
 
 int  cb_automatic_encoding_detection(CBFILE **cbs){
 	int enctest=CBDEFAULTENCODING;

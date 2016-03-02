@@ -17,7 +17,8 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
-/* cb_check_json_string(  unsigned char **ucsname, int namelength, int *from  ) is in cb_buffer.h */
+int  cb_check_json_string(  unsigned char **ucsname, int namelength, int *from, char bypassisremoved );
+int  cb_check_json_string_content( unsigned char **ucsname, int namelength, int *from, char bypassisremoved);
 
 int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
 

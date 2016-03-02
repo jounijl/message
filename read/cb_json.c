@@ -63,7 +63,7 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 	/* 
 	 * Length. */
 	if(*from>ucsvaluelen){
-		return CBNOTJSON; 
+		return CBINDEXOUTOFBOUNDS; 
 	}else if(*from<ucsvaluelen){
 		/*
 		 * Last ',' and ']' check missing 10.11.2015
@@ -79,7 +79,7 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 			return CBSUCCESS;
 	}else if( *from==ucsvaluelen )
 		return CBSUCCESS;
-	return CBNOTJSON;
+	return CBNOTJSONVALUE;
 }
 /*
  * The only function reading white spaces away from the beginning. 
@@ -135,7 +135,7 @@ int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, in
 				return cb_check_json_number( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 		}
 	}
-	return CBNOTJSON;
+	return CBNOTJSONVALUE;
 }
 
 int  cb_check_json_array( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
@@ -154,7 +154,7 @@ cb_check_json_array_value:
 		err = cb_check_json_value_subfunction( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 		if(err>=CBERROR){ cb_clog( CBLOGDEBUG, err, "\ncb_check_json_array: cb_check_json_value_subfunction, error %i.", err ); return err; }
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_array: after cb_check_json_value_subfunction, %i.", err );
-		if(err==CBNOTJSON) return err;
+		if(err>=CBNEGATION) return err;
 		/* 
 		 * Read comma or closing bracket. */
 		while( *from<ucsvaluelen && *from<CBNAMEBUFLEN && err<CBNEGATION ){
@@ -170,11 +170,11 @@ cb_check_json_array_value:
 				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_array: comma, next value." );
 				goto cb_check_json_array_value;
 			}else
-				return CBNOTJSON;
+				return CBNOTJSONARRAY;
 		}
 	}else{
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_array: first char was [%c], NOTJSON.", (char) chr );
-		return CBNOTJSON;
+		return CBNOTJSONARRAY;
         }
         return err; 
 }
@@ -187,7 +187,7 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 
 	indx = *from;
 	if(ucsvaluelen<=0)
-		return CBNOTJSON;
+		return CBNOTJSONNUMBER;
 	while( indx<ucsvaluelen && indx<CBNAMEBUFLEN && err<CBNEGATION ){
  	   *from = indx;
 	   err = cb_get_ucs_chr( &chr, &(*ucsvalue), &indx, ucsvaluelen);
@@ -199,7 +199,7 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 		if( chr>='0' && chr<='9' && state==EXPECTEND ){ continue; }
 		if( chr>='0' && chr<='9' && ( state==EXPECTDIGIT || state==EXPECTDIGITORDOT || state==EXPECTDIGITBEFOREEXP || state==EXPECTEXP ) ){ 
 			if(firstzero==1 && state==EXPECTDIGIT)
-				return CBNOTJSON;
+				return CBNOTJSONNUMBER;
 			if( state==EXPECTDIGITBEFOREEXP )
 				state=EXPECTEXP; 
 			if( state==EXPECTDIGIT )
@@ -218,10 +218,10 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 		if( chr==']' && state!=EXPECTDIGITBEFOREEXP && state!=EXPECTEXP && state!=EXPECTDIGIT ){ 
 			return CBSUCCESS;
 		}
-		return CBNOTJSON;
+		return CBNOTJSONNUMBER;
 	   }else{
 		if( ! WSP( chr ) && ! CR( chr ) && ! LF( chr ) && chr!=']' && chr!=',' ) 
-			return CBNOTJSON;
+			return CBNOTJSONNUMBER;
 	   }
 	}
 	return CBSUCCESS;
@@ -246,6 +246,8 @@ int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         *from += istrue.namelen;
 	//if(err<=CBNEGATION)
 	//	cb_clog( CBLOGDEBUG, CBNEGATION, ", result: CBSUCCESS (%i).", err );
+	if(err>=CBNEGATION)
+		return CBNOTJSONBOOLEAN;
         return err;
 }
 int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
@@ -258,6 +260,8 @@ int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
         err = cb_compare( &(*cfg), &isfalse.name, isfalse.namelen, &chrposition, (ucsvaluelen-*from), &mctl ); // compares name1 to name2 (name1 length)
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
         *from += isfalse.namelen;
+	if(err>=CBNEGATION)
+		return CBNOTJSONBOOLEAN;
         return err;
 }
 int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
@@ -270,6 +274,8 @@ int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         err = cb_compare( &(*cfg), &isnull.name, isnull.namelen, &chrposition, (ucsvaluelen-*from), &mctl );
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
         *from += isnull.namelen;
+	if(err>=CBNEGATION)
+		return CBNOTJSONNULL;
         return err;
 }
 /* To be used with arrays and objects. */
@@ -287,23 +293,25 @@ int  cb_check_json_substring( CBFILE **cfg, unsigned char **ucsvalue, int ucsval
 		else
 			chprev = chr;
 		err = cb_get_ucs_chr( &chr, &(*ucsvalue), &indx, ucsvaluelen);
+		// comment out the next:
+		if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_check_json_substring: cb_get_ucs_chr, error %i.", err ); }
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n\tcb_check_json_substring: [%c]", (char) chr );
 		if( (unsigned char) chr=='"' && (unsigned char) chprev!='\\' && quotecount>=1 )
 			++quotecount;
 		if( quotecount>=2 ){
-			return cb_check_json_string_content( &(*ucsvalue), indx, &(*from) ); // updates *from
+			return cb_check_json_string_content( &(*ucsvalue), indx, &(*from), (**cfg).cf.jsonremovebypassfromcontent ); // updates *from
 		}
 		if( quotecount==0 ){
 			if( (unsigned char) chr=='"' && ( ! WSP( chprev ) && ! CR( chprev ) && ! LF( chprev ) && chprev!=',' ) ){
 				*from = indx;
-				return CBNOTJSON;
+				return CBNOTJSONSTRING;
 			}else if( (unsigned char) chr=='"' && (unsigned char) chprev!='\\' ){
 				++quotecount;
 			}
 		}
 	}
 	*from = indx;
-	return CBNOTJSON;
+	return CBNOTJSONSTRING;
 }
 
 int  cb_check_json_object( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
@@ -326,6 +334,8 @@ cb_check_json_object_read_name:
 			/* 
 			 * Reads name within the quotes and update *from. Quotes are bypassed. */
 			err = cb_check_json_substring( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
+			// comment out the next:
+			if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_check_json_object: cb_check_json_substring, error %i.", err ); }
 			state = EXPECTCOLON;
 			continue;
 		}else if( state==EXPECTCOLON && (unsigned char) chr == ':' ){
@@ -335,6 +345,8 @@ cb_check_json_object_read_name:
 			/* 
 			 * Read Value. */
 			err = cb_check_json_value_subfunction( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
+			// comment out the next:
+			if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_check_json_object: cb_check_json_value_subfunction, error %i.", err ); }
 			state = EXPECTCOMMA;
 			continue;
 		}else if( ( state==EXPECTCOMMA || state==EXPECTCOMMAORNAME ) && ( (unsigned char) chr == ',' || (unsigned char) chr == '}' ) ){
@@ -356,13 +368,123 @@ cb_check_json_object_read_name:
 		}else if( (unsigned char) chr == '}' ){
 			--openpairs;
 			if( state!=EXPECTCOMMA )
-				err = CBNOTJSON;
+				err = CBNOTJSONOBJECT;
 			state = 0;
 			continue;
 		}else
-			err = CBNOTJSON;
+			err = CBNOTJSONOBJECT;
 	}
 	if(openpairs==0)
 		return err;
-	return CBNOTJSON;
+	return CBNOTJSONOBJECT;
 }
+
+/*
+ * http://www.json.org 
+ *
+ * This function checks that name has '"' at start and end. This way it was
+ * not cut in between name. This check is put before cb_put_name in
+ * cb_set_cursor.
+ *
+ * '\' may not appear alone, only before '\' or before control characters:
+ *      '"' quotation
+ *      '\' reverse solidus
+ *      '/' solidus
+ *      'b' backspace
+ *      'f' formfeed
+ *      'n' newline
+ *      'r' carriage return
+ *      't' horizontal tab
+ *      'u'+4 hexadecimal digits
+ */
+int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from, char bypassisremoved ){
+        int err=CBSUCCESS, indx=0;
+        unsigned long int chr=0x20;
+        if( from==NULL ||  ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
+
+        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: checking attribute [");
+        //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+        //cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i.", namelength );
+
+        /*
+         * Too short. */
+        if(namelength<2){
+                cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
+                cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+                cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, name length was less than two (double quotes do not fit in), returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+                return CBNOTJSONSTRING;
+        }
+        /*
+         * First '"'. */
+        indx = *from;
+        err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
+        if( chr != (unsigned long int) '"' ){ // first quotation
+                cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
+                cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+                cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, first character was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+                return CBNOTJSONSTRING;
+        }
+        /*
+         * Last '"'. */
+        indx = namelength-4;
+        err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength );
+        if( chr != (unsigned long int) '"' ){ // json bypass character 
+          cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: [");
+          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+          cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, last was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+          *from = indx;
+          return CBNOTJSONSTRING; // second quotation
+        }
+        *from = 4;
+        return cb_check_json_string_content( &(*ucsname), (namelength-4), &(*from), bypassisremoved );
+}
+int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int *from, char bypassisremoved){
+        int err=CBSUCCESS, indx=0;
+        unsigned long int chr=0x20, chprev=0x20;
+        char jsonfourhexadecimaldigits=-1;
+        if( ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
+
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: BYPASSISREMOVED %i.", bypassisremoved);
+
+        /*
+         * Bypass and control characters. */
+        indx = *from;
+        err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, namelength );
+        while( indx<namelength && indx<CBNAMEBUFLEN && err<CBNEGATION ){
+                err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
+                //cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
+                if( indx>(namelength-4) && ( chr=='"' && chprev=='\\' ) ){
+                        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: trying to bypass last quotation.");
+                        *from = indx;
+                        return CBNOTJSONSTRING;
+                }else if( jsonfourhexadecimaldigits>=0 && jsonfourhexadecimaldigits<4 ){
+                        if( ! JSON_HEX( chr) ){
+                                cb_clog( CBLOGINFO, CBNEGATION, "\ncb_check_json_string: u+4 hex digits: digit was not in hexadecimal format (at place %i after \\u, char %c).", jsonfourhexadecimaldigits, (char) chr );
+                                *from = indx;
+                                return CBNOTJSONSTRING;
+                        }
+                        ++jsonfourhexadecimaldigits;
+                }else if( chprev=='\\' && JSON_CTRL( chr ) ){
+                        jsonfourhexadecimaldigits=-1;
+                        if( chr=='u' ){
+                                /* Four hexadecimal digits. */
+                                jsonfourhexadecimaldigits=0;
+                        }
+                }else if( chprev=='\\' && bypassisremoved==0 ){
+                        cb_clog( CBLOGINFO, CBNEGATION, "\ncb_check_json_string: control characters '\\' and '\"' must be bypassed inside the string, (at character '%c', number %i)", (char) chr, indx/4);
+                        cb_clog( CBLOGDEBUG, CBNEGATION, ", string ' ");
+                        cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+                        cb_clog( CBLOGDEBUG, CBNEGATION, " '");
+                        cb_clog( CBLOGINFO, CBNEGATION, ".");
+                        *from = indx;
+                        return CBNOTJSONSTRING;
+                }
+                if( chr=='\\' && chprev=='\\' )
+                        chprev = 0x20; // any not bypass
+                else
+                        chprev = chr;
+        }
+        *from = indx;
+        return CBSUCCESS;
+}
+

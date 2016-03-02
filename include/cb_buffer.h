@@ -54,30 +54,37 @@
 #define CBLESSTHAN             67
 #define CBOPERATIONNOTALLOWED  68    // seek was asked and CBFILE was not set as seekable
 #define CBNOFIT                69    // tried to write to too small space (characters left over)
-#define CBNOTJSON              70
-#define CBNAMEVALUEWASREAD     71    // name value (all the leaves) had been already read (because the length of last leaf was >= 0 ), at the same time telling "not found"
-#define CBLEAFVALUEWASREAD     72    // value (all the leaves) had been already read to last rend '&' 
-#define CBMISMATCH             73
-//#define CBCOMMA                74    // Last chr was ','. Array typecheck can verify with this value, either not JSON or an array and verify the next value
-//#define CBCLOSEBRACKET         75    // Last chr was ']'. Array typecheck can verify with this value, either not JSON or an array and verify the next value
+#define CBNAMEVALUEWASREAD     70    // name value (all the leaves) had been already read (because the length of last leaf was >= 0 ), at the same time telling "not found"
+#define CBLEAFVALUEWASREAD     71    // value (all the leaves) had been already read to last rend '&' 
+#define CBMISMATCH             72
+#define CBLENGTHNOTKNOWN       73
+#define CBREWASNULL            74
+#define CBNOTJSON              75
+#define CBNOTJSONVALUE         76
+#define CBNOTJSONSTRING        77
+#define CBNOTJSONBOOLEAN       78
+#define CBNOTJSONNUMBER        79
+#define CBNOTJSONARRAY         80
+#define CBNOTJSONOBJECT        81
+#define CBNOTJSONNULL          82
 
-#define CBERROR	              100
-#define CBERRALLOC            101
-#define CBERRFD               102
-#define CBERRFILEOP           103
-#define CBERRFILEWRITE        104
-#define CBERRBYTECOUNT        105
-#define CBARRAYOUTOFBOUNDS    106
-#define CBINDEXOUTOFBOUNDS    107
-#define CBLEAFCOUNTERROR      108
-#define CBERRREGEXCOMP        109    // regexp pattern compile error 03/2014
-#define CBERRREGEXEC          110    // regexp exec error 03/2014
-#define CBBIGENDIAN           111
-#define CBLITTLEENDIAN        112
-#define CBUNKNOWNENDIANNESS   113
-#define CBOVERFLOW            114
-#define CBOVERMAXNAMES        115    // 19.10.2015
-#define CBOVERMAXLEAVES       116    // 19.10.2015
+#define CBERROR	              200
+#define CBERRALLOC            201
+#define CBERRFD               202
+#define CBERRFILEOP           203
+#define CBERRFILEWRITE        204
+#define CBERRBYTECOUNT        205
+#define CBARRAYOUTOFBOUNDS    206
+#define CBINDEXOUTOFBOUNDS    207
+#define CBLEAFCOUNTERROR      208
+#define CBERRREGEXCOMP        209    // regexp pattern compile error 03/2014
+#define CBERRREGEXEC          210    // regexp exec error 03/2014
+#define CBBIGENDIAN           211
+#define CBLITTLEENDIAN        212
+#define CBUNKNOWNENDIANNESS   213
+#define CBOVERFLOW            214
+#define CBOVERMAXNAMES        215    // 19.10.2015
+#define CBOVERMAXLEAVES       216    // 19.10.2015
 
 /*
  * Log priorities (log verbosity).
@@ -152,12 +159,12 @@
 
 /*
  * Use options, changes functionality as below */
-#define CBCFGSTREAM          0x00   // Use as stream (namelist is bound by buffer)
-#define CBCFGBUFFER          0x01   // Use only as buffer (fd is not used at all)
-#define CBCFGFILE            0x02   // Use as file (namelist is bound by file),
-                                    // cb_reinit_buffer empties names but does not seek, use: lseek((**cbf).fd if needed
-#define CBCFGSEEKABLEFILE    0x03   // Use as file capable of seeking the cursor position - buffer is partly truncated and block is emptied after every offset read or write
-
+#define CBCFGSTREAM            0x00   // Use as stream (namelist is bound by buffer)
+#define CBCFGBUFFER            0x01   // Use only as buffer (fd is not used at all)
+#define CBCFGFILE              0x02   // Use as file (namelist is bound by file),
+                                      // cb_reinit_buffer empties names but does not seek, use: lseek((**cbf).fd if needed
+#define CBCFGSEEKABLEFILE      0x03   // Use as file capable of seeking the cursor position - buffer is partly truncated and block is emptied after every offset read or write
+#define CBCFGBOUNDLESSBUFFER   0x04   // Endless namelist and buffersize can be zero. Use of only block is possible.
 
 /*
  * This setting enables multibyte, UTF-16 and UTF-32 support if
@@ -356,26 +363,27 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        unsigned char       type:4;                 // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
-        unsigned char       searchmethod:2;         // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-        unsigned char       leafsearchmethod:2;     // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
-        unsigned char       unfold:1;               // Search names unfolding the text first, RFC 2822
-        unsigned char       asciicaseinsensitive:2; // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
-        unsigned char       rfc2822headerend:1;     // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
-        unsigned char       removewsp:1;            // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
-        unsigned char       removecrlf:1;           // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
-	unsigned char       findleaffromallnames:1; // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
-	unsigned char       removenamewsp:1;        // Remove white space characters inside name
-	unsigned char       leadnames:1;            // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
-	unsigned char       jsonnamecheck:1;        // Check the form of the name of the JSON attribute (in cb_search.c).
-	unsigned char       jsonvaluecheck:1;       // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
-	unsigned char       json:1;                 // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
-	unsigned char       doubledelim:1;          // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
-	unsigned char       removecommentsinname:1; // Remove comments inside names (JSON can't do this, it does not have comments)
-	unsigned char       findwords:1;            // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.)
-	unsigned char       searchnameonly:1;       // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
-	unsigned char       searchstate:4;          // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
-	unsigned char       logpriority:4;          // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
+        unsigned char       type:4;                        // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
+        unsigned char       searchmethod:2;                // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
+        unsigned char       leafsearchmethod:2;            // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
+        unsigned char       unfold:1;                      // Search names unfolding the text first, RFC 2822
+        unsigned char       asciicaseinsensitive:1;        // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
+        unsigned char       rfc2822headerend:1;            // Stop after RFC 2822 header end (<cr><lf><cr><lf>) 
+        unsigned char       removewsp:1;                   // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        unsigned char       removecrlf:1;                  // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
+	unsigned char       findleaffromallnames:1;        // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
+	unsigned char       removenamewsp:1;               // Remove white space characters inside name
+	unsigned char       leadnames:1;                   // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
+	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
+        unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
+	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
+	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	unsigned char       doubledelim:1;                 // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
+	unsigned char       removecommentsinname:1;        // Remove comments inside names (JSON can't do this, it does not have comments)
+	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.)
+	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
+	unsigned char       searchstate:4;                 // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
+	unsigned char       logpriority:4;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -396,7 +404,7 @@ typedef struct cb_name{
         signed long int       offset;         // offset from the beginning of data (to '=')
         signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
         int                   length;         // character count, length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
-        signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when traversed by, zero only if name is not searched yet
+        signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when mathed, zero only if name is not searched yet
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
@@ -645,8 +653,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
 /* Name structure type. */
-int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from ); // from is the index in 4-byte ucsname in bytes
-int  cb_check_json_string_content( unsigned char **ucsname, int namelength, int *from);
+//int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from ); // from is the index in 4-byte ucsname in bytes
+//int  cb_check_json_string_content( unsigned char **ucsname, int namelength, int *from);
 
 int  cb_set_rstart(CBFILE **str, unsigned long int rstart); // character between valuename and value, '='
 int  cb_set_rend(CBFILE **str, unsigned long int rend); // character between value and next valuename, '&'
@@ -667,10 +675,12 @@ int  cb_set_to_rfc2822( CBFILE **str ); // Remove CR. Sets new line as rend, rst
 int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with trees because words can end to SP, TAB, CR or LF.
 int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
 
-int  cb_use_as_buffer(CBFILE **buf); // file descriptor is not used
+int  cb_use_as_buffer(CBFILE **buf); // File descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
 int  cb_use_as_seekable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
 int  cb_use_as_stream(CBFILE **buf); // Namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
+int  cb_use_as_boundless_buffer(CBFILE **buf); // Namelist is not bound and file descriptor is not used.
+
 int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_unique_leaves(CBFILE **cbf);
 int  cb_set_to_polysemantic_names(CBFILE **cbf); // Searches multiple same named names, default
@@ -738,6 +748,7 @@ int  cb_test_cpu_endianness(void);
 /*
  * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
 int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
+int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ); // 28.2.2016, not tested (28.2.2016)
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);

@@ -372,7 +372,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	if( *clength>maxlength )
 		return CBNOTJSON; // too long
 	if(err==CBSUCCESSJSONQUOTES)
-		return cb_check_json_string_content( &(*ucscontent), *clength , &from);
+		return cb_check_json_string_content( &(*ucscontent), *clength , &from, (**cbf).cf.jsonremovebypassfromcontent );
 	return cb_check_json_value( &(*cbf), &(*ucscontent), *clength, &from );
 }
 /*
@@ -454,7 +454,12 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 			}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( ( injsonquotes==1 || injsonarray==1 || jsonstring==0 ) ) ) ) { // 10.11.2015
 			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr, '\"' ); // BEST
-                        	err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				/*
+				 * Removes bypass characters from content. */
+				if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && \
+				      (**cbf).cf.json==1 && ! ( ( chprev=='\\' && chr=='"' ) || ( chprev=='\\' && chr=='\\' ) ) ) ){ // 2.3.2016
+                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				}
 			}
 			if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
 			if( (**cbf).cf.json==1 ){
