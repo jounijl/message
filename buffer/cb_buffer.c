@@ -418,6 +418,7 @@ int  cb_set_to_json( CBFILE **str ){
 	(**str).cf.json = 1;
 	(**str).cf.jsonnamecheck = 1; // check name before saving it to list or tree
         (**str).cf.jsonvaluecheck = 1; // additionally check the value if it is read with the functions from cb_read.c
+	(**str).cf.jsonremovebypassfromcontent = 1;
 	(**str).cf.doubledelim = 1; 
 	/* JSON can't remove comments: JSON does not have comments and comments are attached to the array [ ] (8.11.2015)
 	 * Arrays have commas inside them. inside array has been added and it is not tested without brackets as comment characters. */
@@ -461,10 +462,21 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
 	(**str).cf.searchstate=CBSTATETOPOLOGY;
-	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
-	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	//(**str).cf.doubledelim=1; // default
 	(**str).cf.doubledelim=0; // test
+	(**str).cf.unfold=0;
+	(**str).cf.asciicaseinsensitive=0;
+	(**str).cf.leadnames=0;
+	(**str).cf.findleaffromallnames=0;
+	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
+	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
+	(**str).cf.jsonremovebypassfromcontent=1;
+	(**str).cf.jsonvaluecheck=0;
+	(**str).cf.jsonnamecheck=0;
+	(**str).cf.removecrlf=0;
+	(**str).cf.removewsp=0;
+	(**str).cf.removenamewsp=0;
+	(**str).cf.removecommentsinname=0;
 	(**str).cf.logpriority=CBLOGDEBUG; // 
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
@@ -908,7 +920,7 @@ int  cb_flush(CBFILE **cbs){
 	return cb_flush_to_offset( &(*cbs), -1 );
 }
 int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
-	int err = CBSUCCESS;
+	int err = CBSUCCESS, err2=-1;
 	if(cb==NULL || *cb==NULL){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_cbfile_to_offset: cb was null." ); 
 	  return CBERRALLOC;
@@ -935,6 +947,9 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	  err = CBSUCCESS;
 	  (**cb).contentlen=0; // Block is set to zero here (write or append is not possible without this)
 	}
+	err2 = fsync( fd );
+        if(err2<0)
+            cb_clog( CBLOGNOTICE, CBNEGATION, "\ncb_flush_cbfile_to_offset: fsync %i, errno %i '%s'", err2, errno, strerror(errno) );
 	return err;
 }
 int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
@@ -1318,6 +1333,8 @@ int  cb_reread_new_file( CBFILE **cbf, int newfd ){
           cb_clog( CBLOGNOTICE, CBERRFILEOP, "\ncb_reread_file: could not seek new file descriptor, lseek errno %i .", errno );
           err2=CBERRFILEOP;
         }else{
+
+	  // The next is the same as in cb_reinit_cbfile, 5.3.2016
         
           // Deallocate previous CBFILE:s buffers (without closing filedescriptor)
           err2 = cb_reinit_buffer(&(**cbf).cb); // free names, reset buffer
