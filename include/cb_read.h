@@ -33,6 +33,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 /*
  * 30.11.2013. Allocates new ucsname and copies current name to it. */
 int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
+int  cb_get_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
 
 /*
  * 4.11.2013

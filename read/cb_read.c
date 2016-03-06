@@ -27,6 +27,7 @@
 int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
 int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
 int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
+int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, char leaf );
 
 /*
  * 1 or 4 -byte functions.
@@ -53,7 +54,21 @@ int  cb_find_every_name(CBFILE **cbs){
  * 4-byte functions. Allocates ucsname.
  */
 
+int  cb_get_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelength ){
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+		return CBERRALLOC;
+	}
+	return cb_get_current_name_subfunction( &(*cbs), &(*ucsname), &(*namelength), 1);
+}
 int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength ){
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+		return CBERRALLOC;
+	}
+	return cb_get_current_name_subfunction( &(*cbs), &(*ucsname), &(*namelength), 0);
+}
+int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, char leaf ){
 	/*
 	 * Allocate and copy current name to new ucsname */
 	int ret = CBSUCCESS; int indx=0;
@@ -62,27 +77,42 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 		return CBERRALLOC;
 	}
 
-	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current!=NULL ){
+	if( (**cbs).cb!=NULL && ( ( (*(**cbs).cb).list.current!=NULL && leaf!=1 ) || ( (*(**cbs).cb).list.currentleaf!=NULL && leaf==1 ) ) ){
 	  //if(ucsname==NULL)
 	  //  ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
 	  if( *ucsname!=NULL )
 	  	cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
-	  *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
+	  if(leaf!=1)
+	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
+	  else
+	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.currentleaf).namelen+1 ) );
 	  if( ucsname==NULL ) { 
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: malloc returned null.");
 		return CBERRALLOC; 
 	  }
-	  (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
-	  for( indx=0; indx<(*(*(**cbs).cb).list.current).namelen ; ++indx)
-	    (*ucsname)[indx] = (*(*(**cbs).cb).list.current).namebuf[indx];
-	  if(namelength==NULL)
-	    namelength = (int*) malloc( sizeof( int ) ); // int 
-	  if(namelength==NULL) { return CBERRALLOC; }
- 	  *namelength = (*(*(**cbs).cb).list.current).namelen;
+	  if( leaf!=1 ){
+	    (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
+	    for( indx=0; indx<(*(*(**cbs).cb).list.current).namelen ; ++indx)
+	      (*ucsname)[indx] = (*(*(**cbs).cb).list.current).namebuf[indx];
+	    if(namelength==NULL)
+	      namelength = (int*) malloc( sizeof( int ) ); // int 
+	    if(namelength==NULL) { return CBERRALLOC; }
+ 	    *namelength = (*(*(**cbs).cb).list.current).namelen;
+	  }else{
+	    (*ucsname)[(*(*(**cbs).cb).list.currentleaf).namelen] = '\0';
+	    for( indx=0; indx<(*(*(**cbs).cb).list.currentleaf).namelen ; ++indx)
+	      (*ucsname)[indx] = (*(*(**cbs).cb).list.currentleaf).namebuf[indx];
+	    if(namelength==NULL)
+	      namelength = (int*) malloc( sizeof( int ) ); // int 
+	    if(namelength==NULL) { return CBERRALLOC; }
+ 	    *namelength = (*(*(**cbs).cb).list.currentleaf).namelen;
+	  }
 	}else{
 	  ret = CBERRALLOC; 
 	}
-	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current==NULL )
+	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current==NULL && leaf!=1 )
+	   return CBNOTFOUND;
+	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.currentleaf==NULL && leaf==1 )
 	   return CBNOTFOUND;
 	else if( (**cbs).cb==NULL )
 	   cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: (**cbs).cb was null. ");

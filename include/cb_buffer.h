@@ -59,14 +59,14 @@
 #define CBMISMATCH             72
 #define CBLENGTHNOTKNOWN       73
 #define CBREWASNULL            74
-#define CBNOTJSON              75
-#define CBNOTJSONVALUE         76
-#define CBNOTJSONSTRING        77
-#define CBNOTJSONBOOLEAN       78
-#define CBNOTJSONNUMBER        79
-#define CBNOTJSONARRAY         80
-#define CBNOTJSONOBJECT        81
-#define CBNOTJSONNULL          82
+//#define CBNOTJSON              75
+//#define CBNOTJSONVALUE         76
+//#define CBNOTJSONSTRING        77
+//#define CBNOTJSONBOOLEAN       78
+//#define CBNOTJSONNUMBER        79
+//#define CBNOTJSONARRAY         80
+//#define CBNOTJSONOBJECT        81
+//#define CBNOTJSONNULL          82
 
 #define CBERROR	              200
 #define CBERRALLOC            201
@@ -363,7 +363,7 @@ typedef struct cb_ring {
 } cb_ring;
 
 typedef struct cb_conf{
-        unsigned char       type:4;                        // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations)
+        unsigned char       type:4;                        // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations), buffer with boundless namelist size
         unsigned char       searchmethod:2;                // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
         unsigned char       leafsearchmethod:2;            // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
         unsigned char       unfold:1;                      // Search names unfolding the text first, RFC 2822
