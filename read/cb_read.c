@@ -527,6 +527,24 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 }
 
 /*
+ * Copies 4-byte characters to one byte characters and cut's the buffer with '\0'. 
+ * Does not free. */
+int  cb_convert_from_ucs_to_onebyte( unsigned char **name, int *namelen ){ 
+	int indx = 0, onebindx = 0, err = CBSUCCESS;
+	unsigned long int chr = 0x20;
+	if( name==NULL || *name==NULL || namelen==NULL ){
+		cb_clog( CBLOGERR, CBERRALLOC, "\ncb_convert_from_ucs_to_onebyte: parameter was null, error %i.", CBERRALLOC );
+		return CBERRALLOC;
+	}
+	for( indx=0; indx<*namelen && indx<CBNAMEBUFLEN && err<CBERROR && (onebindx+1)<*namelen; ++onebindx ){
+		err = cb_get_ucs_chr( &chr, &(*name), &indx, *namelen);
+		(*name)[ onebindx ] = (unsigned char) chr ;
+	}
+	(*name)[ onebindx+1 ] = '\0';
+	*namelen = onebindx;
+	return CBSUCCESS;
+}
+/*
  * Ucsname is allocated, ucsnamelen is not allocated. ucsname has to be NULL or CBERRALLOC will result. */ 
 int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen ){ 
 	if( ucsname==NULL || *ucsname!=NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL || ucsnamelen==NULL ){
