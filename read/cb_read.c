@@ -125,8 +125,8 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	int ret = CBSUCCESS;
 	unsigned char *name = NULL;
-	unsigned char  chrs[2] = { 0x20, '\0' };
-	int namelen = 0;
+	unsigned char  chrs[5] = { 0x00, 0x00, 0x00, 0x20, '\0' };
+	int namelen = 1;
 	unsigned char searchmethod=0;
 	name = &chrs[0];
 
@@ -139,6 +139,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
+	cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i (ocoffset 0, matchctl 0).", ret );
 	//ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, ocoffset, 0 ); // matches first (any) (cbsearchnextleaves was added later, 1.7.2015)
 	(**cbs).cf.searchmethod = searchmethod;
 
@@ -540,7 +541,7 @@ int  cb_convert_from_ucs_to_onebyte( unsigned char **name, int *namelen ){
 		err = cb_get_ucs_chr( &chr, &(*name), &indx, *namelen);
 		(*name)[ onebindx ] = (unsigned char) chr ;
 	}
-	(*name)[ onebindx+1 ] = '\0';
+	(*name)[ onebindx ] = '\0';
 	*namelen = onebindx;
 	return CBSUCCESS;
 }

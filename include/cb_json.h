@@ -17,6 +17,16 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
+#define CBNOTJSON              90
+#define CBNOTJSONVALUE         91
+#define CBNOTJSONSTRING        92
+#define CBNOTJSONBOOLEAN       93
+#define CBNOTJSONNUMBER        94
+#define CBNOTJSONARRAY         95
+#define CBNOTJSONOBJECT        96
+#define CBNOTJSONNULL          97
+
+
 int  cb_check_json_string(  unsigned char **ucsname, int namelength, int *from, char bypassisremoved );
 int  cb_check_json_string_content( unsigned char **ucsname, int namelength, int *from, char bypassisremoved);
 

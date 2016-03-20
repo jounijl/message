@@ -51,6 +51,7 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nrfc2822headerend:    \t0x%.2X", (**str).cf.rfc2822headerend);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovewsp:           \t0x%.2X", (**str).cf.removewsp);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovecrlf:          \t0x%.2X", (**str).cf.removecrlf);
+	cb_log(&(*str), priority, CBNEGATION, "\nremovesemicolon:     \t0x%.2X", (**str).cf.removesemicolon);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovenamewsp:       \t0x%.2X", (**str).cf.removenamewsp);
 	cb_log(&(*str), priority, CBNEGATION, "\nleadnames:           \t0x%.2X", (**str).cf.leadnames);
 	cb_log(&(*str), priority, CBNEGATION, "\njson:                \t0x%.2X", (**str).cf.json);
@@ -314,22 +315,32 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
         return CBERRALLOC;  
 }         
 
+/*
+ * Wordlist is different from other search settings. Rend and rstart are backwards.
+ * The setting works only with CBSTATEFUL and with the following settings (20.3.2016):
+ * findwords, removewsp, removesemicolon, removecrlf, removenamewsp, unfold, leadnames. 
+ */
 int  cb_set_to_word_search( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
 	(**str).cf.doubledelim=0;
 	(**str).cf.json=0;
 	(**str).cf.removewsp=1;
+	(**str).cf.removesemicolon=1;
 	(**str).cf.removecrlf=1;
 	(**str).cf.removenamewsp=1;
-	(**str).cf.unfold=1;
+	(**str).cf.unfold=1; // BUG with CBSTATELESS, (**str).cf.leadnames=0, removewsp=1, removecrlf=1, removenamewsp=1, doubledelim=0, 20.3.2016
+	//(**str).cf.unfold=0;
 	(**str).cf.leadnames=0;
-	//cb_set_search_state( &(*str), CBSTATEFUL );
-	cb_set_search_state( &(*str), CBSTATELESS );
+	//(**str).cf.leadnames=1;
+	cb_set_search_state( &(*str), CBSTATEFUL );
+	//cb_set_search_state( &(*str), CBSTATELESS );
 	cb_set_rstart( &(*str), (unsigned long int) ',' ); // default value (CSV, SQL, ...), name separator (record start)
 	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (shell), record end, start of name
 	return CBSUCCESS;
 }
+/*
+ * Not well tested (20.3.2016). */
 int  cb_set_to_search_one_name_only( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
@@ -337,6 +348,7 @@ int  cb_set_to_search_one_name_only( CBFILE **str ){
 	(**str).cf.searchnameonly=1; // Stop at found name and never save any names to a list or tree
 	(**str).cf.json=0;
 	(**str).cf.removewsp=1;
+	(**str).cf.removesemicolon=1;
 	(**str).cf.removecrlf=1;
 	(**str).cf.removenamewsp=1;
 	(**str).cf.unfold=1;
@@ -475,6 +487,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.jsonnamecheck=0;
 	(**str).cf.removecrlf=0;
 	(**str).cf.removewsp=0;
+	(**str).cf.removesemicolon=0; // wordlist has many differences because rend and rstart are backwards and not all settings are compatible, default is off
 	(**str).cf.removenamewsp=0;
 	(**str).cf.removecommentsinname=0;
 	(**str).cf.logpriority=CBLOGDEBUG; // 
@@ -557,15 +570,15 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned char **blk, int blklen){ 
 	int err = CBSUCCESS;
 	if( str==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_cbfile_from_blk: str was null." ); return CBERRALLOC; }
-	err = cb_allocate_empty_cbfile( &(*str), fd);
-	if(err!=CBSUCCESS){ return err; }
-	err = cb_allocate_buffer(&(**str).cb, bufsize);
-	if(err!=CBSUCCESS){ return err; }
+	err = cb_allocate_empty_cbfile( &(*str), fd );
+	if(err!=CBSUCCESS && err!=CBERRFILEOP){ cb_clog( CBLOGALERT, err, "\ncb_allocate_cbfile_from_blk: cb_allocate_empty_cbfile, %i.", err ); return err; } // file operation error added 19.3.2016
+	err = cb_allocate_buffer( &(**str).cb, bufsize );
+	if(err!=CBSUCCESS){ cb_clog( CBLOGALERT, err, "\ncb_allocate_cbfile_from_blk: cb_allocate_buffer, %i.", err ); return err; }
 	if(*blk==NULL){
-	  err = cb_allocate_buffer(&(**str).blk, blklen);
+	  err = cb_allocate_buffer( &(**str).blk, blklen );
 	}else{
-	  err = cb_allocate_buffer(&(**str).blk, 0); // blk
-	  if(err==-1){ return CBERRALLOC;}
+	  err = cb_allocate_buffer( &(**str).blk, 0 ); // blk
+	  if(err==-1){ return CBERRALLOC; }
 	  free( (*(**str).blk).buf );
 	  (*(**str).blk).buf = &(**blk);
 	  (*(**str).blk).buflen = (long) blklen;
@@ -579,6 +592,7 @@ int  cb_allocate_buffer(cbuf **cbf, int bufsize){
 	unsigned char *bl = NULL;
 	return cb_allocate_buffer_from_blk( &(*cbf), &bl, bufsize );
 }
+
 int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
 	if( cbf==NULL ){ 
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: cbf was null.");
@@ -589,34 +603,45 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
 }
 /*
- * Outside reuse. 28.2.2016 */
+ * Outside reuse. 28.2.2016 
+ *
+ * Reinits block and buffer. Attaches the parameter block to the block
+ * of CBFILE. This function is useful for a CBCFGBUFFER and CBCFGBOUNDLESSBUFFER
+ * when the cb buffer is empty or fixed length. 19.3.2016
+ */
 int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ){
-	static unsigned char  *eblk;
-	static unsigned char   eblkdata[5] = { 0x00, 0x00, 0x00, 0x20, '\0' };
-	static int             eblklen = 4, err = CBSUCCESS;
-	eblk = &eblkdata[0];
-	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: cbf was null." );  return CBERRALLOC; }
-	if( blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: parameter was null." );  return CBERRALLOC; }
+	int err = CBSUCCESS;
+	if( cbf==NULL ){   cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: cbf was null." );  return CBERRALLOC; }
+	if( *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: *cbf was null." );  return CBERRALLOC; }
+	if( blk==NULL ){   cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: parameter was null." );  return CBERRALLOC; }
 	if( (**cbf).cb==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: buffer was null." );  return CBERRALLOC; }
+
+	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
+        //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
+        //cb_clog( CBLOGDEBUG, CBSUCCESS, "]." );
+
 	/*
-	 * Zero counters and attach to the buffer a new block. */
-	if( (*(**cbf).blk).buf != NULL ){
+	 * Zero counters. */
+	err = cb_reinit_cbfile( &(*cbf) ); // 19.3.2016
+
+	/*
+	 * Attach a new buffer to the block. */
+	if( blk!=NULL && *blk!=NULL && blksize>=0 ){
+	  if( (*(**cbf).blk).buf != NULL ){
 		free( &(*(**cbf).blk).buf );
 		(*(**cbf).blk).buf = NULL;
-	}
-	if(blk!=NULL && *blk!=NULL && blksize>=0){
-	  cb_empty_names( &(**cbf).cb );
-	  err = cb_init_buffer_from_blk( &(**cbf).blk, &eblk, eblklen );
+	  }
 	  (*(**cbf).blk).buf = &(**blk);
 	  (*(**cbf).blk).buflen = blksize;
+	  (*(**cbf).blk).contentlen = blksize; // 19.3.2016
 	}
-	return cb_init_buffer_from_blk( &(**cbf).cb, NULL, 0 );
+	return err;
 }
 
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
 	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_buffer_from_blk: cbf was null." );  return CBERRALLOC; }
 	if( blk==NULL || *blk==NULL ){
-	  (**cbf).buf = (unsigned char *) malloc(sizeof(char)*( (unsigned int) blksize+1));
+	  (**cbf).buf = (unsigned char *) malloc( sizeof(char)*( (unsigned int) blksize+1 ) );
 	  if( (**cbf).buf == NULL ){ 
 		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_init_buffer_from_blk: malloc returned null." ); 
 		return CBERRALLOC; 
@@ -647,6 +672,7 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
 	(**cbf).list.currentleaf=NULL; // 11.12.2013
+
 	return CBSUCCESS;
 }
 
@@ -655,19 +681,29 @@ int  cb_reinit_cbfile(CBFILE **buf){
 	if( buf==NULL || *buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile: buf was null." ); return CBERRALLOC; }
 
 	err = cb_reinit_buffer(&(**buf).cb);
+	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
 	err = cb_reinit_buffer(&(**buf).blk);
+	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
+
+	err = cb_fifo_init_counters( &(**buf).ahd ); // 19.3.2016
+	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_fifo_init_counters, error %i.", err);
+
 	return err;
 }
 
 int  cb_free_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
-	cb_reinit_buffer(&(**buf).cb); // free names
-	if((*(**buf).cb).buf!=NULL){
-	  //memset( &(*(**buf).cb).buf, 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls
-	  free( (*(**buf).cb).buf ); // free buffer data
+	if( buf==NULL || *buf==NULL ) return CBSUCCESS; // 18.3.2016
+	if( (**buf).cb!=NULL ){ // 18.3.2016
+	  cb_reinit_buffer(&(**buf).cb); // free names
+	  if((*(**buf).cb).buf!=NULL){
+	    //memset( &(*(**buf).cb).buf, 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls
+	    free( (*(**buf).cb).buf ); // free buffer data
+	  }
+	  free((**buf).cb); // free buffer
 	}
-	free((**buf).cb); // free buffer
-	if((*(**buf).blk).buf!=NULL){
+	//if((*(**buf).blk).buf!=NULL){
+	if( (**buf).blk!=NULL && (*(**buf).blk).buf!=NULL){ // 18.3.2016
           free((*(**buf).blk).buf); // free block data
 	}
 	free((**buf).blk); // free block
@@ -920,7 +956,7 @@ int  cb_flush(CBFILE **cbs){
 	return cb_flush_to_offset( &(*cbs), -1 );
 }
 int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
-	int err = CBSUCCESS, err2=-1;
+	int err = CBSUCCESS; // err2=-1;
 	if(cb==NULL || *cb==NULL){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_cbfile_to_offset: cb was null." ); 
 	  return CBERRALLOC;
@@ -947,9 +983,11 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	  err = CBSUCCESS;
 	  (**cb).contentlen=0; // Block is set to zero here (write or append is not possible without this)
 	}
-	err2 = fsync( fd );
-        if(err2<0)
-            cb_clog( CBLOGNOTICE, CBNEGATION, "\ncb_flush_cbfile_to_offset: fsync %i, errno %i '%s'", err2, errno, strerror(errno) );
+	//if(fd>=0){ // 18.3.2016
+	//  err2 = fsync( fd ); // 2-3/2016
+        //  if(err2<0)
+        //    cb_clog( CBLOGNOTICE, CBNEGATION, "\ncb_flush_cbfile_to_offset: fsync %i, errno %i '%s'", err2, errno, strerror(errno) );
+	//}
 	return err;
 }
 int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){

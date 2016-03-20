@@ -100,8 +100,16 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	//if( currentlevel>1 )
 	//  --currentlevel;
 	*level = currentlevel - (*(**cbs).cb).list.toterminal; 
+
+	/*
+	 * Real bug here. The reader should keep track of the open pairs.
+	 * If the reading has stopped to a leaf of the tree, the levels is not necessarily
+	 * correct anymore when hitting the zero level or the the original list (or hitting the ground). 
+	 * Why was this again? 17.3.2016.
+	 * (Uncomment the error log and test.)
+	 */
 	if(*level<0){ // to be sure errors do not occur
-	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner: error, levels was negative, %i (currentlevel %i, toterminal %i). Set to 0.", *level, currentlevel, (*(**cbs).cb).list.toterminal );
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner: error, levels was negative, %i (currentlevel %i, toterminal %i). Set to 0.", *level, currentlevel, (*(**cbs).cb).list.toterminal );
 	  *level=0; 
 	}
 
@@ -784,6 +792,9 @@ int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
 	if( chr==(**cbs).cf.rstart )
 	  return true;
+	/*
+	 * BUG with unfolding: 20.3.2016. Removes first character of the next word if unfolding is set. 
+	 */
 	if( (**cbs).cf.findwords==1 ){ // name end, record start
 	  if( WSP( chr ) || CR( chr ) || LF( chr ) )
 	    return true;
@@ -874,14 +885,14 @@ int  cb_increase_terminalcount(CBFILE **cbs){
 }
 
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
-	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND;
+	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // return values
 	int  buferr=CBSUCCESS, savenameerr=CBSUCCESS; 
 	int  index=0, freecount=0;
 	unsigned long int chr=0, chprev=CBRESULTEND; 
 	long int chroffset=0;
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0;
-	char injsonquotes = 0, injsonarray = 0, wasjsonrend=0, wasjsonsubrend=0, jsonemptybracket=0;
+	char injsonquotes = 0, injsonarray = 0, wasjsonrend=0, wasjsonsubrend=0, jsonemptybracket=0; // json values
 	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL; // Allocates two times, reads first to charbur, then allocates clean version to fname and finally in cb_put_name writing third time allocating the second time
@@ -898,6 +909,14 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	  cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_set_cursor_match_length_ucs_matchctl: allocation error."); return CBERRALLOC;
 	}
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
+
+	/*
+	 * 20.3.2016, if wordlist or onename search, the rstart and rend ar backwards.
+ 	 * Searching should start from rend, not from rstart. CBSTATEFUL.
+	 */
+	if( (**cbs).cf.searchstate==CBSTATEFUL && ( (**cbs).cf.findwords==1 || (**cbs).cf.searchnameonly==1 ) ){
+	  atvalue=1; // TEST 20.3.2016
+	}
 
 
 /**
@@ -1581,7 +1600,7 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 	(**fname).nameoffset = nameoffset; // 6.12.2014
 
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\n cb_save_name_from_charbuf: name [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, CBNEGATION, &(*charbuf), index, CBNAMEBUFLEN);
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*charbuf), index, CBNAMEBUFLEN);
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "] index=%i, (**fname).buflen=%i cstart:[%c] cend:[%c] ", index, (**fname).buflen, (char) (**cbs).cf.cstart, (char) (**cbs).cf.cend);
 
         if(index<(**fname).buflen){
@@ -1590,8 +1609,8 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 cb_save_name_ucs_removals: 
             buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
             if( buferr==CBSUCCESS ){
-              if( (**cbs).cf.removecommentsinname==1 && cmp==(**cbs).cf.cstart ){ // Comment (+ in case of JSON, cstart and cend is set to '[' and ']'. Reading of array to avoid extra commas.)
-                while( indx<index && cmp!=(**cbs).cf.cend && buferr==CBSUCCESS ){ // 2.9.2013
+              if( (**cbs).cf.removecommentsinname==1 && cmp==(**cbs).cf.cstart ){   // Comment (+ in case of JSON, cstart and cend is set to '[' and ']'. Reading of array to avoid extra commas.)
+                while( indx<index && cmp!=(**cbs).cf.cend && buferr==CBSUCCESS ){   // 2.9.2013
                   buferr = cb_get_ucs_chr( &cmp, &(*charbuf), &indx, CBNAMEBUFLEN); // 30.8.2013
                 } // cf.removecommentsinname, 8.1.2015
               }
@@ -1605,6 +1624,11 @@ cb_save_name_ucs_removals:
 	          goto cb_save_name_ucs_removals;
 	        }
 	      }
+	      if( (**cbs).cf.removesemicolon==1 ){ // 20.3.2016, not yet tested
+                if( indx<index && ( cmp == (unsigned long int) 0x003B ) && buferr==CBSUCCESS ){ // ';'
+	          goto cb_save_name_ucs_removals;
+	        }		
+	      }
 
               /* Write name */
               if( cmp!=(**cbs).cf.cend && buferr==CBSUCCESS){ // Name, 28.8.2013
@@ -1613,8 +1637,10 @@ cb_save_name_ucs_removals:
 	            ++injsonquotes;
 	          if( (**cbs).cf.json!=1 || ( (**cbs).cf.json==1 && injsonquotes==1 ) ){ // 27.8.2015, do not save quotes in json name "name" -> name (after checking the name format)
 	            if( ! ( indx==index && (**cbs).cf.removewsp==1 && WSP( cmp ) ) ){ // special last white space, 13.12.2013
-                      buferr = cb_put_ucs_chr( cmp, &(**fname).namebuf, &(**fname).namelen, (**fname).buflen );
-	              atname=1;
+		      if( ! ( indx==index && (**cbs).cf.removesemicolon==1 && ( cmp==(unsigned long int) 0x003B ) ) ){ // special last semicolon, 20.3.2016
+                        buferr = cb_put_ucs_chr( cmp, &(**fname).namebuf, &(**fname).namelen, (**fname).buflen );
+	                atname=1;
+		      }
 	            }
 		  }else if( cmp == (unsigned long int) 0x22 ){ // '"'
 	            ++injsonquotes; if(injsonquotes<0) injsonquotes=3;
@@ -1626,6 +1652,10 @@ cb_save_name_ucs_removals:
         }else{
 	  err = CBNAMEOUTOFBUF;
 	}
+
+	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\n cb_save_name_from_charbuf: WROTE name [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(**fname).namebuf, (**fname).namelen, (**fname).buflen );
+	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "] index=%i, (**fname).buflen=%i cstart:[%c] cend:[%c] ", index, (**fname).buflen, (char) (**cbs).cf.cstart, (char) (**cbs).cf.cend);
 
 	if(err>=CBNEGATION && err!=CBNAMEOUTOFBUF){ // 23.10.2015
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_save_name_from_charbuf: name allocation, returning %i.", err);
