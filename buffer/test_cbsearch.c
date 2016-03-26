@@ -119,7 +119,8 @@ int main (int argc, char **argv) {
 	//cb_use_as_seekable_file(&in); // namelist is endless, memory increases
 	cb_set_encoding(&in, CBENC1BYTE);
 	cb_set_search_state(&in, CBSTATETREE);
-	(*in).cf.rfc2822headerend=0;
+	(*in).cf.stopatheaderend=0;
+	(*in).cf.stopatmessageend=0; // 26.3.2016
 	(*in).cf.leadnames=1;
 	//(*in).cf.leadnames=0;
 
@@ -376,10 +377,10 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	  fprintf(stderr, " cbsearch, printing leaves:");
 	  cb_print_leaves( &nameptr, CBLOGDEBUG );
 	}
-	if(err==CB2822HEADEREND ){
+	if(err==CBMESSAGEHEADEREND ){
 	  fprintf(stderr, "\n Header end. \n");
 	}
-	if( tree==0 && ( err==CBNOTFOUND || err==CB2822HEADEREND ) ){
+	if( tree==0 && ( err==CBNOTFOUND || err==CBMESSAGEHEADEREND ) ){
 	  fprintf(stderr, "\n Name \"");
 	  if( name!=NULL && *name!=NULL && namelength!=0 )
 	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelength, namelength );

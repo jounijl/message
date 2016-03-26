@@ -48,15 +48,16 @@ int main(void) {
 	// cat testi.txt | tr -c -d "=" | wc -c # 48
 	//cb_set_search_state( &in, CBSTATETREE ); // lists, something missing
 	//cb_set_search_state( &in, CBSTATELESS ); // lists 48
-	//cb_set_search_state( &in, CBSTATEFUL ); // lists 40 (something is missing)
+	cb_set_search_state( &in, CBSTATEFUL ); // lists 40 (something is missing)
 
-	cb_set_search_state( &in, CBSTATETOPOLOGY ); // error
+	//cb_set_search_state( &in, CBSTATETOPOLOGY ); // error
 
 	// Returns:
 	// cb_search.c: "Value read, openpairs 0 ocoffset 1"
 	// return CBVALUEEND;
 
-	cb_set_encoding(&in, 1);
+	cb_set_to_message_format( &in );
+	cb_set_encoding( &in, 1 );
 
 	err = cb_find_every_name(&in);
 	if( err==CBVALUEEND ){
@@ -67,6 +68,9 @@ int main(void) {
 	}
 	if(err>=CBNEGATION && err!=CBNOTFOUND)
 	  fprintf(stderr,"\ncb_find_every_name: err=%i.", err);
+
+	if(err==CBMESSAGEHEADEREND)
+	  fprintf(stderr,"\ncb_find_every_name: stopped at header end.");
 
 	cb_print_names(&in, CBLOGDEBUG);
 

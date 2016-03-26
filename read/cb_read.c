@@ -139,7 +139,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
-	cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i (ocoffset 0, matchctl 0).", ret );
+	//cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i (ocoffset 0, matchctl 0).", ret );
 	//ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, ocoffset, 0 ); // matches first (any) (cbsearchnextleaves was added later, 1.7.2015)
 	(**cbs).cf.searchmethod = searchmethod;
 
