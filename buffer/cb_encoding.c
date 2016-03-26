@@ -41,6 +41,16 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
           ++(**cbs).bm.reads;
 #endif
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+
+	/*
+	 * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
+	if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
+		if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset )
+		   err = CBMESSAGEEND;
+	}
+	/* /26.3.2016 */
+
+
 	if( (**cbs).cf.searchstate!=CBSTATETREE )
 		return err;
 	/*

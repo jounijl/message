@@ -1101,6 +1101,25 @@ cb_set_cursor_reset_name_index:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 
+	// ADDED HERE 25.3.2016. THIS SHOULD BE CHECKED.
+        //if( (**cbs).cf.rfc2822headerend==1 ){
+        if( (**cbs).cf.stopatheaderend==1 ){ // 26.3.2016
+          // Automatic stop at header-end if it's set
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[0x%.2x,0x%.2x,0x%.2x,0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
+          if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[ ***\n  *** HTTP HEADERS END ***\n  *** ]"); // 0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
+            //if( (*(**cbs).cb).offsetrfc2822 == 0 )
+            if( (*(**cbs).cb).headeroffset == 0 )
+	      if( chroffset < 0x7FFFFFFF) // integer size - 1 
+                (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character, 26.3.2016
+              //  (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
+	    ret = CBMESSAGEHEADEREND;
+	    goto cb_set_cursor_ucs_return;
+          }
+	}
+	ch3prev = ch2prev; ch2prev = chprev; chprev = chr; // 25.3.2016
+	// /ADDED HERE 25.3.2016
+
 	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
@@ -1522,15 +1541,22 @@ cb_set_cursor_reset_name_index:
 	  }else{ // save character to buffer CBSTATELESS
 	      buferr = cb_put_ucs_chr(chr, &charbufptr, &index, CBNAMEBUFLEN);
 	  }
+	
           /* Automatic stop at header-end if it's set */
-          if((**cbs).cf.rfc2822headerend==1)
+          //if( (**cbs).cf.rfc2822headerend==1 ){
+          if( (**cbs).cf.stopatheaderend==1 ){
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[0x%.2x,0x%.2x,0x%.2x,0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
             if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
-              if( (*(**cbs).cb).offsetrfc2822 == 0 )
+	      cb_clog( CBLOGDEBUG, CBNEGATION, "\n[ ***\n  *** HTTP HEADERS END ***\n*** ]"); // 0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
+              //if( (*(**cbs).cb).offsetrfc2822 == 0 )
+              if( (*(**cbs).cb).headeroffset == 0 ) // 26.3.2016
 	        if( chroffset < 0x7FFFFFFF) // integer size - 1 
-                  (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
-	      ret = CB2822HEADEREND;
+                  (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character
+                //  (*(**cbs).cb).offsetrfc2822 = chroffset; // 1.9.2013, offset set at last new line character
+	      ret = CBMESSAGEHEADEREND;
 	      goto cb_set_cursor_ucs_return;
             }
+	  }
 
 	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;
 	  /*

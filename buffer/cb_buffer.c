@@ -46,11 +46,12 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\ntype:                        \t0x%.2X", (**str).cf.type);
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchstate:                 \t0x%.2X", (**str).cf.searchstate);
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchmethod:                \t0x%.2X", (**str).cf.searchmethod);
-	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmeathod:           \t0x%.2X", (**str).cf.leafsearchmethod);
+	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmethod:            \t0x%.2X", (**str).cf.leafsearchmethod);
 	cb_log(&(*str), priority, CBNEGATION, "\nfindleaffromallnames:        \t0x%.2X", (**str).cf.findleaffromallnames);
 	cb_log(&(*str), priority, CBNEGATION, "\nunfold:                      \t0x%.2X", (**str).cf.unfold);
 	cb_log(&(*str), priority, CBNEGATION, "\nasciicaseinsensitive:        \t0x%.2X", (**str).cf.asciicaseinsensitive);
-	cb_log(&(*str), priority, CBNEGATION, "\nrfc2822headerend:            \t0x%.2X", (**str).cf.rfc2822headerend);
+	cb_log(&(*str), priority, CBNEGATION, "\nstopatheaderend:             \t0x%.2X", (**str).cf.stopatheaderend);
+	cb_log(&(*str), priority, CBNEGATION, "\nstopatmessageend:            \t0x%.2X", (**str).cf.stopatmessageend);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovewsp:                   \t0x%.2X", (**str).cf.removewsp);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovecrlf:                  \t0x%.2X", (**str).cf.removecrlf);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovesemicolon:             \t0x%.2X", (**str).cf.removesemicolon);
@@ -328,9 +329,12 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
  * Wordlist is different from other search settings. Rend and rstart are backwards.
  * The setting works only with CBSTATEFUL and with the following settings (20.3.2016):
  * findwords, removewsp, removesemicolon, removecrlf, removenamewsp, unfold. 
+ *
+ * Just any settings can be tried with other search settings. Not with word search or search
+ * of one name only.
  */
 int  cb_set_to_word_search( CBFILE **str ){
-	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_word_search: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
 	(**str).cf.doubledelim=0;
 	(**str).cf.json=0;
@@ -351,7 +355,7 @@ int  cb_set_to_word_search( CBFILE **str ){
 /*
  * Not well tested (20.3.2016). */
 int  cb_set_to_search_one_name_only( CBFILE **str ){
-	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_conf: str was null." ); return CBERRALLOC; }
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_search_one_name_only: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
 	(**str).cf.doubledelim=0;
 	(**str).cf.searchnameonly=1; // Stop at found name and never save any names to a list or tree
@@ -396,41 +400,60 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.jsonvaluecheck=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
-        (**str).cf.rfc2822headerend=0;
+        //(**str).cf.rfc2822headerend=0;
+        (**str).cf.stopatheaderend=0;
+        (**str).cf.stopatmessageend=0;
         (**str).cf.asciicaseinsensitive=0;
         (**str).cf.unfold=1;
 	(**str).cf.findwords=0;
 	return CBSUCCESS;
 }
-int  cb_set_to_html_post( CBFILE **str ){
+int  cb_set_to_html_post( CBFILE **str ){ 
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_html_post: str was null." ); return CBERRALLOC; }
         cb_set_rstart( &(*str), (unsigned long int) '=' );
         cb_set_rend( &(*str), (unsigned long int) '&' );
         cb_set_cstart( &(*str), (unsigned long int) 0x1D ); // 'GS' group separator, some non-alphanumeric characters (these have to be encoded in POST with percent sign and hexadecimal value)
         cb_set_cend( &(*str), (unsigned long int) 0x1F ); // 'US' unit separator, "
         cb_set_bypass( &(*str), (unsigned long int) '\\' ); // "semantically invisible" [2822 3.2.3], should be encoded with percent sign
-        (**str).cf.rfc2822headerend=0;
+	cb_set_search_state( &(*str), CBSTATEFUL );
+        //(**str).cf.rfc2822headerend=0;
+        (**str).cf.stopatheaderend=0;
+        (**str).cf.stopatmessageend=0;
         (**str).cf.asciicaseinsensitive=0;
         (**str).cf.unfold=0;
         (**str).cf.doubledelim=0;
-        (**str).cf.removecrlf=0;
-        (**str).cf.removewsp=0;
-	(**str).cf.removenamewsp=0;
+        (**str).cf.removecrlf=1;    // between name and value and in name (cr or lf has to be percent encoded anyway)
+        (**str).cf.removewsp=1;     // between name and value
+	(**str).cf.removenamewsp=0; // leave wsp:s in name
+	(**str).cf.removesemicolon=0;
+	(**str).cf.removecommentsinname=0;
+	(**str).cf.searchnameonly=0;
         (**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+	(**str).cf.jsonremovebypassfromcontent=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
 	return CBSUCCESS;
 }
-int  cb_set_to_rfc2822( CBFILE **str ){
+
+int  cb_set_message_end( CBFILE **str, long long int contentoffset ){
+	if(str==NULL || *str==NULL || (**str).cb==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_message_end: str or cb was null." ); return CBERRALLOC; }
+	if( contentoffset<0 ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_message_end: offset was negative." ); return CBOVERFLOW; }
+	(*(**str).cb).messageoffset = contentoffset;
+	return CBSUCCESS;
+}
+//int  cb_set_to_rfc2822( CBFILE **str ){
+int  cb_set_to_message_format( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_rfc2822: str was null." ); return CBERRALLOC; }
         cb_set_rstart( &(*str), (unsigned long int) ':' );
         cb_set_rend( &(*str), (unsigned long int) 0x0A );
         cb_set_cstart( &(*str), (unsigned long int) '(' ); // rfc 2822 allowed comment, comments are folded [2822 3.2.3]
         cb_set_cend( &(*str), (unsigned long int) ')' ); // rfc 2822 allowed comment
         cb_set_bypass( &(*str), (unsigned long int) '\\' ); // "semantically invisible" [2822 3.2.3]
-        (**str).cf.rfc2822headerend=1;
+        //(**str).cf.rfc2822headerend=1;
+        (**str).cf.stopatheaderend=1;
+        (**str).cf.stopatmessageend=1;
         (**str).cf.asciicaseinsensitive=1;
         (**str).cf.unfold=1;
         (**str).cf.doubledelim=0;
@@ -523,14 +546,16 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.logpriority=CBLOGDEBUG; // 
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
-#ifdef CB2822MESSAGE
+#ifdef CBMESSAGEFORMAT
 	(**str).cf.asciicaseinsensitive=1;
 	(**str).cf.unfold=1;
 	//(**str).cf.removewsp=1; // test
 	//(**str).cf.removecrlf=1; // test
 	(**str).cf.removewsp=0; // default
 	(**str).cf.removecrlf=0; // default
-	(**str).cf.rfc2822headerend=1; // default, stop at headerend
+	(**str).cf.stopatheaderend=1;  // default, stop at header end, 26.3.2016
+	(**str).cf.stopatmessageend=1; // default, stop at message end, 26.3.2016
+	//(**str).cf.rfc2822headerend=1; // default, stop at headerend
 	//(**str).cf.rstart=0x00003A; // ':', default
 	//(**str).cf.rend=0x00000A;   // LF, default
 	(**str).cf.rstart=CBRESULTSTART; // tmp
@@ -541,7 +566,9 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.unfold=0;
 	(**str).cf.removewsp=1;
 	(**str).cf.removecrlf=1;
-	(**str).cf.rfc2822headerend=0;
+	(**str).cf.stopatheaderend=0;
+	(**str).cf.stopatmessageend=0;
+	//(**str).cf.rfc2822headerend=0;
 	(**str).cf.rstart=CBRESULTSTART;
 	(**str).cf.rend=CBRESULTEND;
 #endif
@@ -638,6 +665,9 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
  * Reinits block and buffer. Attaches the parameter block to the block
  * of CBFILE. This function is useful for a CBCFGBUFFER and CBCFGBOUNDLESSBUFFER
  * when the cb buffer is empty or fixed length. 19.3.2016
+ *
+ * Freeing the buffer blk after use has to be careful. The buffer may have to be
+ * set as null before freeing the CBFILE.
  */
 int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ){
 	int err = CBSUCCESS;
@@ -698,7 +728,9 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
-        (**cbf).offsetrfc2822=0;
+        //(**cbf).offsetrfc2822=0;
+        (**cbf).headeroffset=0; // 26.3.2016
+        (**cbf).messageoffset=0; // 26.3.2016
 	(**cbf).list.name=NULL;
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
@@ -788,7 +820,9 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	(**buf).contentlen=0;
 	(**buf).readlength=0; // 21.2.2015
 	(**buf).maxlength=0; // 21.2.2015
-	(**buf).offsetrfc2822=0; // 21.2.2015
+	//(**buf).offsetrfc2822=0; // 21.2.2015
+	(**buf).headeroffset=0; // 21.2.2015, 26.3.2016
+	(**buf).messageoffset=0; // 26.2.2016
 	(**buf).list.current=NULL; // 1.6.2013
 	(**buf).list.currentleaf=NULL; // 11.12.2013
 	(**buf).list.last=NULL; // 1.6.2013
