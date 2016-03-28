@@ -911,7 +911,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	chprev=(**cbs).cf.bypass+1; // 5.4.2013
 
 	/*
-	 * 20.3.2016, if wordlist or onename search, the rstart and rend ar backwards.
+	 * 20.3.2016, if wordlist or onename search, the rstart and rend are backwards.
  	 * Searching should start from rend, not from rstart. CBSTATEFUL.
 	 */
 	if( (**cbs).cf.searchstate==CBSTATEFUL && ( (**cbs).cf.findwords==1 || (**cbs).cf.searchnameonly==1 ) ){
@@ -1008,7 +1008,6 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    }
 	  }
 	}
-
 
         // 1.10.2015
         // VIII still too many set_length -functions. Excess has been marked with text "28.9.2015". Part of them can be removed.
@@ -1120,7 +1119,28 @@ cb_set_cursor_reset_name_index:
 	ch3prev = ch2prev; ch2prev = chprev; chprev = chr; // 25.3.2016
 	// /ADDED HERE 25.3.2016
 
-	err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
+// 27.3.2016
+        /*
+         * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
+        if( (**cbs).cf.stopatheaderend==1 && (*(**cbs).cb).headeroffset>0 ){ // 27.3.2016, header is first
+                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).headeroffset )
+                   ret = CBMESSAGEHEADEREND; // disregard negations and errors if message end
+        }
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: Stopatmessageend==%i comparing index %li to messageoffset %li", \
+	//	(**cbs).cf.stopatmessageend, (*(**cbs).cb).index+1, (*(**cbs).cb).messageoffset );
+        if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){ // message is second
+                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset ){
+                   ret = CBMESSAGEEND; // disregard negations and errors if header end
+		   //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: CBMESSAGEEND." );
+		}
+        }
+        /* /26.3.2016 */
+// /27.3.2016
+
+	if( ret!=CBMESSAGEEND && ret!=CBMESSAGEHEADEREND ) // 27.3.2016
+	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
+	else
+	  err = ret;
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
@@ -1141,7 +1161,8 @@ cb_set_cursor_reset_name_index:
 	 * should leave the cursor where the data ends, at '&'. */
 	nameoffset = chroffset;
 
-	while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS){ 
+	//while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ 
+	while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016
 
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 
@@ -1557,6 +1578,22 @@ cb_set_cursor_reset_name_index:
 	      goto cb_set_cursor_ucs_return;
             }
 	  }
+
+// 28.3.2016
+        /*
+         * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: Stopatmessageend==%i comparing index %li to messageoffset %li", \
+	//	(**cbs).cf.stopatmessageend, (*(**cbs).cb).index+1, (*(**cbs).cb).messageoffset );
+        if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
+                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset ){
+                   ret = CBMESSAGEEND; // disregard negations and errors if header end
+		   //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: CBMESSAGEEND." );
+		   goto cb_set_cursor_ucs_return;
+		}
+        }
+        /* /26.3.2016 */
+// /28.3.2016
+
 
 	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;
 	  /*

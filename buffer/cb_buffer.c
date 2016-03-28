@@ -182,9 +182,9 @@ int  cb_print_names(CBFILE **str, char priority){
 // Debug
 void cb_print_counters(CBFILE **cbf, char priority){
         if(cbf!=NULL && *cbf!=NULL){
-          cb_log( &(*cbf), priority, CBNEGATION, "\nnamecount:%lli \t index:%li \t contentlen:%li \t  buflen:%li ", \
-	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen );
-	  cb_log( &(*cbf), priority, CBNEGATION, "\nreadlength:%li \t contentlen:%li \t maxlength:%li \n", (*(**cbf).cb).readlength, (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength );
+          cb_log( &(*cbf), priority, CBNEGATION, "\nnamecount:%lli \t index:%li     \t contentlen:%li \tbuflen:%li       \treadlength:%li ", \
+	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen, (*(**cbf).cb).readlength );
+	  cb_log( &(*cbf), priority, CBNEGATION, "\ncontentlen:%li \t maxlength:%li \t headeroffset:%i\tmessageoffset:%li\tfd:%i\n", (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength, (*(**cbf).cb).headeroffset, (*(**cbf).cb).messageoffset, (**cbf).fd );
 	  if( (*(**cbf).cb).list.name==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "name was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "name was not null, \t"); }
 	  if( (*(**cbf).cb).list.last==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "last was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "last was not null, \t"); }
 	  if( (*(**cbf).cb).list.current==NULL ){  cb_log( &(*cbf), priority, CBNEGATION, "\ncurrent was null, \t");  }else{  cb_log( &(*cbf), priority, CBNEGATION, "\ncurrent was not null, \t"); }
@@ -437,7 +437,7 @@ int  cb_set_to_html_post( CBFILE **str ){
 	return CBSUCCESS;
 }
 
-int  cb_set_message_end( CBFILE **str, long long int contentoffset ){
+int  cb_set_message_end( CBFILE **str, long int contentoffset ){
 	if(str==NULL || *str==NULL || (**str).cb==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_message_end: str or cb was null." ); return CBERRALLOC; }
 	if( contentoffset<0 ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_message_end: offset was negative." ); return CBOVERFLOW; }
 	(*(**str).cb).messageoffset = contentoffset;
@@ -990,9 +990,11 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	     * write.
 	     */
 	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
+	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li", (*blk).buflen );
 	       /* Internal use only. Block has to be emptied after use. File pointer is not updated in the following: */
 	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, offset ); // read block has to be emptied after use
 	    }else{ // stream
+	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li", (*blk).buflen );
 	       sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
 	    }
 	    (*blk).contentlen = (long int) sz; // 6.12.2014
