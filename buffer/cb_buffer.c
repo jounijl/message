@@ -443,6 +443,14 @@ int  cb_set_message_end( CBFILE **str, long int contentoffset ){
 	(*(**str).cb).messageoffset = contentoffset;
 	return CBSUCCESS;
 }
+/*
+ * Tpossible O_NONBLOCK reads in the future with this flag, 30.3.2016. */
+int  cb_set_to_socket( CBFILE **str ){
+        if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_socket: str was null." ); return CBERRALLOC; }
+        (**str).cf.usesocket=1;
+        return CBSUCCESS;
+}
+
 //int  cb_set_to_rfc2822( CBFILE **str ){
 int  cb_set_to_message_format( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_rfc2822: str was null." ); return CBERRALLOC; }
@@ -728,9 +736,10 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
-        //(**cbf).offsetrfc2822=0;
-        (**cbf).headeroffset=0; // 26.3.2016
-        (**cbf).messageoffset=0; // 26.3.2016
+        //(**cbf).headeroffset=0; // 26.3.2016
+        //(**cbf).messageoffset=0; // 26.3.2016
+        (**cbf).headeroffset=-1; // 26.3.2016, 30.3.2016
+        (**cbf).messageoffset=-1; // 26.3.2016, 30.3.2016
 	(**cbf).list.name=NULL;
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
@@ -963,6 +972,7 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){
 }
 int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset){ 
 	ssize_t sz=0; // int err=0;
+	int socketlength=0; // 30.3.2016
 	cblk *blk = NULL; 
 	blk = (**cbf).blk;
 	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL ){ 
@@ -990,12 +1000,39 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	     * write.
 	     */
 	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
-	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li", (*blk).buflen );
+	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: PREAD BLOCK, SIZE %li", (*blk).buflen );
 	       /* Internal use only. Block has to be emptied after use. File pointer is not updated in the following: */
 	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, offset ); // read block has to be emptied after use
 	    }else{ // stream
-	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li", (*blk).buflen );
-	       sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
+
+	       if( (**cbf).cf.usesocket!=1 ){ // 29.3.2016
+                 //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li (ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                 //  (*blk).buflen, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+                 sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
+               }else{ // 29.3.2016
+                 socketlength = (*blk).buflen;
+                 if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).contentlen<(*(**cbf).cb).headeroffset && \
+                         ( (*(**cbf).cb).headeroffset - (*(**cbf).cb).contentlen )<(*blk).buflen )
+                   socketlength = (*(**cbf).cb).headeroffset  - (*(**cbf).cb).contentlen;
+                 else if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).contentlen<(*(**cbf).cb).messageoffset && \
+                         ( (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen )<(*blk).buflen )
+                   socketlength = (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen;
+
+		 if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).messageoffset <= (*(**cbf).cb).contentlen ){
+                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+		    return CBMESSAGEEND;
+		 }else if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).headeroffset <= (*(**cbf).cb).contentlen ){
+                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE HEADER END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+		    return CBMESSAGEHEADEREND;
+		 }else{
+                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET READ, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+                    sz = read( (**cbf).fd, (*blk).buf, (size_t) socketlength );
+		 }
+               }
+
 	    }
 	    (*blk).contentlen = (long int) sz; // 6.12.2014
 	    if( 0 < (int) sz ){ // read more than zero bytes
@@ -1148,6 +1185,9 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	  err = cb_get_char_read_block(cbs, &chr);
 
 	  if( err == CBSTREAMEND || err >= CBERROR ){ return err; }
+	  if( (**cbs).cf.stopatmessageend==1 && err == CBMESSAGEEND ){ return err; } // 30.3.2016
+	  if( (**cbs).cf.stopatheaderend==1 && err == CBMESSAGEHEADEREND ){ return err; } // 30.3.2016
+
 	  // copy char if name-value -buffer is not full
 	  if((*(**cbs).cb).contentlen < (*(**cbs).cb).buflen ){
 	    if( chr != (unsigned char) EOF ){

@@ -38,14 +38,14 @@ int  cb_fifo_print_buffer(cb_ring *cfi, char priority){
 int  cb_fifo_print_counters(cb_ring *cfi, char priority){
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
-        cb_clog( priority, CBSUCCESS, "\nahead:          %i", (*cfi).ahead );
-        cb_clog( priority, CBSUCCESS, "\nbytesahead:     %i", (*cfi).bytesahead );
-        cb_clog( priority, CBSUCCESS, "\nbuflen:         %i", (*cfi).buflen );
-        cb_clog( priority, CBSUCCESS, "\nsizeslen:       %i", (*cfi).sizeslen );
-        cb_clog( priority, CBSUCCESS, "\nfirst:          %i", (*cfi).first );
-        cb_clog( priority, CBSUCCESS, "\nlast:           %i", (*cfi).last );
-        cb_clog( priority, CBSUCCESS, "\nstreamstart:    %i", (*cfi).streamstart );
-        cb_clog( priority, CBSUCCESS, "\nstreamstop:     %i", (*cfi).streamstop );
+        cb_clog( priority, CBSUCCESS, "\nahead:            %i", (*cfi).ahead );
+        cb_clog( priority, CBSUCCESS, "\nbytesahead:       %i", (*cfi).bytesahead );
+        cb_clog( priority, CBSUCCESS, "\nbuflen:           %i", (*cfi).buflen );
+        cb_clog( priority, CBSUCCESS, "\nsizeslen:         %i", (*cfi).sizeslen );
+        cb_clog( priority, CBSUCCESS, "\nfirst:            %i", (*cfi).first );
+        cb_clog( priority, CBSUCCESS, "\nlast:             %i", (*cfi).last );
+        cb_clog( priority, CBSUCCESS, "\nstreamstart:      %i", (*cfi).streamstart );
+        cb_clog( priority, CBSUCCESS, "\nstreamstop:       %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
 
@@ -91,7 +91,7 @@ int  cb_fifo_set_endchr(cb_ring *cfi){
 	  (*cfi).streamstop=(*cfi).ahead;
 	return CBSUCCESS;
 }
-int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){ // lisatty 2.9.2013, ei testattu viela erikseen
+int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){ 
         int err=CBSUCCESS; unsigned long int chrs=0;
 	int tmp1=0, tmp2=0;
 	unsigned char *ptr = NULL;
@@ -145,7 +145,6 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
           err = cb_get_ucs_chr( &chrs, &ptr, &tmp, (*cfi).sizeslen );
 	  *chrsize = (int) chrs;
 	  (*cfi).bytesahead -= (int) *chrsize; // alustettu nolla tulee takaisin
-
 	  if(err==CBSUCCESS && (*cfi).streamstart==0)
 	    return CBSTREAM;
 	  if(err==CBSUCCESS && (*cfi).streamstop==0)

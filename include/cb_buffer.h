@@ -23,7 +23,6 @@
 #define CBMATCH                 3    // Matched and the lengths are the same
 #define CBUSEDASBUFFER          4
 #define CBUTFBOM                5
-//#define CB2822HEADEREND         6
 #define CBMESSAGEHEADEREND      6
 #define CBMESSAGEEND            7
 #define CBMATCHLENGTH           8    // Matched the given length
@@ -354,11 +353,11 @@ typedef struct cb_ring {
 	char spadding;        // pad to next storage size (32 bit)
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
-	signed long int currentindex; // 28.7.2015, place of last read character to remember it the next time	
+	signed long int currentindex;     // 28.7.2015, place of last read character to remember it the next time
         int buflen;
         int sizeslen;
         int ahead;            // bytes in UCS encoding (usually bigger because a character is 4 bytes)
-        int bytesahead;       // bytes in transfer encoding (usually smaller, for example onebyte encoding)
+        int bytesahead;       // bytes in transfer encoding (usually smaller, for example one byte encoding)
         int first;
         int last;
 	int streamstart;      // id of first character from stream
@@ -389,8 +388,9 @@ typedef struct cb_conf{
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) CURRENTLY 20.3.2016, unfolding does not work correctly with this setting (first letter is mising after SP, and propably after CR or LF) BUG
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       logpriority:6;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
+	unsigned char       usesocket;                     // Read only headeroffset and messageoffset length blocks
 
-	unsigned char       pad[3];                        // pad to next integer size (word length 32 or 64, now 64)
+	unsigned char       pad[2];                        // pad to next integer size (word length 32 or 64, now 64)
 
 	unsigned long int   rstart;	// Result start character
 	unsigned long int   rend;	// Result end character
@@ -438,7 +438,7 @@ typedef struct cbuf{
 	signed long int          maxlength; 	    // CBSEEKABLEFILE: Overall read length in bytes (from filestream), 15.12.2014 Late addition: useful with seekable files (useless when appending or reading).
 	cb_namelist              list;
         int                      headeroffset;      // offset of RFC-2822 header end with end characters (offset set at last new line character)
-        signed long long int     messageoffset;     // offset of RFC-2822 message end from "Content-Length:". This has to be set from outside after reading the value, cb_set_message_end.
+        signed long int          messageoffset;     // offset of RFC-2822 message end from "Content-Length:". This has to be set from outside after reading the value, cb_set_message_end.
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -685,13 +685,15 @@ int  cb_set_to_message_format( CBFILE **str ); // Remove CR. Sets new line as re
 int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with trees because words can end to SP, TAB, CR or LF.
 int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
 
-int  cb_set_message_end( CBFILE **str, long long int contentoffset );
+int  cb_set_message_end( CBFILE **str, long int contentoffset );
 
 int  cb_use_as_buffer(CBFILE **buf); // File descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
 int  cb_use_as_seekable_file(CBFILE **buf);  // Additionally to previous, set seek function available (to read anywhere and write anywhere in between the file)
 int  cb_use_as_stream(CBFILE **buf); // Namelist is bound by buffer size (namelist sets names length to buffer edge if endless namelist is needed)
 int  cb_use_as_boundless_buffer(CBFILE **buf); // Namelist is not bound and file descriptor is not used.
+
+int  cb_set_to_socket( CBFILE **str ); // Any from above and usesocket=1
 
 int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_unique_leaves(CBFILE **cbf);

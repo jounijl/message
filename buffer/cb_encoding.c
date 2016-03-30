@@ -40,16 +40,11 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 #ifdef CBBENCHMARK
           ++(**cbs).bm.reads;
 #endif
+
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: ahd.bytesahead %i, ahd.currentindex %li, messageend %li, contentlength %li.", \
+        //       (**cbs).ahd.bytesahead, (**cbs).ahd.currentindex, (*(**cbs).cb).messageoffset, (*(**cbs).cb).contentlen );
+
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
-
-	/*
-	 * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
-	if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
-		if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset )
-		   err = CBMESSAGEEND;
-	}
-	/* /26.3.2016 */
-
 
 	if( (**cbs).cf.searchstate!=CBSTATETREE )
 		return err;
@@ -75,7 +70,6 @@ int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, 
 		/*
 		 * Special case. Reading from the end of buffer and ahead was not empty. Reading the one character
 		 * from the ahead leaving ahead buffer empty. 2.8.2015 */ /* Not tested yet, 3.8.2015. */
-		//return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
 		return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
 	}
 	/*
@@ -109,6 +103,7 @@ int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *s
          ret = cb_get_utf32_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
        else if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
          ret = cb_get_utf16_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
+
        return ret;
 }
 
@@ -197,7 +192,9 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	int err=CBSUCCESS, index=0; unsigned char byte=0x00; // null character
 	*ch = 0;
-	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
+	//for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
+	// TEST 30.3.2016 - not tested, 30.3.3016
+	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND; ++index){ // 30.3.2016
 	  err = cb_get_ch(cbs, &byte);
 	  *ch+=(unsigned long int)byte;
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
@@ -327,7 +324,8 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	*chr=byte; *bytecount=1;
 
 	//
-	if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
+	//if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
+	if( *chr == (unsigned long int) EOF || err > CBNEGATION || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013, 30.3.2016
 	//
 
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
@@ -360,7 +358,7 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	    }else if(state==6){
 	      *chr_high=*chr_high<<8; *chr_high+=byte;
 	    }
-	    if( err > CBNEGATION ){
+	    if( err > CBNEGATION || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ){
 	      cb_log( &(*cbs), CBLOGNOTICE, err, "\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
 	      return err;
 	    }
