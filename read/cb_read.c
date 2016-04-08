@@ -428,7 +428,8 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
         //for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) ; ++lindx ){
-        for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
+        for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && \
+		 ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
         //for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength ; ++lindx ){
                 chprev = chr;
 
@@ -442,8 +443,8 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
 		if( err>CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
-	        if( err==CBMESSAGEEND ) continue; // actually stop
-	        if( err==CBMESSAGEHEADEREND ) continue; // actually stop
+	        if( (**cbf).cf.stopatmessageend==1 &&  err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
+	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
 
 		if( (**cbf).cf.json==1 ){
 		   if( chr=='[' && injsonquotes==0 ) // 9.11.2015, 10.11.2015

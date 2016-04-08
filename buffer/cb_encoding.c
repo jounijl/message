@@ -194,7 +194,8 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	*ch = 0;
 	//for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
 	// TEST 30.3.2016 - not tested, 30.3.3016
-	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND; ++index){ // 30.3.2016
+	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR && ( (**cbs).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && \
+		( (**cbs).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ) ; ++index ){ // 30.3.2016
 	  err = cb_get_ch(cbs, &byte);
 	  *ch+=(unsigned long int)byte;
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
@@ -325,7 +326,8 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 
 	//
 	//if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
-	if( *chr == (unsigned long int) EOF || err > CBNEGATION || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013, 30.3.2016
+	if( *chr == (unsigned long int) EOF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || \
+		( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEHEADEREND ) ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013, 30.3.2016, 8.4.2016
 	//
 
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
@@ -358,7 +360,8 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	    }else if(state==6){
 	      *chr_high=*chr_high<<8; *chr_high+=byte;
 	    }
-	    if( err > CBNEGATION || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ){
+	    if( err > CBNEGATION || ( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEEND ) || \
+			( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) ){
 	      cb_log( &(*cbs), CBLOGNOTICE, err, "\ncb_get_utf8_ch: cb_get_ch: err %i.", err);
 	      return err;
 	    }
