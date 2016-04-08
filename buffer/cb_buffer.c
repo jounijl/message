@@ -554,6 +554,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.logpriority=CBLOGDEBUG; // 
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
+        (**str).cf.stopatheaderend=0; // default
+        (**str).cf.stopatmessageend=0; // default
 #ifdef CBMESSAGEFORMAT
 	(**str).cf.asciicaseinsensitive=1;
 	(**str).cf.unfold=1;
@@ -1245,7 +1247,8 @@ int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, in
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size){  
         long int from=0, to=0;
         to = *size;
-        return cb_get_buffer_range(cbs,buf,size,&from,&to);
+	if( cbs==NULL || buf==NULL || *buf==NULL || size==NULL ) return CBERRALLOC;
+        return cb_get_buffer_range( &(*cbs), &(*buf), &(*size), &from, &to );
 }
 
 // Allocates new buffer (or a block if cblk)
@@ -1257,7 +1260,7 @@ int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long in
 	}
 	//if(buf==NULL )
 	//  buf = (void*) malloc( sizeof( unsigned char* ) ); // 13.11.2015, pointer size
-        if(buf==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: buf was null."); return CBERRALLOC; }
+        if( buf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: buf was null."); return CBERRALLOC; }
         *buf = (unsigned char *) malloc( sizeof(char)*( (unsigned long int)  *size+1 ) );
         if(*buf==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_sub_buffer: malloc returned null."); return CBERRALLOC; }
         (*buf)[(*size)] = '\0';
