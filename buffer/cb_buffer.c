@@ -167,7 +167,7 @@ int  cb_print_names(CBFILE **str, char priority){
               }while( iter != NULL );
               return CBSUCCESS;
 	    }else{
-	      cb_log( &(*str), priority, CBNEGATION, "\n namelist was empty");
+	      cb_log( &(*str), priority, CBNEGATION, " namelist was empty");
               return CBSUCCESS; // 22.3.2016
 	    }
 	  }else{

@@ -75,7 +75,8 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 			err = cb_get_ucs_chr( &chr, &(*ucsvalue), &(*from), ucsvaluelen);
 			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: read away white spaces chr [%c]", (char) chr );
 		}
-		if( *from==ucsvaluelen )
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: FROM: %i, UCSVALUELEN: %i, ERR: %i.", *from, ucsvaluelen, err );
+		if( *from<=ucsvaluelen && err<CBNEGATION ) // 23.4.2016
 			return CBSUCCESS;
 	}else if( *from==ucsvaluelen )
 		return CBSUCCESS;

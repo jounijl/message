@@ -25,8 +25,8 @@
 #include "../include/cb_read.h"
 
 int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
-int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate );
-int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
+int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlen, char allocate );
+int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlen );
 int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, char leaf );
 
 /*
@@ -296,21 +296,21 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
  * Content.
  */
 
-int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlen ){
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || ucscontent==NULL || *ucscontent==NULL || clength==NULL ){ 
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_current_content: parameter was null.");
 		return CBERRALLOC; 
 	}
-	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), 0);
+	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), maxlen, 0);
 }
-int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength ){
+int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlen ){
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || ucscontent==NULL || clength==NULL ){ 
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content: parameter was null.");
 		return CBERRALLOC; 
 	}
-	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), 1);
+	return cb_subfunction_get_current_content( &(*cbf), &(*ucscontent), &(*clength), maxlen, 1);
 }
-int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, char allocate ){
+int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlen, char allocate ){
         int len = MAXCONTENTLEN;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || (*(**cbf).cb).list.current==NULL || clength==NULL ){ 
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_subfunction_get_current_content: parameter was null." );
@@ -318,6 +318,8 @@ int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucsconten
 	}
         if( (*(*(**cbf).cb).list.current).length >= 0 )
                 len = (*(*(**cbf).cb).list.current).length;
+	if(len>maxlen) // 16.4.2016
+		len=maxlen;
 	if(allocate==0)
  	       return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.current, &(*ucscontent), &(*clength), len );
 	else
@@ -443,7 +445,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
 		if( err>CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
-	        if( (**cbf).cf.stopatmessageend==1 &&  err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
+	        if( (**cbf).cf.stopatmessageend==1 && err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
 	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
 
 		if( (**cbf).cf.json==1 ){
