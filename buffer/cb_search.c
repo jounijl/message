@@ -47,6 +47,9 @@ int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
 
 int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
 int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
+//int  cb_test_message_end( CBFILE **cbs );
+//int  cb_test_header_end( CBFILE **cbs );
+
 
 int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassremoved ); // 8.11.2016
 
@@ -884,6 +887,37 @@ int  cb_increase_terminalcount(CBFILE **cbs){
 	return CBSUCCESS;
 }
 
+/*
+ * 8.5.2016. */
+int  cb_test_message_end( CBFILE **cbs ){
+	int ret = CBSUCCESS;
+	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC;
+        /*
+         * Stop at the message payload end set outside of the library with cb_set_message_end . */
+        if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
+		if( ( (*(**cbs).cb).index+1 )+(**cbs).ahd.bytesahead >= (*(**cbs).cb).messageoffset || \
+		   (**cbs).ahd.currentindex >= (*(**cbs).cb).messageoffset ){
+			cb_fifo_set_endchr( &(**cbs).ahd );
+		}
+                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset || (*(**cbs).cb).messageoffset <= (*(**cbs).cb).contentlen ){
+                   ret = CBMESSAGEEND; // disregard negations and errors if header end
+		}
+        }
+	return ret;
+}
+
+/*
+ * 8.5.2016. */
+int  cb_test_header_end( CBFILE **cbs ){
+	int ret = CBSUCCESS;
+	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC;
+        if( (**cbs).cf.stopatheaderend==1 ){
+	  if( (*(**cbs).cb).headeroffset>0 && (*(**cbs).cb).headeroffset <= (*(**cbs).cb).contentlen )
+	    ret = CBMESSAGEHEADEREND;
+	}
+	return ret;
+}
+
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // return values
 	int  buferr=CBSUCCESS, savenameerr=CBSUCCESS; 
@@ -1100,22 +1134,25 @@ cb_set_cursor_reset_name_index:
 	// ...& - ignore and set to start
 	// ...= - save any new name and compare it to 'name', if match, return
 
+	if( cb_test_header_end( &(*cbs) ) == CBMESSAGEHEADEREND ){
+		ret = CBMESSAGEHEADEREND;
+		goto cb_set_cursor_ucs_return;
+	}
+
 	// ADDED HERE 25.3.2016. THIS SHOULD BE CHECKED.
         if( (**cbs).cf.stopatheaderend==1 ){ // 26.3.2016
           // Automatic stop at header-end if it's set
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[0x%.2x,0x%.2x,0x%.2x,0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
 
 	  // 30.3.2016
-	  if( (*(**cbs).cb).headeroffset>0 && (*(**cbs).cb).headeroffset <= (*(**cbs).cb).contentlen )
-	    ret = CBMESSAGEHEADEREND;
+//	  if( (*(**cbs).cb).headeroffset>0 && (*(**cbs).cb).headeroffset <= (*(**cbs).cb).contentlen )
+//	    ret = CBMESSAGEHEADEREND;
 	  // /30.3.2016
 
           if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
-	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[ ***\n  *** HTTP HEADERS END ***\n  *** ]"); // 0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
             if( (*(**cbs).cb).headeroffset < 0 ){
 	      if( chroffset < 0x7FFFFFFF){ // integer size - 1 
                 (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character, 26.3.2016
-	        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: HTTP HEADER END, %li (chroffset).", chroffset );
 	      }
 	    }
 	    ret = CBMESSAGEHEADEREND;
@@ -1569,20 +1606,27 @@ cb_set_cursor_reset_name_index:
            * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: Stopatmessageend==%i comparing index %li to messageoffset %li", \
 	  //	(**cbs).cf.stopatmessageend, (*(**cbs).cb).index+1, (*(**cbs).cb).messageoffset );
-          if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
+//          if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\nset_cursor: CBMESSAGEEND, (**cbs).cf.stopatmessageend %i.", (**cbs).cf.stopatmessageend );
 		// 29.3.2016
-		if( ( (*(**cbs).cb).index+1 )+(**cbs).ahd.bytesahead >= (*(**cbs).cb).messageoffset || \
-		   (**cbs).ahd.currentindex >= (*(**cbs).cb).messageoffset ){
-			cb_fifo_set_endchr( &(**cbs).ahd );
-		}
-                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset || (*(**cbs).cb).messageoffset <= (*(**cbs).cb).contentlen ){
-                   ret = CBMESSAGEEND; // disregard negations and errors if header end
-		   //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: CBMESSAGEEND." );
-		   goto cb_set_cursor_ucs_return;
-		}
-          }
+//		if( ( (*(**cbs).cb).index+1 )+(**cbs).ahd.bytesahead >= (*(**cbs).cb).messageoffset || \
+//		   (**cbs).ahd.currentindex >= (*(**cbs).cb).messageoffset ){
+//			cb_fifo_set_endchr( &(**cbs).ahd );
+//		}
+//                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset || (*(**cbs).cb).messageoffset <= (*(**cbs).cb).contentlen ){
+//                   ret = CBMESSAGEEND; // disregard negations and errors if header end
+//		   //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: CBMESSAGEEND." );
+//		   goto cb_set_cursor_ucs_return;
+//		}
+//          }
           /* /26.3.2016 */
 // /28.3.2016
+	// 8.5.2016
+	if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){
+		ret = CBMESSAGEEND; // disregard negations and errors if header end
+		goto cb_set_cursor_ucs_return;
+	}
+	// /8.5.2016
 
 
 	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;

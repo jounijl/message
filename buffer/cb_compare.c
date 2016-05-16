@@ -138,7 +138,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * to mctl before and elsewhere. name2 has
 	   * to be NULL terminated.
 	   */
-	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\nerror in cb_compare, -7: re was null.");  return CBREWASNULL; }
+	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGINFO, CBREWASNULL, "\nerror in cb_compare, -7: re was null (%i).", CBREWASNULL);  return CBREWASNULL; }
 	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount); 
 	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015

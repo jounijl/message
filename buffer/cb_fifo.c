@@ -186,7 +186,8 @@ int cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int 
 	   cb_clog( priority, CBSUCCESS, "(err CBEMPTY)");
 	   return CBEMPTY; // 4.7.2015
 	}
-        for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
+        //for(index=0;index<namelen && index<buflen && err==CBSUCCESS;){
+        for(index=0;index<namelen && index<(buflen-3) && err==CBSUCCESS && buflen>3; ){ // 3.4.2016
            err = cb_get_ucs_chr(&chr, &(*chrbuf), &index, buflen);
 	   if( chr==0x0000 && err==CBSUCCESS ){ // null terminator
              cb_clog( priority, CBSUCCESS, "(null)");

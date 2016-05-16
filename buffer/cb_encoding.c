@@ -46,6 +46,17 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 
+	/*
+	 * 8.5.2016. */
+	if( (**cbs).cf.stopatmessageend==1 ){
+		if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){
+			if(err<CBERROR)
+				return CBMESSAGEEND;
+			else
+				return err;
+		}
+	}
+
 	if( (**cbs).cf.searchstate!=CBSTATETREE )
 		return err;
 	/*

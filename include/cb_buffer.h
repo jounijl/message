@@ -686,6 +686,8 @@ int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with
 int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
 
 int  cb_set_message_end( CBFILE **str, long int contentoffset );
+int  cb_test_message_end( CBFILE **cbs );
+int  cb_test_header_end( CBFILE **cbs );
 
 int  cb_use_as_buffer(CBFILE **buf); // File descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
@@ -697,8 +699,8 @@ int  cb_set_to_socket( CBFILE **str ); // Any from above and usesocket=1
 
 int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_unique_leaves(CBFILE **cbf);
-int  cb_set_to_polysemantic_names(CBFILE **cbf); // Searches multiple same named names, default
-int  cb_set_to_polysemantic_leaves(CBFILE **cbf); // Searches multiple same named leaves, default
+int  cb_set_to_consecutive_names(CBFILE **cbf); // Searches multiple same named names, default
+int  cb_set_to_consecutive_leaves(CBFILE **cbf); // Searches multiple same named leaves, default
 
 /*
  * Helper queues and queue structures 
