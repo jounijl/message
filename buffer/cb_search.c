@@ -1187,7 +1187,8 @@ cb_set_cursor_reset_name_index:
 	nameoffset = chroffset;
 
 	//while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ 
-	while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016
+	//while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016
+	while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && err!=CBSTREAMEAGAIN && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016, 20.5.2016
 
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 
@@ -1601,32 +1602,12 @@ cb_set_cursor_reset_name_index:
             }
 	  }
 
-// 28.3.2016
           /*
-           * 26.3.2016. Stop at the message payload end set outside of the library with cb_set_message_end . */
-	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: Stopatmessageend==%i comparing index %li to messageoffset %li", \
-	  //	(**cbs).cf.stopatmessageend, (*(**cbs).cb).index+1, (*(**cbs).cb).messageoffset );
-//          if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
-		//cb_clog( CBLOGDEBUG, CBNEGATION, "\nset_cursor: CBMESSAGEEND, (**cbs).cf.stopatmessageend %i.", (**cbs).cf.stopatmessageend );
-		// 29.3.2016
-//		if( ( (*(**cbs).cb).index+1 )+(**cbs).ahd.bytesahead >= (*(**cbs).cb).messageoffset || \
-//		   (**cbs).ahd.currentindex >= (*(**cbs).cb).messageoffset ){
-//			cb_fifo_set_endchr( &(**cbs).ahd );
-//		}
-//                if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).messageoffset || (*(**cbs).cb).messageoffset <= (*(**cbs).cb).contentlen ){
-//                   ret = CBMESSAGEEND; // disregard negations and errors if header end
-//		   //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_search: CBMESSAGEEND." );
-//		   goto cb_set_cursor_ucs_return;
-//		}
-//          }
-          /* /26.3.2016 */
-// /28.3.2016
-	// 8.5.2016
-	if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){
+           * Stop at the message payload end set outside of the library with cb_set_message_end . */
+	  if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){ // 26.3.2016, 28.3.2016, 8.5.2016
 		ret = CBMESSAGEEND; // disregard negations and errors if header end
 		goto cb_set_cursor_ucs_return;
-	}
-	// /8.5.2016
+	  }
 
 
 	  ch3prev = ch2prev; ch2prev = chprev; chprev = chr;
@@ -1658,7 +1639,7 @@ cb_set_cursor_ucs_return:
         	cb_free_name(&fname, &freecount); // fname on kaksi kertaa, put_name kopioi sen uudelleen
 	}
 	fname = NULL;
-	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM || ret==CBMATCH || ret==CBMATCHLENGTH ){ // match* on turha, aina stream tai success
+	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM || ret==CBMATCH || ret==CBMATCHLENGTH ){ // match* is useless, returns always stream or success
 	  if( (**cbs).cb!=NULL && (*(**cbs).cb).list.current!=NULL ){
 	    if( (*(*(**cbs).cb).list.current).lasttimeused == -1 )
 	      (*(*(**cbs).cb).list.current).lasttimeused = (*(*(**cbs).cb).list.current).firsttimefound; // first time found

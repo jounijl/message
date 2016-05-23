@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <string.h> // memset
 #include <errno.h>  // errno
+#include <fcntl.h>  // fcntl, 20.5.2016
 #include "../include/cb_buffer.h"
 
 
@@ -42,6 +43,7 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
  */
 
 int cb_print_conf(CBFILE **str, char priority){
+	int err = CBSUCCESS;
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_print_conf: str was null."); return CBERRALLOC; }
 	cb_log(&(*str), priority, CBNEGATION, "\ntype:                        \t0x%.2XH", (**str).cf.type);
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchstate:                 \t0x%.2XH", (**str).cf.searchstate);
@@ -69,6 +71,14 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nbuffer size:                 \t%liB", (*(**str).cb).buflen);
 	if( (**str).blk!=NULL )
 	cb_log(&(*str), priority, CBNEGATION, "\nblock size:                  \t%liB", (*(**str).blk).buflen);
+	cb_log(&(*str), priority, CBNEGATION, "\nfile descriptor:             \t%i", (**str).fd);
+	cb_log(&(*str), priority, CBNEGATION, "\nnonblocking:                 \t0x%.2XH", (**str).cf.nonblocking);
+	cb_log(&(*str), priority, CBNEGATION, "\nO_NONBLOCK:                  \t");
+        err = fcntl( (**str).fd, F_GETFL, O_NONBLOCK );
+        if( err>=0 && ( err & O_NONBLOCK ) == O_NONBLOCK )
+		cb_log(&(*str), priority, CBNEGATION, "0x01H");
+	else
+		cb_log(&(*str), priority, CBNEGATION, "0x00H");
 	cb_log(&(*str), priority, CBNEGATION, "\nrstart:                      \t[%c]", (char) (**str).cf.rstart );
 	cb_log(&(*str), priority, CBNEGATION, "\nrstop:                       \t[%c]", (char) (**str).cf.rend );
 	cb_log(&(*str), priority, CBNEGATION, "\nsubrstart:                   \t[%c]", (char) (**str).cf.subrstart );
@@ -295,16 +305,32 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
+int  cb_set_to_nonblocking(CBFILE **cbf){
+	int flags = 0, err=CBSUCCESS;
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+	(**cbf).cf.nonblocking = 1;
+	flags = fcntl( (**cbf).fd, F_GETFD );
+	err = fcntl( (**cbf).fd, F_SETFD, (flags | O_NONBLOCK) );
+	if( err<0 ){
+		cb_clog( CBLOGDEBUG, CBERRFILEOP, "\ncb_set_to_nonblocking_io: fcntl returned %i, errno %i '%s'.", err, errno, strerror( errno ) );
+		return CBERRFILEOP;
+	}
+	return CBSUCCESS;
+}
 int  cb_set_to_consecutive_names(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
 }
 int  cb_set_to_consecutive_leaves(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTLEAVES);
 }
 int  cb_set_to_unique_names(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUENAMES);
 }
 int  cb_set_to_unique_leaves(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHUNIQUELEAVES);
 }
 
@@ -448,7 +474,7 @@ int  cb_set_message_end( CBFILE **str, long int contentoffset ){
 	return CBSUCCESS;
 }
 /*
- * Tpossible O_NONBLOCK reads in the future with this flag, 30.3.2016. */
+ * Possible O_NONBLOCK reads in the future with this flag, 30.3.2016. */
 int  cb_set_to_socket( CBFILE **str ){
         if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_socket: str was null." ); return CBERRALLOC; }
         (**str).cf.usesocket=1;
@@ -547,6 +573,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.findleaffromallnames=0;
 	//(**str).cf.usesocket=1; // test messageend every time if it is set, 2.5.2016
 	(**str).cf.usesocket=0; // test messageend every time if it is set, 2.5.2016
+	(**str).cf.nonblocking=0; // if set, fd should be set with fcntl flag O_NONBLOCK
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	(**str).cf.jsonremovebypassfromcontent=1;
@@ -759,6 +786,8 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	return CBSUCCESS;
 }
 
+/*
+ * messageoffset: see instructions from cb_reinit_buffer comments.*/
 int  cb_reinit_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile: buf was null." ); return CBERRALLOC; }
@@ -833,16 +862,24 @@ int  cb_free_name(cb_name **name, int *freecount){
 	*name=NULL;
 	return CBSUCCESS;
 }
+/*
+ * Zero everything.
+ *
+ * If messageend information is needed after calling this, save messageoffset and contentlength and
+ * move the message offset contentlength backwards after calling this function (or cb_reinit_cbfile). 
+ */
 int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	if(buf==NULL || *buf==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_buffer: buf was null." ); return CBERRALLOC; }
 
 	(**buf).index=0;
+	(**buf).headeroffset=-1; // 21.2.2015, 26.3.2016, 19.5.2016
+	//if( (**buf).contentlen<(**buf).messageoffset && (**buf).messageoffset>0 && (**buf).contentlen>0 )
+	//	(**buf).messageoffset -= (**buf).contentlen; // 19.5.2016
+	//else
+	(**buf).messageoffset=-1; // 26.2.2016, 19.5.2016
 	(**buf).contentlen=0;
 	(**buf).readlength=0; // 21.2.2015
 	(**buf).maxlength=0; // 21.2.2015
-	//(**buf).offsetrfc2822=0; // 21.2.2015
-	(**buf).headeroffset=0; // 21.2.2015, 26.3.2016
-	(**buf).messageoffset=0; // 26.2.2016
 	(**buf).list.current=NULL; // 1.6.2013
 	(**buf).list.currentleaf=NULL; // 11.12.2013
 	(**buf).list.last=NULL; // 1.6.2013
@@ -984,6 +1021,7 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){
 int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset){ 
 	ssize_t sz=0; // int err=0;
 	int socketlength=0; // 30.3.2016
+	int err=CBSUCCESS; // 20.5.2016
 	cblk *blk = NULL; 
 	blk = (**cbf).blk;
 	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL ){ 
@@ -1011,7 +1049,8 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	     * write.
 	     */
 
-	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\nREAD usesocket=%i, messageend=%li, headerend=%i", (**cbf).cf.usesocket, (*(**cbf).cb).messageoffset, (*(**cbf).cb).headeroffset );
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\nREAD (fd %i) usesocket=%i, messageend=%li, headerend=%i", (**cbf).fd, (**cbf).cf.usesocket, (*(**cbf).cb).messageoffset, (*(**cbf).cb).headeroffset );
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, ", nonblock=%i", ( fcntl( (**cbf).fd, F_GETFL, O_NONBLOCK ) & O_NONBLOCK ) );
 
 	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
 	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: PREAD BLOCK, SIZE %li", (*blk).buflen );
@@ -1020,7 +1059,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	    }else{ // stream
 
 	       if( (**cbf).cf.usesocket!=1 ){ // 29.3.2016
-                 //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li (ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                 //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li (ahd.currentindex %li, messageoffset %li, contentlength %li)", 
                  //  (*blk).buflen, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
                  sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
                }else{ // 29.3.2016
@@ -1033,21 +1072,24 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
                    socketlength = (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen;
 
 		 if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).messageoffset <= (*(**cbf).cb).contentlen ){
-                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
                     //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+		    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBMESSAGEEND.");
 		    return CBMESSAGEEND;
 		 }else if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).headeroffset <= (*(**cbf).cb).contentlen ){
-                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE HEADER END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE HEADER END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
                     //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
+		    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBMESSAGEHEADEREND.");
 		    return CBMESSAGEHEADEREND;
 		 }else{
-                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET READ, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", \
+                    // cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET READ, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
                     //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
                     sz = read( (**cbf).fd, (*blk).buf, (size_t) socketlength );
 		 }
                }
 
 	    }
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, ". READ %i B.", (int) sz );
 	    (*blk).contentlen = (long int) sz; // 6.12.2014
 	    if( 0 < (int) sz ){ // read more than zero bytes
 	      (*blk).contentlen = (long int) sz; // 6.12.2014
@@ -1056,9 +1098,26 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	      ++(*blk).index;
 	    }else{ // error or end of file
 	      (*blk).index = 0; *ch = ' ';
-	      return CBSTREAMEND;
+	      if( sz<0 && errno == EAGAIN ){ // errno from read (previous) and flag from fcntl
+		err = fcntl( (**cbf).fd, F_GETFL, O_NONBLOCK );
+		if( ( err & O_NONBLOCK ) == O_NONBLOCK ){
+		  /*
+		   * If non-blocking was configured, further data may be available later, 20.5.2016. (Late addition, propably missing from most configurations.) */
+		  if( (**cbf).cf.nonblocking==0 ){
+			cb_clog( CBLOGDEBUG, CBSTREAMEAGAIN, "\ncb_get_ch: EAGAIN returned and CBFILE is set to nonblocking");
+			return CBSTREAMEND; // 23.5.2016
+		  }
+		  //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEAGAIN.");
+		  return CBSTREAMEAGAIN; // 20.5.2016
+		}else if(err<0){
+		  cb_clog( CBLOGERR, CBNEGATION, "\ncb_get_ch: fcntl returned %i, errno %i '%s'.", err, errno, strerror( errno ) );
+		}
+	      }
+	      //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEND.");
+	      return CBSTREAMEND; // pre 20.5.2016
 	    }
 	  }else{ // use as block
+	    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEND (block).");
 	    return CBSTREAMEND;
 	  }
 	  return CBSUCCESS;
