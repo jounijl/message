@@ -398,6 +398,13 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
 	err = cb_copy_content_internal( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
+	if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_copy_content_internal, error %i.", err ); return err; }
+	if( (**cbf).cf.urldecodevalue==1 ){
+		/*
+		 * JSON format can't be used with this. Never use URL-encoding, 25.5.2016. */
+		err = cb_decode_url_encoded_bytes( &(*ucscontent), *clength, &(*ucscontent), &(*clength), maxlength );
+		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_decode_url_encoded_bytes, error %i.", err ); }
+	}
 	if( err>=CBNEGATION || (**cbf).cf.jsonvaluecheck!=1 )
 		return err;
 	/*

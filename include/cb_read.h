@@ -76,13 +76,13 @@ int  cb_read_value_leaves( CBFILE **cbs );
  * 18.12.2014 Content reading
  */
 /* Allocates ucscontent. */
-int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
+int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
 int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
 /* Copies ucscontent maxlength. */
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
 int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
-int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
+int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
 
 /*
  * 30.6.2015 Conversion to help in reading names from configuration files.
@@ -111,3 +111,10 @@ int  cb_convert_from_ucs_to_onebyte( unsigned char **name, int *namelen );
 /*
  * Integer text to long int conversion. */
 int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int *nmbr );
+
+/*
+ * URL-decoding functions. */
+int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb);
+int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb);
+int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, unsigned char **ucsdata, int *ucsdatalen, int ucsbuflen );
+

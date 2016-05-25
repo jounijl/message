@@ -60,6 +60,7 @@
 #define CBMISMATCH             72
 #define CBLENGTHNOTKNOWN       73
 #define CBREWASNULL            74
+#define CBSTREAMEAGAIN         75    // if file descriptor was configured to use non-blocking io, read returns CBSTREAMEAGAIN if data was not available and may be available later, 20.5.2016
 //#define CBNOTJSON              75
 //#define CBNOTJSONVALUE         76
 //#define CBNOTJSONSTRING        77
@@ -388,7 +389,9 @@ typedef struct cb_conf{
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) CURRENTLY 20.3.2016, unfolding does not work correctly with this setting (first letter is mising after SP, and propably after CR or LF) BUG
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       logpriority:6;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
-	unsigned char       usesocket;                     // Read only headeroffset and messageoffset length blocks
+	unsigned char       usesocket:3;                   // Read only headeroffset and messageoffset length blocks
+	unsigned char       nonblocking:3;                 // fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016
+	unsigned char       urldecodevalue:2;              // If set, cb_read.c decodes key-value pairs value in cb_copy_content (all read functions). (Allways use something else than URL-encoded value if possible.) HTML: [ https://www.w3.org/TR/html/forms.html#attr-fs-enctype-urlencoded ]
 
 	unsigned char       pad[2];                        // pad to next integer size (word length 32 or 64, now 64)
 
@@ -672,6 +675,7 @@ int  cb_set_bypass(CBFILE **str, unsigned long int bypass); // character to bypa
 int  cb_set_subrstart(CBFILE **str, unsigned long int subrstart); // If set to another, every second open pair uses these '='
 int  cb_set_subrend(CBFILE **str, unsigned long int subrend); // If set to another, every second open pair uses these '&'
 int  cb_set_search_state(CBFILE **str, unsigned char state); // CBSTATELESS, CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE, ...
+int  cb_set_to_nonblocking(CBFILE **cbf); // read and write with flag O_NONBLOCK, not yet tested, 23.5.2016
 int  cb_set_encodingbytes(CBFILE **str, int bytecount); // 0 any, 1 one byte
 int  cb_set_encoding(CBFILE **str, int number); 
 int  cb_get_encoding(CBFILE **str, int *number); 

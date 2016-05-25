@@ -581,6 +581,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.jsonvaluecheck=0;
 	(**str).cf.jsonnamecheck=0;
+	(**str).cf.urldecodevalue=0;
 	(**str).cf.removecrlf=0;
 	(**str).cf.removewsp=0;
 	(**str).cf.removesemicolon=0; // wordlist has many differences because rend and rstart are backwards and not all settings are compatible, default is off
