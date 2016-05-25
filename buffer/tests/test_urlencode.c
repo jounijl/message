@@ -96,7 +96,6 @@ int main(int argc, char **argv) {
 	if( to_url_encoded==0 ){
 		/*
 		 * From URL-encoded to one-byte text. */
-		cb_clog( CBLOGERR, err, "Decode:\n");
 		ucstextlen=0;
 		while( err<CBNEGATION && chr!=(unsigned long int)EOF && ucstextlen<INBLOCKSIZE ){
 			err = cb_get_chr( &in, &chr, &bc, &sb );
@@ -129,7 +128,6 @@ int main(int argc, char **argv) {
 	}else if( to_url_encoded==1 ){
 		/*
 		 * From one-byte text to URL-encoded text. */
-		cb_clog( CBLOGERR, err, "Encode:\n");
 		while( err<CBNEGATION && chr!=(unsigned long int)EOF && ucstextlen<INBLOCKSIZE ){   
                         err = cb_get_chr( &in, &chr, &bc, &sb );
 			if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_get_chr, error %i.", err); }
