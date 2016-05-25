@@ -305,13 +305,15 @@ int  cb_set_subrend(CBFILE **str, unsigned long int subrend){ // sublist value e
 	return CBSUCCESS;
 }
 
-int  cb_set_to_nonblocking(CBFILE **cbf){
-	int flags = 0, err=CBSUCCESS;
+int  cb_set_to_nonblocking(CBFILE **cbf){ // not yet tested, 23.5.2016
+	int flags = 0;
+	int err=CBSUCCESS;
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
 	(**cbf).cf.nonblocking = 1;
 	flags = fcntl( (**cbf).fd, F_GETFD );
-	err = fcntl( (**cbf).fd, F_SETFD, (flags | O_NONBLOCK) );
-	if( err<0 ){
+	if(flags>=0)
+		err = fcntl( (**cbf).fd, F_SETFD, (flags | O_NONBLOCK) );
+	if( err<0 || flags<0 ){
 		cb_clog( CBLOGDEBUG, CBERRFILEOP, "\ncb_set_to_nonblocking_io: fcntl returned %i, errno %i '%s'.", err, errno, strerror( errno ) );
 		return CBERRFILEOP;
 	}
