@@ -48,16 +48,17 @@
  *    1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
  */
 
-#define CBENCAUTO 		0
-#define CBENC1BYTE 		1
-#define CBENC2BYTE 		2
-#define CBENCUTF8 		3
-#define CBENC4BYTE 		4
-#define CBENCUTF16LE 		5
+#define CBENCAUTO          	0
+#define CBENC1BYTE         	1
+#define CBENC2BYTE         	2
+#define CBENCUTF8          	3
+#define CBENC4BYTE         	4
+#define CBENCUTF16LE       	5
 #define CBENCPOSSIBLEUTF16LE 	6
-#define CBENCUTF16BE 		7
-#define CBENCUTF32LE		8
-#define CBENCUTF32BE		9
+#define CBENCUTF16BE       	7
+#define CBENCUTF32LE        	8
+#define CBENCUTF32BE        	9
+//#define CBENCURL         	10
 
 #define CBDEFAULTENCODING           1
 #define CBDEFAULTENCODINGBYTES      1   // Default maximum count of bytes, set as 0 for any count number of bytes, 1 if auto
