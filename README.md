@@ -14,7 +14,7 @@ UCS encoding is used (4 bytes) both in flow control characters and in the value 
 
 ###### Search methods
  
-At least two search methods can be used. Either unique names in stream or polysemantic names in stream (default).
+At least two search methods can be used. Either unique names in stream or consecutive names in stream (default).
 
 ###### File types
 
