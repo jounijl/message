@@ -159,6 +159,16 @@ int  cb_get_encoding(CBFILE **str, int *number){
 	*number = (**str).encoding;
 	return CBSUCCESS;
 }
+int  cb_set_transfer_encoding(CBFILE **str, int number){
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	(**str).transferencoding = number;
+	return CBSUCCESS;	
+}
+int  cb_set_transfer_extension(CBFILE **str, int number){
+	if(str==NULL || *str==NULL){ return CBERRALLOC; }
+	(**str).transferextension = number;
+	return CBSUCCESS;	
+}
 int  cb_set_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
@@ -879,7 +889,8 @@ cb_get_chr_unfold_try_another:
               *chroffset = 0;
           }
 
-          if(err>=CBNEGATION){
+          //if(err>=CBNEGATION){
+          if(err>=CBNEGATION && err!=CBSTREAMEND && err!=CBSTREAMEAGAIN){
             cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_unfold: read error %i, ahead=%i, bytesahead:%i,\
                storedbytes=%i, chr=[%c].", err, (**cbs).ahd.ahead, (**cbs).ahd.bytesahead, *storedbytes, (int) *chr); 
             cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );

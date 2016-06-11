@@ -113,7 +113,7 @@ int main (int argc, char **argv) {
 	// Allocate buffer
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
-	cb_set_to_polysemantic_names(&in);
+	cb_set_to_consecutive_names(&in);
 	//cb_use_as_stream(&in); // BEFORE TEST 11.8.2015
 	cb_use_as_file(&in); // TEST 11.8.2015
 	//cb_use_as_seekable_file(&in); // namelist is endless, memory increases

@@ -166,6 +166,16 @@ int main (int argc, char *argv[]) {
 	//cb_set_search_state(&out, CBSTATEFUL);
 	cb_set_search_state(&out, CBSTATETREE);
 
+	//(*in).cf.stopatheaderend = 0;
+	//(*in).cf.stopatmessageend = 0;
+	//(*out).cf.stopatheaderend = 0;
+	//(*out).cf.stopatmessageend = 0;
+
+	//(*in).cf.usesocket = 1;  // 2.5.2016, test
+	//(*out).cf.usesocket = 1; // 2.5.2016, test
+	(*in).cf.usesocket = 0;  // 2.5.2016
+	(*out).cf.usesocket = 0; // 2.5.2016
+
 	//
 	// Every filename
 	for(indx=4; indx<atoms; ++indx){

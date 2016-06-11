@@ -77,11 +77,11 @@ int  cb_read_value_leaves( CBFILE **cbs );
  */
 /* Allocates ucscontent. */
 int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
-int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
+int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
 int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
 /* Copies ucscontent maxlength. */
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength );
-int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength );
+int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
 int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlength );
 
 /*

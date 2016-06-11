@@ -30,61 +30,11 @@
  *
  * These functions can be used only in converting the content to native encoding from URL-encoding and
  * to output URL-encoded characters.
- */
-
-/*
- * URL percent encoding. MIME-type of the default FORM: application/x-www-form-urlencoded
- * (other one is for binary files)
  *
- * IANA: [ https://www.iana.org/assignments/media-types/application/x-www-form-urlencoded ]
- * HTML: [ https://www.w3.org/TR/html/forms.html#attr-fs-enctype-urlencoded ]
- *
- */
-
-/*
- * From HTML Specification, "17.13.4 Form content types" in https://www.w3.org/TR/html401/interact/forms.html 
- *
- *  application/x-www-form-urlencoded  
- *
- *  This is the default content type. Forms submitted with this content type must be encoded as follows:
- *
- *   1. Control names and values are escaped. Space characters are replaced by `+', and then reserved characters are escaped as 
- *      described in [RFC1738], section 2.2: Non-alphanumeric characters are replaced by `%HH', a percent sign and two hexadecimal 
- *      digits representing the ASCII code of the character. Line breaks are represented as "CR LF" pairs (i.e., `%0D%0A').
- *
- *   2. The control names/values are listed in the order they appear in the document. The name is separated from the value by `='
- *      and name/value pairs are separated from each other by `&'.
- *
- * From RFC-1738:
- *
- *  "URLs are written only with the graphic printable characters of the
- *   US-ASCII coded character set. The octets 80-FF hexadecimal are not
- *   used in US-ASCII, and the octets 00-1F and 7F hexadecimal represent
- *   control characters; these must be encoded."
- *
- *  "Thus, only alphanumerics, the special characters "$-_.+!*'(),", and
- *   reserved characters used for their reserved purposes may be used
- *   unencoded within a URL."
+ * https://www.iana.org/assignments/media-types/application/x-www-form-urlencoded
+ * https://www.w3.org/TR/html/forms.html#attr-fs-enctype-urlencoded
  *
  * UCS -> UTF-8 -> Percentage encoding -> wire -> Percentage decoding -> UTF-8 -> UCS [https://www.w3.org/International/O-URL-code.html]
- *
- * [http://unicode.org/faq/unicode_web.html] ->
- * [https://www.w3.org/TR/charmod/#URIs]
- *
- * Endcoding:
- * ----------
- * Ranges:  0 <= x <= 1F - encode
- *          7F <= x <= 0xFF - encode
- *          x not in { '$', '-', '_', '.', '!', '*', ''', '(', ')', ','  } - encode
- * Special: LF or CR LF -> %0D%0A (ignore CR and add %0D%0A to every LF)
- *          SP -> '+'
- *
- * Decoding:
- * ---------
- *          %<hex digit><hex digit> -> decode
- * Special: %0D%0A -> LF or CR LF
- *          '+' -> SP
- *          Otherwice unencoded.
  *
  */
 
@@ -120,6 +70,9 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_decode_url_encoded_bytes: parameter was null, error %i.", CBERRALLOC );
 		return CBERRALLOC; 
 	}
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoding data [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucshexdata), ucshexdatalen, ucshexdatalen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 	for(indx=0; indx<ucshexdatalen && ucsindx<ucsbuflen && err<CBNEGATION;){
 		chprev = chr;
 		err = cb_get_ucs_chr( &chr, &(*ucshexdata), &indx, ucshexdatalen);
@@ -179,6 +132,9 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 		}
 	}
 	*ucsdatalen = ucsindx;
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoded data  [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsdata), *ucsdatalen, ucsbuflen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 	return err;
 }
 /*

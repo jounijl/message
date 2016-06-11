@@ -58,7 +58,24 @@
 #define CBENCUTF16BE       	7
 #define CBENCUTF32LE        	8
 #define CBENCUTF32BE        	9
-//#define CBENCURL         	10
 
 #define CBDEFAULTENCODING           1
 #define CBDEFAULTENCODINGBYTES      1   // Default maximum count of bytes, set as 0 for any count number of bytes, 1 if auto
+
+/*
+ * Optional transfer encodings.
+ *
+ * [ (optional) transfer encoding [ (optional) transfer encoding extension [ encoding ] ] ]
+ */
+
+#define CBTRANSENCOCTETS            0   // Write and read bytes, default.
+#define CBTRANSENCCHUNKS            1   // Write and read length information and corresponding chunks as in RFC-2616 3.6.1 Chunked Transer Coding
+					// Note that the block size has to be more than the biggest possible chunk.
+
+#define CBTRANSENCODINGCHUNKSIZE    256
+
+/*
+ * Optional transfer encoding extensions. 
+ */
+#define CBNOEXTENSIONS 	            0
+

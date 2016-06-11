@@ -23,6 +23,7 @@
 #include <string.h> // memset
 #include <errno.h>  // errno
 #include <fcntl.h>  // fcntl, 20.5.2016
+#include "../include/cb_encoding.h"
 #include "../include/cb_buffer.h"
 
 
@@ -31,10 +32,12 @@ int  cb_set_type(CBFILE **buf, unsigned char type);
 int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
 int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
 int  cb_print_leaves_inner(cb_name **cbn, char priority);
-int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset);
+//int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset, int transferencoding, int transferextension);
+int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset );
 int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
-int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset);
+//int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset, int transferencoding, int transferextension);
+int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset );
 int  cb_set_search_method(CBFILE **cbf, unsigned char method);
 int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
@@ -466,6 +469,7 @@ int  cb_set_to_html_post( CBFILE **str ){
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
+	// (**str).cf.stopateof=1;
 	return CBSUCCESS;
 }
 
@@ -476,10 +480,11 @@ int  cb_set_message_end( CBFILE **str, long int contentoffset ){
 	return CBSUCCESS;
 }
 /*
- * Possible O_NONBLOCK reads in the future with this flag, 30.3.2016. */
+ * Name usesocket may be misleading. Setting to read up to messagelength characters. */
 int  cb_set_to_socket( CBFILE **str ){
         if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_socket: str was null." ); return CBERRALLOC; }
         (**str).cf.usesocket=1;
+	(**str).cf.stopateof=0; // 9.6.2016
         return CBSUCCESS;
 }
 
@@ -505,6 +510,7 @@ int  cb_set_to_message_format( CBFILE **str ){
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
+	(**str).cf.stopateof=0; // different content types, deflate method for example, 9.6.2016
 	return CBSUCCESS;	
 }
 int  cb_set_to_json( CBFILE **str ){
@@ -533,6 +539,7 @@ int  cb_set_to_json( CBFILE **str ){
 	// (**str).cf.leadnames = 1; // leadnames are not in effect in CBSTATETREE
 	(**str).cf.unfold = 0; // JSON is mostly used in values and larger aggregates (not in protocols)
 	(**str).cf.findwords=0;
+	(**str).cf.stopateof=1;
 	/*
 	 * JSON is Unicode encoded. */
 	cb_set_encoding( &(*str), CBENCUTF8 );
@@ -573,6 +580,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.asciicaseinsensitive=0;
 	(**str).cf.leadnames=0;
 	(**str).cf.findleaffromallnames=0;
+	(**str).cf.stopafterpartialread=0;
+	(**str).cf.stopateof=1;
 	//(**str).cf.usesocket=1; // test messageend every time if it is set, 2.5.2016
 	(**str).cf.usesocket=0; // test messageend every time if it is set, 2.5.2016
 	(**str).cf.nonblocking=0; // if set, fd should be set with fcntl flag O_NONBLOCK
@@ -660,6 +669,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.findleaffromallnames=0;
 	(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
 	(**str).encoding=CBDEFAULTENCODING;
+	(**str).transferencoding=CBTRANSENCOCTETS;
+	(**str).transferextension=CBNOEXTENSIONS;
 	(**str).fd = dup(fd); // tama tuli poistaa jo aiemmin? 21.8.2015
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
@@ -774,6 +785,9 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.lastchr=0x20; // 7.10.2015, 2.5.2016
 	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
+	(**cbf).list.rd.pad1=0;
+	(**cbf).list.rd.pad2=0;
+	(**cbf).list.rd.pad3=0;
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
@@ -781,6 +795,8 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
         //(**cbf).messageoffset=0; // 26.3.2016
         (**cbf).headeroffset=-1; // 26.3.2016, 30.3.2016
         (**cbf).messageoffset=-1; // 26.3.2016, 30.3.2016
+	(**cbf).chunkmissingbytes=0; // 28.5.2016
+	(**cbf).lastblockreadpartial=0; // 10.6.2016
 	(**cbf).list.name=NULL;
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
@@ -1021,13 +1037,13 @@ int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch){
 	}
 	return cb_get_char_read_offset_block( &(*cbf), &(*ch), -1 );
 }
-int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset){ 
+//int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset, int transferencoding, int transferextension ){ 
+int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset ){
 	ssize_t sz=0; // int err=0;
-	int socketlength=0; // 30.3.2016
+	signed long int readlength=0; // 30.3.2016, 28.5.2016, 10.6.2016
 	int err=CBSUCCESS; // 20.5.2016
 	cblk *blk = NULL; 
-	blk = (**cbf).blk;
-	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL ){ 
+	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL || (*(**cbf).blk).buf==NULL ){ // 28.5.2016
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_char_read_offset_block: parameter was null." );
 	  return CBERRALLOC; 
 	}
@@ -1036,12 +1052,12 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	  return CBOPERATIONNOTALLOWED;
 	}
 
+	blk = &(*(**cbf).blk);      // 28.5.2016
 	if(blk!=NULL){
 	  if( ( (*blk).index < (*blk).contentlen ) && ( (*blk).contentlen <= (*blk).buflen ) ){
 	    // return char
 	    *ch = (*blk).buf[(*blk).index];
 	    ++(*blk).index;
-	  //}else if((**cbf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	  }else if( (**cbf).cf.type!=CBCFGBUFFER && (**cbf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	    // read a block and return char
 	    /*
@@ -1052,47 +1068,56 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	     * write.
 	     */
 
+	    readlength = (*blk).buflen; // 10.6.2016
+
 	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\nREAD (fd %i) usesocket=%i, messageend=%li, headerend=%i", (**cbf).fd, (**cbf).cf.usesocket, (*(**cbf).cb).messageoffset, (*(**cbf).cb).headeroffset );
 	    //cb_clog( CBLOGDEBUG, CBNEGATION, ", nonblock=%i", ( fcntl( (**cbf).fd, F_GETFL, O_NONBLOCK ) & O_NONBLOCK ) );
 
+	    if( (**cbf).cf.stopafterpartialread==1 && (*(**cbf).cb).lastblockreadpartial==1 ){ // 10.6.2016
+	       (*(**cbf).cb).lastblockreadpartial=0;
+	       return CBSTREAMEND;
+	    }
+
 	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
-	       //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: PREAD BLOCK, SIZE %li", (*blk).buflen );
 	       /* Internal use only. Block has to be emptied after use. File pointer is not updated in the following: */
-	       sz = pread((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen, offset ); // read block has to be emptied after use
+	       if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
+		  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: can't use transferencoding with offsets." );
+	       sz = pread( (**cbf).fd, &(*(*blk).buf), (size_t)(*blk).buflen, offset ); // read block has to be emptied after use, 28.5.2016
 	    }else{ // stream
 
 	       if( (**cbf).cf.usesocket!=1 ){ // 29.3.2016
-                 //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: READ BLOCK, SIZE %li (ahd.currentindex %li, messageoffset %li, contentlength %li)", 
-                 //  (*blk).buflen, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
-                 sz = read((**cbf).fd, (*blk).buf, (size_t)(*blk).buflen);
+		 if( (**cbf).transferencoding==CBTRANSENCOCTETS )
+                 	sz = read( (**cbf).fd, &(*(*blk).buf), (size_t)(*blk).buflen);
+		 else
+			sz = cb_transfer_read( &(*cbf), (*blk).buflen );
+
                }else{ // 29.3.2016
-                 socketlength = (*blk).buflen;
+                 readlength = (*blk).buflen;
                  if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).contentlen<(*(**cbf).cb).headeroffset && \
                          ( (*(**cbf).cb).headeroffset - (*(**cbf).cb).contentlen )<(*blk).buflen )
-                   socketlength = (*(**cbf).cb).headeroffset  - (*(**cbf).cb).contentlen;
+                   readlength = (*(**cbf).cb).headeroffset  - (*(**cbf).cb).contentlen;
                  else if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).contentlen<(*(**cbf).cb).messageoffset && \
                          ( (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen )<(*blk).buflen )
-                   socketlength = (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen;
+                   readlength = (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen;
 
 		 if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).messageoffset <= (*(**cbf).cb).contentlen ){
-                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
-                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
-		    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBMESSAGEEND.");
 		    return CBMESSAGEEND;
 		 }else if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).headeroffset <= (*(**cbf).cb).contentlen ){
-                    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET CAN NOT BE READ AFTER MESSAGE HEADER END, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
-                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
-		    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBMESSAGEHEADEREND.");
 		    return CBMESSAGEHEADEREND;
 		 }else{
-                    // cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_char_read_offset_block: SOCKET READ, SIZE %i (ahd.bytesahead %i, ahd.currentindex %li, messageoffset %li, contentlength %li)", 
-                    //    socketlength, (**cbf).ahd.bytesahead, (**cbf).ahd.currentindex, (*(**cbf).cb).messageoffset, (*(**cbf).cb).contentlen );
-                    sz = read( (**cbf).fd, (*blk).buf, (size_t) socketlength );
+		    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
+                       sz = read( (**cbf).fd, &(*(*blk).buf), (size_t) readlength );
+		    else
+		       sz = cb_transfer_read( &(*cbf), readlength );
 		 }
                }
-
 	    }
-	    //cb_clog( CBLOGDEBUG, CBNEGATION, ". READ %i B.", (int) sz );
+
+	    if( (long int) sz < readlength ) // 10.5.2016
+	       (*(**cbf).cb).lastblockreadpartial=1;
+	    else
+	       (*(**cbf).cb).lastblockreadpartial=0;
+
 	    (*blk).contentlen = (long int) sz; // 6.12.2014
 	    if( 0 < (int) sz ){ // read more than zero bytes
 	      (*blk).contentlen = (long int) sz; // 6.12.2014
@@ -1107,20 +1132,17 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 		  /*
 		   * If non-blocking was configured, further data may be available later, 20.5.2016. (Late addition, propably missing from most configurations.) */
 		  if( (**cbf).cf.nonblocking==0 ){
-			cb_clog( CBLOGDEBUG, CBSTREAMEAGAIN, "\ncb_get_ch: EAGAIN returned and CBFILE is set to nonblocking");
+			cb_clog( CBLOGDEBUG, CBSTREAMEAGAIN, "\ncb_get_ch: EAGAIN returned and CBFILE is not set to nonblock.");
 			return CBSTREAMEND; // 23.5.2016
 		  }
-		  //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEAGAIN.");
 		  return CBSTREAMEAGAIN; // 20.5.2016
 		}else if(err<0){
 		  cb_clog( CBLOGERR, CBNEGATION, "\ncb_get_ch: fcntl returned %i, errno %i '%s'.", err, errno, strerror( errno ) );
 		}
 	      }
-	      //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEND.");
 	      return CBSTREAMEND; // pre 20.5.2016
 	    }
 	  }else{ // use as block
-	    //cb_clog( CBLOGDEBUG, CBNEGATION, " return CBSTREAMEND (block).");
 	    return CBSTREAMEND;
 	  }
 	  return CBSUCCESS;
@@ -1135,25 +1157,38 @@ int  cb_flush(CBFILE **cbs){
 	}
 	return cb_flush_to_offset( &(*cbs), -1 );
 }
-int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
+
+//int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset, int transferencoding, int transferextension){
+int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset ){
 	int err = CBSUCCESS; // err2=-1;
-	if(cb==NULL || *cb==NULL){
+	//if(cb==NULL || *cb==NULL){
+	if(cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_cbfile_to_offset: cb was null." ); 
 	  return CBERRALLOC;
 	}
-	if( (**cb).contentlen <= (**cb).buflen ){
+	if( (*(**cbf).blk).contentlen <= (*(**cbf).blk).buflen ){
 	  if( offset < 0 ){ // Append (usual)
-	    err = (int) write( fd, (**cb).buf, (size_t) (**cb).contentlen);
+	    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
+	    	err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen);
+	    else
+		err = cb_transfer_write( &(*cbf) );
 	  }else{ // Write (replace)
 	    // in the following, the file pointer is not updated ["Adv. Progr."]:
-	    err = (int) pwrite( fd, (**cb).buf, (size_t) (**cb).contentlen, (off_t) offset );
+	    if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: can't use transferencoding with offsets." );
+	    err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen, (off_t) offset );
 	  }
 	}else{
 	  if( offset < 0 ){ // Append
-	    err = (int) write( fd, (**cb).buf, (size_t) (**cb).buflen);
+	    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
+		err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen );
+	    else
+		err = cb_transfer_write( &(*cbf) );
 	  }else{ // Write (replace)
 	    // in the following, the file pointer is not updated ["Adv. Progr."]:
-	    err = (int) pwrite( fd, (**cb).buf, (size_t) (**cb).buflen, (off_t) offset );
+	    if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: can't use transferencoding with offsets." );
+	    err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen, (off_t) offset );
 	  }
 	}
 	if(err<0){
@@ -1161,7 +1196,7 @@ int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset){
 	  err = CBERRFILEWRITE ; 
 	}else{
 	  err = CBSUCCESS;
-	  (**cb).contentlen=0; // Block is set to zero here (write or append is not possible without this)
+	  (*(**cbf).blk).contentlen=0; // Block is set to zero here (write or append is not possible without this)
 	}
 	//if(fd>=0){ // 18.3.2016
 	//  err2 = fsync( fd ); // 2-3/2016
@@ -1184,7 +1219,8 @@ int  cb_flush_to_offset(CBFILE **cbs, signed long int offset){
 		cb_log( &(*cbs), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_flush_to_offset: attempt to seek to offset of unwritable file (CBCFGSEEKABLEFILE is not set).");
 		return CBOPERATIONNOTALLOWED;
 	      }
-	      return cb_flush_cbfile_to_offset( &(**cbs).blk, (**cbs).fd, offset);
+	      //return cb_flush_cbfile_to_offset( &(**cbs).blk, (**cbs).fd, offset, (**cbs).transferencoding, (**cbs).transferextension );
+	      return cb_flush_cbfile_to_offset( &(*cbs), offset );
 	    }
 	  }else
 	    return CBUSEDASBUFFER;
@@ -1266,7 +1302,8 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 
 	  // copy char if name-value -buffer is not full
 	  if((*(**cbs).cb).contentlen < (*(**cbs).cb).buflen ){
-	    if( chr != (unsigned char) EOF ){
+	    //if( chr != (unsigned char) EOF ){
+	    if( ! ( (**cbs).cf.stopateof == 1 && chr == (unsigned char) EOF ) ){ // 9.6.2016
 	      (*(**cbs).cb).buf[(*(**cbs).cb).contentlen] = chr;
 	      ++(*(**cbs).cb).contentlen;
 	      ++(*(**cbs).cb).readlength;
@@ -1282,7 +1319,8 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	    }
 	  }else{
 	    *ch=chr;
-	    if( chr == (unsigned char) EOF )
+	    //if( chr == (unsigned char) EOF )
+	    if( (**cbs).cf.stopateof == 1 && chr == (unsigned char) EOF ) // 9.6.2016
 	      return CBSTREAMEND;
 	    //if( (*(**cbs).cb).readlength < 0x7FFFFFFFFFFFFFFF ) // long long, > 64 bit
 	    if( (*(**cbs).cb).readlength < 0x7FFFFFFF ) // long, > 32 bit
