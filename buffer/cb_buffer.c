@@ -831,20 +831,25 @@ int  cb_free_cbfile(CBFILE **buf){
 	  if((*(**buf).cb).buf!=NULL){
 	    //memset( &(*(**buf).cb).buf, 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls
 	    free( (*(**buf).cb).buf ); // free buffer data
+	    (*(**buf).cb).buf = NULL; // 30.6.2016
 	  }
 	  free((**buf).cb); // free buffer
+	  (**buf).cb = NULL; // 30.6.2016
 	}
 	//if((*(**buf).blk).buf!=NULL){
 	if( (**buf).blk!=NULL && (*(**buf).blk).buf!=NULL){ // 18.3.2016
           free((*(**buf).blk).buf); // free block data
+	  (*(**buf).blk).buf = NULL;
 	}
 	free((**buf).blk); // free block
+	(**buf).blk = NULL; // 30.6.2016
 	//if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	if( (**buf).cf.type!=CBCFGBUFFER && (**buf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	  err = close((**buf).fd); // close stream
 	  if(err==-1){ err=CBERRFILEOP;}
 	}
 	free(*buf); // free buf
+	*buf = NULL; // 30.6.2016
 	return err;
 }
 
@@ -855,7 +860,9 @@ int  cb_free_buffer(cbuf **buf){
 	memset( &(**buf).buf, 0x20, (size_t) (**buf).buflen ); // 15.11.2015
 	(**buf).buf[ (**buf).buflen ] = '\0';
         free( (**buf).buf );
+	(**buf).buf = NULL; // 30.6.2016
         free( *buf );
+	*buf = NULL; // 30.6.2016
         return err;
 }
 
@@ -1352,6 +1359,7 @@ int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, in
 	}
 	(*blk) = &(*(**cbf).blk).buf[0];
 	(*(**cbf).blk).buf = NULL;
+	(*(**cbf).blk).buflen = 0; // 30.6.2016
 	*contentlen = (*(**cbf).blk).contentlen;
 	*blklen = (*(**cbf).blk).buflen;
 	return cb_free_cbfile( cbf );
