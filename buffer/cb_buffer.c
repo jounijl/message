@@ -748,8 +748,9 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	/*
 	 * Attach a new buffer to the block. */
 	if( blk!=NULL && *blk!=NULL && blksize>=0 ){
-	  if( (*(**cbf).blk).buf != NULL ){
-		free( &(*(**cbf).blk).buf );
+	  //if( (*(**cbf).blk).buf != NULL ){
+	  if( (*(**cbf).blk).buf != NULL && (*(**cbf).blk).buflen>0 ){ // 30.6.2016
+		free( (*(**cbf).blk).buf ); // 30.6.2016
 		(*(**cbf).blk).buf = NULL;
 	  }
 	  (*(**cbf).blk).buf = &(**blk);
