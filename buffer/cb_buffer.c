@@ -735,7 +735,7 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	if( *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: *cbf was null." );  return CBERRALLOC; }
 	if( blk==NULL ){   cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: parameter was null." );  return CBERRALLOC; }
 	if( (**cbf).cb==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: buffer was null." );  return CBERRALLOC; }
-	if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; }
+	//30.6.2016 if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; }
 
 	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
         //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
@@ -812,10 +812,14 @@ int  cb_reinit_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile: buf was null." ); return CBERRALLOC; }
 
-	err = cb_reinit_buffer(&(**buf).cb);
-	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
-	err = cb_reinit_buffer(&(**buf).blk);
-	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
+	if( (**buf).cb!=NULL ){ // 30.6.2016
+		err = cb_reinit_buffer( &(**buf).cb );
+		if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
+	}
+	if( (**buf).blk!=NULL ){ // 30.6.2016
+		err = cb_reinit_buffer( &(**buf).blk );
+		if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_reinit_buffer, error %i.", err);
+	}
 
 	err = cb_fifo_init_counters( &(**buf).ahd ); // 19.3.2016
 	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_fifo_init_counters, error %i.", err);
