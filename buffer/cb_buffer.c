@@ -920,6 +920,15 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	(**buf).list.nodecount=0; // 15.11.2015
 	(**buf).list.toterminal=0; // 29.9.2015
 	//(**buf).list.openpairs=0; // 28.9.2015
+
+	// 30.6.2016
+        (**buf).list.rd.lastchr = 0x20;
+        (**buf).list.rd.lastreadchrendedtovalue = 0;
+        (**buf).list.rd.lastchroffset = 0;
+	(**buf).list.rd.pad1=0;
+	(**buf).list.rd.pad2=0;
+	(**buf).list.rd.pad3=0;
+
 	return CBSUCCESS;
 }
 /*
