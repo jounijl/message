@@ -671,7 +671,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).encoding=CBDEFAULTENCODING;
 	(**str).transferencoding=CBTRANSENCOCTETS;
 	(**str).transferextension=CBNOEXTENSIONS;
-	(**str).fd = dup(fd); // tama tuli poistaa jo aiemmin? 21.8.2015
+	//(**str).fd = dup(fd); // tama tuli poistaa jo aiemmin? 21.8.2015
+	(**str).fd = fd; // 30.6.2016
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
 	cb_fifo_init_counters( &(**str).ahd );
@@ -823,6 +824,11 @@ int  cb_reinit_cbfile(CBFILE **buf){
 
 	err = cb_fifo_init_counters( &(**buf).ahd ); // 19.3.2016
 	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_fifo_init_counters, error %i.", err);
+
+	//(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
+	//(**str).encoding=CBDEFAULTENCODING;
+	//(**str).transferencoding=CBTRANSENCOCTETS;
+	//(**str).transferextension=CBNOEXTENSIONS;
 
 	return err;
 }
@@ -1197,19 +1203,29 @@ int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset ){
 	    // in the following, the file pointer is not updated ["Adv. Progr."]:
 	    if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: can't use transferencoding with offsets." );
-	    err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen, (off_t) offset );
+	    if( (**cbf).fd<0 )
+		err = CBERRFILEOP;
+	    else
+	        err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen, (off_t) offset );
 	  }
 	}else{
 	  if( offset < 0 ){ // Append
-	    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
-		err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen );
-	    else
+	    if( (**cbf).transferencoding==CBTRANSENCOCTETS ){
+		if( (**cbf).fd<0 )
+		  err = CBERRFILEOP;
+	        else
+		  err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen );
+	    }else{
 		err = cb_transfer_write( &(*cbf) );
+	    }
 	  }else{ // Write (replace)
 	    // in the following, the file pointer is not updated ["Adv. Progr."]:
 	    if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: can't use transferencoding with offsets." );
-	    err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen, (off_t) offset );
+	    if( (**cbf).fd<0 )
+		err = CBERRFILEOP;
+	    else
+	        err = (int) pwrite( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).buflen, (off_t) offset );
 	  }
 	}
 	if(err<0){
