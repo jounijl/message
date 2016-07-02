@@ -71,7 +71,7 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, char leaf ){
 	/*
 	 * Allocate and copy current name to new ucsname */
-	int ret = CBSUCCESS; int indx=0;
+	int ret = CBSUCCESS, indx=0;
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
 		return CBERRALLOC;
@@ -82,10 +82,11 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	  //  ucsname = (unsigned char**) malloc( sizeof( int ) ); // pointer size
 	  if( *ucsname!=NULL )
 	  	cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
-	  if(leaf!=1)
+	  if(leaf!=1){
 	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.current).namelen+1 ) );
-	  else
+	  }else{
 	    *ucsname = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) (*(*(**cbs).cb).list.currentleaf).namelen+1 ) );
+	  }
 	  if( ucsname==NULL ) { 
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: malloc returned null.");
 		return CBERRALLOC; 
@@ -94,6 +95,7 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	    (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
 	    for( indx=0; indx<(*(*(**cbs).cb).list.current).namelen ; ++indx)
 	      (*ucsname)[indx] = (*(*(**cbs).cb).list.current).namebuf[indx];
+	    (*ucsname)[ (*(*(**cbs).cb).list.current).namelen ] = '\0'; // 2.7.2016
 	    if(namelength==NULL)
 	      namelength = (int*) malloc( sizeof( int ) ); // int 
 	    if(namelength==NULL) { return CBERRALLOC; }
@@ -102,6 +104,7 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	    (*ucsname)[(*(*(**cbs).cb).list.currentleaf).namelen] = '\0';
 	    for( indx=0; indx<(*(*(**cbs).cb).list.currentleaf).namelen ; ++indx)
 	      (*ucsname)[indx] = (*(*(**cbs).cb).list.currentleaf).namebuf[indx];
+	    (*ucsname)[ (*(*(**cbs).cb).list.currentleaf).namelen ] = '\0'; // 2.7.2016
 	    if(namelength==NULL)
 	      namelength = (int*) malloc( sizeof( int ) ); // int 
 	    if(namelength==NULL) { return CBERRALLOC; }
