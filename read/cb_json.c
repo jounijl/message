@@ -41,7 +41,7 @@
 typedef struct name {
         unsigned char *name;
         int namelen;
-} name;
+} name ;
 
 
 /* cb_check_json_string(  unsigned char **ucsname, int *namelength, int from  ) is in cb_buffer.h */
@@ -76,8 +76,9 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: read away white spaces chr [%c]", (char) chr );
 		}
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: FROM: %i, UCSVALUELEN: %i, ERR: %i.", *from, ucsvaluelen, err );
-		if( *from<=ucsvaluelen && err<CBNEGATION ) // 23.4.2016
+		if( *from<=ucsvaluelen && err<CBNEGATION ){ // 23.4.2016
 			return CBSUCCESS;
+		}
 	}else if( *from==ucsvaluelen )
 		return CBSUCCESS;
 	return CBNOTJSONVALUE;
@@ -107,35 +108,36 @@ int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, in
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: [%c]", (char) chr );
 		switch( (unsigned char) chr ){
 			case '"':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_substring:" );
 				*from -= 4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_substring()." );
 				return cb_check_json_substring( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) ); 		// ok
 			case '[':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_array:" );
 				*from -= 4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_array()." );
 				return cb_check_json_array( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );			// ok
 			case '{':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_object:" );
 				*from -= 4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_object()." );
 				return cb_check_json_object( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );			// ok, 12.11.2015
 			case 't':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_true:" );					// ok
 				if(*from>0) *from-=4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_true()." );
 				return cb_check_json_true( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from)  );
 			case 'n':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_null:" );					// ok
 				if(*from>0) *from-=4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_null()." );
 				return cb_check_json_null( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 			case 'f':
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_false:" );					// ok
 				if(*from>0) *from-=4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_false()." );
 				return cb_check_json_false( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 			default:
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_number:" );					// ok
 				if(*from>0) *from-=4;
+				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_number()." );
 				return cb_check_json_number( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 		}
 	}
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cbnotjsonvalue." );
 	return CBNOTJSONVALUE;
 }
 
@@ -233,7 +235,7 @@ int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         unsigned char *chrposition = NULL;
         name istrue = (name) { (unsigned char *) "\0\0\0t\0\0\0r\0\0\0u\0\0\0e", (int) 16 };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2; // match length without the trailing white spaces
-        if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_true: ucsvalue was null."); return CBERRALLOC; }
+        if( cfg==NULL || *cfg==NULL || from==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_true: ucsvalue was null."); return CBERRALLOC; }
         if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
         chrposition = &(*ucsvalue)[*from];
 
@@ -258,6 +260,7 @@ int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_false: ucsvalue was null."); return CBERRALLOC; }
         if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        chrposition = &(*ucsvalue)[*from]; // 13.7.2016
         err = cb_compare( &(*cfg), &isfalse.name, isfalse.namelen, &chrposition, (ucsvaluelen-*from), &mctl ); // compares name1 to name2 (name1 length)
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
         *from += isfalse.namelen;
@@ -272,6 +275,7 @@ int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_null: ucsvalue was null."); return CBERRALLOC; }
         if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        chrposition = &(*ucsvalue)[*from]; // 13.7.2016
         err = cb_compare( &(*cfg), &isnull.name, isnull.namelen, &chrposition, (ucsvaluelen-*from), &mctl );
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
         *from += isnull.namelen;
@@ -443,12 +447,14 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
         int err=CBSUCCESS, indx=0;
         unsigned long int chr=0x20, chprev=0x20;
         char jsonfourhexadecimaldigits=-1;
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: 1.");
         if( ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: BYPASSISREMOVED %i.", bypassisremoved);
 
         /*
          * Bypass and control characters. */
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: 2.");
         indx = *from;
         err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, namelength );
         while( indx<namelength && indx<CBNAMEBUFLEN && err<CBNEGATION ){
@@ -486,6 +492,7 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
                         chprev = chr;
         }
         *from = indx;
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: end, return cbsuccess.");
         return CBSUCCESS;
 }
 
