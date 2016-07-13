@@ -447,14 +447,12 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
         int err=CBSUCCESS, indx=0;
         unsigned long int chr=0x20, chprev=0x20;
         char jsonfourhexadecimaldigits=-1;
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: 1.");
         if( ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: BYPASSISREMOVED %i.", bypassisremoved);
 
         /*
          * Bypass and control characters. */
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: 2.");
         indx = *from;
         err  = cb_get_ucs_chr( &chprev, &(*ucsname), &indx, namelength );
         while( indx<namelength && indx<CBNAMEBUFLEN && err<CBNEGATION ){
@@ -492,7 +490,6 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
                         chprev = chr;
         }
         *from = indx;
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: end, return cbsuccess.");
         return CBSUCCESS;
 }
 
