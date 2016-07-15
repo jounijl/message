@@ -236,7 +236,8 @@ int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         name istrue = (name) { (unsigned char *) "\0\0\0t\0\0\0r\0\0\0u\0\0\0e", (int) 16 };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2; // match length without the trailing white spaces
         if( cfg==NULL || *cfg==NULL || from==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_true: ucsvalue was null."); return CBERRALLOC; }
-        if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        if( *from>ucsvaluelen ) return CBINDEXOUTOFBOUNDS; // 15.7.2016
         chrposition = &(*ucsvalue)[*from];
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_true: [");
@@ -259,7 +260,8 @@ int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
         name isfalse = (name) { (unsigned char *) "\0\0\0f\0\0\0a\0\0\0l\0\0\0s\0\0\0e", (int) 20 };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_false: ucsvalue was null."); return CBERRALLOC; }
-        if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        if( *from>ucsvaluelen ) return CBINDEXOUTOFBOUNDS; // 15.7.2016
         chrposition = &(*ucsvalue)[*from]; // 13.7.2016
         err = cb_compare( &(*cfg), &isfalse.name, isfalse.namelen, &chrposition, (ucsvaluelen-*from), &mctl ); // compares name1 to name2 (name1 length)
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
@@ -274,7 +276,8 @@ int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
         name isnull = (name) { (unsigned char *) "\0\0\0n\0\0\0u\0\0\0l\0\0\0l", (int) 16 };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_null: ucsvalue was null."); return CBERRALLOC; }
-        if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
+        if( *from>ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
         chrposition = &(*ucsvalue)[*from]; // 13.7.2016
         err = cb_compare( &(*cfg), &isnull.name, isnull.namelen, &chrposition, (ucsvaluelen-*from), &mctl );
         if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare_value: cb_compare, error %i.", err ); return err; }
