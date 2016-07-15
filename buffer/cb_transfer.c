@@ -32,7 +32,7 @@ int  cb_read_chunk( signed long int *missingchunkbytes, int fd, unsigned char *b
 
 /*
  * Return values like from 'read'. */
-int  cb_transfer_read( CBFILE **cbf, signed long int readlength ){ 
+int  cb_transfer_read( CBFILE **cbf, signed long int readlength ){ // Not tested at all (not ready yet), 15.7.2016
 	int read=-1;
 	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || (*(**cbf).blk).buf==NULL) return CBERRALLOC;
 	if( (**cbf).fd<0 ) return CBERRFILEOP;
@@ -58,13 +58,12 @@ int  cb_transfer_read( CBFILE **cbf, signed long int readlength ){
 }
 /*
  * Return values like from 'read'. */
-int  cb_transfer_write( CBFILE **cbf ){
+int  cb_transfer_write( CBFILE **cbf ){ // Not yet well tested, 15.7.2017
 	int wrote = -1;
 	if( cbf==NULL || *cbf==NULL || (**cbf).blk==NULL || (*(**cbf).blk).buf==NULL || (**cbf).cb==NULL ){ 
 		cb_clog( CBLOGERR, CBERRALLOC, "\ncb_read_chunk: parameter was null." ); return -1; 
 	}
 	if( (**cbf).fd<0 ){ cb_clog( CBLOGERR, CBERRFILEOP, "\ncb_transfer_write: fd was %i, error.", (**cbf).fd ); return -1; }
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_transfer_write: HERE.");
 	switch( (**cbf).transferextension ){
 		case CBNOEXTENSIONS:
 			break;
