@@ -837,22 +837,38 @@ int  cb_free_cbfile(CBFILE **buf){
 	int err=CBSUCCESS;
 	if( buf==NULL || *buf==NULL ) return CBSUCCESS; // 18.3.2016
 	if( (**buf).cb!=NULL ){ // 18.3.2016
-	  cb_reinit_buffer(&(**buf).cb); // free names
-	  if((*(**buf).cb).buf!=NULL){
-	    //memset( &(*(**buf).cb).buf, 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls
+	  cb_reinit_buffer( &(**buf).cb ); // free names
+	  if( (**buf).cb!=NULL && (*(**buf).cb).buf!=NULL ){
+	    if( (*(**buf).cb).buflen>0 ){
+	      memset( &(*(*(**buf).cb).buf), 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls, uncommented 15.7.2016
+	      (*(**buf).cb).buf[ (*(**buf).cb).buflen ] = '\0'; // 17.7.2016
+	    }
 	    free( (*(**buf).cb).buf ); // free buffer data
 	    (*(**buf).cb).buf = NULL; // 30.6.2016
+	    (*(**buf).cb).buflen = 0; // 15.7.2016
 	  }
+	}
+	if( (**buf).cb!=NULL ){
 	  free((**buf).cb); // free buffer
 	  (**buf).cb = NULL; // 30.6.2016
 	}
 	//if((*(**buf).blk).buf!=NULL){
-	if( (**buf).blk!=NULL && (*(**buf).blk).buf!=NULL){ // 18.3.2016
-          free((*(**buf).blk).buf); // free block data
+	//if( (**buf).blk!=NULL && (*(**buf).blk).buf!=NULL){ // 18.3.2016
+	if( (**buf).blk!=NULL ){
+	  if( (*(**buf).blk).buf!=NULL ){ // 15.7.2016
+	    if( (*(**buf).blk).buflen>0 ){
+	      memset( &(*(*(**buf).blk).buf), 0x20, (size_t) ( (*(**buf).blk).buflen - 1 ) ); // write something to overwrite nulls, 15.7.2016
+	      (*(**buf).blk).buf[ (*(**buf).blk).buflen ] = '\0'; // 17.7.2016
+	    }
+            free( (*(**buf).blk).buf ); // free block data
+	  }
 	  (*(**buf).blk).buf = NULL;
+	  (*(**buf).blk).buflen = 0; // 15.7.2016
 	}
-	free((**buf).blk); // free block
-	(**buf).blk = NULL; // 30.6.2016
+	if( (**buf).blk!=NULL ){ // 17.7.2016
+		free((**buf).blk); // free block
+		(**buf).blk = NULL; // 30.6.2016
+	}
 	//if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	if( (**buf).cf.type!=CBCFGBUFFER && (**buf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	  err = close((**buf).fd); // close stream
@@ -1113,9 +1129,9 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	    }else{ // stream
 
 	       if( (**cbf).cf.usesocket!=1 ){ // 29.3.2016
-		 if( (**cbf).transferencoding==CBTRANSENCOCTETS )
+		 if( (**cbf).transferencoding==CBTRANSENCOCTETS ){
                  	sz = read( (**cbf).fd, &(*(*blk).buf), (size_t)(*blk).buflen);
-		 else
+		 }else
 			sz = cb_transfer_read( &(*cbf), (*blk).buflen );
 
                }else{ // 29.3.2016
