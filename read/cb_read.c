@@ -382,7 +382,7 @@ int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucsco
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 ){
                 len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
 	}
-	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
+	cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0){
 		if( *ucscontent==NULL ){ cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: parameter was null."); return CBERRALLOC; }
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
@@ -410,6 +410,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         if( ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: ucscontent was null."); return CBERRALLOC; }
         /*
          * Count length */
+	maxlen = maxlength; // 19.7.2016
         if( (**cn).length > 0 ) // Length from previous count
                 maxlen = (**cn).length * 4; // 15.9.2015, character count times four bytes per character
         // Otherwice allocates maxlength buffer
@@ -418,7 +419,6 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
          * Allocate buffer */
         *ucscontent = (unsigned char*) malloc( sizeof(unsigned char)*( (unsigned int) maxlen+2 ) );
         if( ucscontent==NULL ) {
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_content: 4.");
                 cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: malloc returned null.");
                 return CBERRALLOC;
         }
@@ -426,7 +426,8 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         (*ucscontent)[ maxlen+1 ] = '\0';
         *clength = maxlen; 
 
-	return cb_copy_content( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
+	//return cb_copy_content( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
+	return cb_copy_content( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlen ); // 19.7.2016
 }
 
 /*
@@ -437,6 +438,14 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
         if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: (**cn).namebuf was null."); return CBERRALLOC; }
+
+// 19.7.2016 (similar with cb_get_content)
+        if( (**cn).length > 0 )
+                *clength = (**cn).length * 4; // 15.9.2015, character count times four bytes per character
+	else
+                *clength = maxlength;
+// /19.7.2016
+
 	err = cb_copy_content_internal( &(*cbf), &(*cn), &(*ucscontent), &(*clength), maxlength );
 	if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_copy_content_internal, error %i.", err ); return err; }
 	if( (**cbf).cf.urldecodevalue==1 ){
@@ -473,14 +482,15 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
         if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: cn was null."); return CBERRALLOC; }
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
+
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: CLENGTH %i.", *clength );
+
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-        //for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) ; ++lindx ){
         for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && \
 		 ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
-        //for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength ; ++lindx ){
                 chprev = chr;
 
 		if( (**cbf).cf.json==1 ){
@@ -491,7 +501,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		}
 
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
-		//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
+		cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
 		if( err>CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 	        if( (**cbf).cf.stopatmessageend==1 && err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
 	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
