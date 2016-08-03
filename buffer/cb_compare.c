@@ -30,12 +30,14 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	unsigned long int chr1=0x65, chr2=0x65;
 	int err1=CBSUCCESS, err2=CBSUCCESS;
 	int indx1=0, indx2=0;
-	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL)
+	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
+	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_rfc2822: parameter was null." );
 	  return CBERRALLOC;
+	}
 
 	//fprintf(stderr,"\ncb_compare_rfc2822: [");
-	//cb_print_ucs_chrbuf(&(*name1), len1, len1); fprintf(stderr,"] [");
-	//cb_print_ucs_chrbuf(&(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); fprintf(stderr,"] [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
 	//fprintf(stderr,"\ncb_compare_rfc2822: [from2=%i]", from2);
 
 	indx2 = from2;
@@ -155,6 +157,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	        err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, indx );
 	      }else if( (len2-indx) > 0 ){
 	        err = cb_compare_strict( &(*name1), len1, &(*name2), len2, indx );
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: -6, cb_compare_strict returned %i, index %i.", err, indx );
 	      }else{
 	        err = CBMISMATCH; // 20.10.2015
 	        //err = CBNOTFOUND;

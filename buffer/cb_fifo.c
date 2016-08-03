@@ -59,6 +59,7 @@ int  cb_fifo_init_counters(cb_ring *cfi){
         (*cfi).last=0;
         (*cfi).streamstart=-1;
         (*cfi).streamstop=-1;
+	(*cfi).currentindex = 0; // 30.6.2016
         if((*cfi).buf==NULL){
 	  (*cfi).buflen=0;
           err = CBERRALLOC;

@@ -47,7 +47,7 @@ int  cb_transfer_read( CBFILE **cbf, signed long int readlength ){ // Not tested
 	}
 	switch( (**cbf).transferencoding ){
 		case CBTRANSENCCHUNKS:
-			read = cb_read_chunk( &(*(**cbf).blk).chunkmissingbytes, (**cbf).fd, &(*(*(**cbf).blk).buf), readlength );			  
+			read = cb_read_chunk( &(*(**cbf).blk).chunkmissingbytes, (**cbf).fd, &(*(*(**cbf).blk).buf), readlength );
 			break;
 		default:
 			read = -1;
@@ -84,14 +84,16 @@ int  cb_transfer_write( CBFILE **cbf ){ // Not yet well tested, 15.7.2017
 }
 int  cb_terminate_transfer( CBFILE **cbf ){
 	int wrote = -1;
-	static char chunkedtermination[6] = { 0x20, '0', 0x20, 0x0D, 0x0A, '\0' };
-	static int  chunkedterminationlen = 5;
+	//static char chunkedtermination[6] = { 0x20, '0', 0x20, 0x0D, 0x0A, '\0' };
+	//static int  chunkedterminationlen = 5;
+	static char chunkedtermination[4]   = { '0', 0x0D, 0x0A, '\0' }; // Chrome, 2.8.2016
+	static int  chunkedterminationlen   = 3;
 	//static char octettermination[3]   = { 0x0D, 0x0A, '\0' };
 	//static int  octetterminationlen   = 2;
 	if( cbf==NULL || *cbf==NULL ){	cb_clog( CBLOGERR, CBERRALLOC, "\ncb_terminate_transfer: parameter was null." ); return CBERRALLOC; }
 	if( (**cbf).fd<0 ){ cb_clog( CBLOGERR, CBERRFILEOP, "\ncb_transfer_write: fd was %i, error.", (**cbf).fd ); return -1; }
         switch( (**cbf).transferextension ){
-                case CBNOEXTENSIONS:  
+                case CBNOEXTENSIONS:
                         break;
                 default:
                         cb_clog( CBLOGERR, CBERROR, "\ncb_terminate_transfer: invalid transfer coding extension, error %i.", CBERROR );
@@ -103,6 +105,9 @@ int  cb_terminate_transfer( CBFILE **cbf ){
 			break;
                 case CBTRANSENCCHUNKS:
 			wrote = write( (**cbf).fd, &chunkedtermination[0], (size_t) chunkedterminationlen );
+			// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_chunks: WROTE TERMINATING CHUNK [" );
+                        // write( 2, &chunkedtermination[0], (size_t) chunkedterminationlen ); // TMP DEBUG
+			// cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i.", chunkedterminationlen );
                         break;
                 default:
                         wrote = -1;
@@ -177,30 +182,48 @@ int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, s
 int  cb_flush_chunks( int fd, unsigned char *buf, signed long int contentlen ){ // 27.5.2016
         int chunksize = 0;
         int written   = 1, wrote = 0;
-        static char crlfbuf[15] = { 0x0D, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' };
-        int          crlfbuflen = 14;
+        static char crlfbuf[23] = { 0x0D, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' };
+        int          crlfbuflen = 22;
         int                 len = 1;
-        char               *ptr = NULL;  
+        char               *ptr = NULL;
+	unsigned char   *bufptr = NULL;
+	long int         bufpos = 0;
         ptr = &crlfbuf[0];
         if( buf==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_chunks: buf was null." ); return CBERRALLOC; }
-        while( written < (int) contentlen && written>0 ){
-                if( contentlen < CBTRANSENCODINGCHUNKSIZE )
-                        chunksize = contentlen;
+        bufptr = &buf[ bufpos ];
+        while( bufpos < (int) contentlen && written>0 && bufpos>=0 ){
+                if( (contentlen-bufpos) < CBTRANSENCODINGCHUNKSIZE )
+                        chunksize = (contentlen-bufpos);
                 else
                         chunksize = CBTRANSENCODINGCHUNKSIZE;
-		if(chunksize<=0) break;        
+		if(chunksize<=0) break;
                 /* Print length number in hexadecimal notation. */
-                len = snprintf( &(*ptr), (size_t) crlfbuflen, " %x %c%c", chunksize, 0x0D, 0x0A );
+                len = snprintf( &(*ptr), (size_t) crlfbuflen, "%x%c%c", chunksize, 0x0D, 0x0A );
                 wrote = (int) write( fd, &(*ptr), (size_t) len );
+		// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_chunks: WROTE LENGTH %i [", wrote );
+                // write( 2, &(*ptr), (size_t) len ); // TMP DEBUG
+		// cb_clog( CBLOGDEBUG, CBNEGATION, "]" );
                 if(len>0 && wrote>=0 ){
                         written += wrote;
                         /* Print chunk. */
-                        wrote = (int) write( fd, &(*buf), (size_t) chunksize );
-                        if(wrote>0) written += wrote;
+                        wrote = (int) write( fd, &(*bufptr), (size_t) chunksize );
+			// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_chunks: WROTE CHUNK SIZE %i [", chunksize );
+                        // write( 2, &(*bufptr), (size_t) chunksize ); // TMP DEBUG
+			// cb_clog( CBLOGDEBUG, CBNEGATION, "]" );
+                        if(wrote>0){
+				written += wrote;
+				bufpos += wrote;
+				if( bufpos<contentlen )
+					bufptr = &buf[ bufpos ];
+				// cb_clog( CBLOGDEBUG, CBNEGATION, ", BUFPOS %li.", bufpos );
+			}
                 }
                 /* Print terminating <cr><lf>. */
                 len = snprintf( &(*ptr), (size_t) crlfbuflen, "%c%c", 0x0D, 0x0A );
                 wrote = (int) write( fd, &(*ptr), (size_t) len );
+		// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_chunks: WROTE LENGTH %i [", wrote );
+                // write( 2, &(*ptr), (size_t) wrote ); // TMP DEBUG
+		// cb_clog( CBLOGDEBUG, CBNEGATION, "]" );
 		if(wrote>0) written += wrote;
         }
         return written;

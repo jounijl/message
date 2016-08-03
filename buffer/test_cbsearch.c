@@ -52,7 +52,7 @@ int main (int argc, char **argv) {
 	int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
 	unsigned int namearraylen=0, y=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
-	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0;
+	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
@@ -178,6 +178,17 @@ int main (int argc, char **argv) {
 	    tree = 1;
             continue;
           }
+          u = get_option( argv[i], argv[i+1], 'w', &value); // search a single word from the input
+          if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+	    /*
+	     * This setting is currently not working 13.6.2016.
+	     */
+	    oneword = 1;
+	    cb_set_to_search_one_name_only( &in );
+	    cb_set_rend( &in, (unsigned long int) 0x0A); // NL name text
+	    cb_set_rstart( &in, (unsigned long int) 0x20); // SP
+            continue;
+          }
           u = get_option( argv[i], argv[i+1], 'J', &value); // use JSON
           if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    tree = 1;
@@ -274,9 +285,9 @@ int main (int argc, char **argv) {
 
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] \\\n", progname[0]);
+	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
 	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] <name> \n\n");
-	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] \\\n", progname[0]);
+	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
 	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] \\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
 	fprintf(stderr,"\t-t include the search from the subtrees\n");
@@ -284,6 +295,7 @@ void usage (char *progname[]){
 	fprintf(stderr,"\t-z set to the configuration file format\n");
 	fprintf(stderr,"\t-J use JSON format\n");
 	fprintf(stderr,"\t-x regular expression search\n");
+	fprintf(stderr,"\t-w search one name only\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");

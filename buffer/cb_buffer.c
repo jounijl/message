@@ -220,14 +220,28 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
           (**to).length  = (**from).length;
 	  (**to).nameoffset = (**from).nameoffset;
           (**to).matchcount = (**from).matchcount;
-	  (**to).next   = &(* (cb_name*) (**from).next);
-	  (**to).leaf   = &(* (cb_name*) (**from).leaf);
+	  if( (**from).next!=NULL ){  (**to).next = &(* (cb_name*) (**from).next);  }else{  (**to).next = NULL; } // 23.7.2016
+	  if( (**from).leaf!=NULL ){  (**to).leaf = &(* (cb_name*) (**from).leaf);  }else{  (**to).leaf = NULL; } // 23.7.2016
           (**to).firsttimefound = (**from).firsttimefound;
           (**to).lasttimeused = (**from).lasttimeused;
 	  return CBSUCCESS;
 	}
 	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_copy_name: parameter was null." );
 	return CBERRALLOC;
+}
+
+int  cb_init_name( cb_name **cbn  ){ // 22.7.2016
+        if( cbn==NULL || *cbn==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_name: cbn was null."); return CBERRALLOC; }
+        (**cbn).offset=0;
+        (**cbn).nameoffset=0;
+        (**cbn).length=-1; // 11.12.2014
+        (**cbn).matchcount=0;
+        (**cbn).firsttimefound=-1;
+        (**cbn).lasttimeused=-1;
+        //(**cbn).serial=-1;
+        (**cbn).next=NULL;
+        (**cbn).leaf=NULL;
+        return CBSUCCESS;
 }
 
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
@@ -241,6 +255,7 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
 	}
+/**
 	(**cbn).offset=0; 
 	(**cbn).nameoffset=0;
 	(**cbn).length=-1; // 11.12.2014
@@ -250,7 +265,8 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	//(**cbn).serial=-1;
 	(**cbn).next=NULL;
 	(**cbn).leaf=NULL;
-
+ **/
+	cb_init_name( &(*cbn) );
 	(**cbn).namebuf = (unsigned char*) malloc( sizeof(char)*( (unsigned int) namelen+1) ); // 7.12.2013
 	if((**cbn).namebuf==NULL){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc returned null (namebuf)." );
@@ -787,9 +803,9 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.lastchr=0x20; // 7.10.2015, 2.5.2016
 	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
-	(**cbf).list.rd.pad1=0;
-	(**cbf).list.rd.pad2=0;
-	(**cbf).list.rd.pad3=0;
+	//(**cbf).list.rd.pad1=0;
+	//(**cbf).list.rd.pad2=0;
+	//(**cbf).list.rd.pad3=0;
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
@@ -852,8 +868,6 @@ int  cb_free_cbfile(CBFILE **buf){
 	  free((**buf).cb); // free buffer
 	  (**buf).cb = NULL; // 30.6.2016
 	}
-	//if((*(**buf).blk).buf!=NULL){
-	//if( (**buf).blk!=NULL && (*(**buf).blk).buf!=NULL){ // 18.3.2016
 	if( (**buf).blk!=NULL ){
 	  if( (*(**buf).blk).buf!=NULL ){ // 15.7.2016
 	    if( (*(**buf).blk).buflen>0 ){
@@ -869,10 +883,11 @@ int  cb_free_cbfile(CBFILE **buf){
 		free((**buf).blk); // free block
 		(**buf).blk = NULL; // 30.6.2016
 	}
-	//if((**buf).cf.type!=CBCFGBUFFER){ // 20.8.2013
 	if( (**buf).cf.type!=CBCFGBUFFER && (**buf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
-	  err = close((**buf).fd); // close stream
-	  if(err==-1){ err=CBERRFILEOP;}
+	  if( (**buf).fd!=-1 ){ // -1 chosen here (18.7.2016)
+	    err = close( (**buf).fd ); // close stream
+	    if(err==-1){ err=CBERRFILEOP; }
+	  }
 	}
 	free(*buf); // free buf
 	*buf = NULL; // 30.6.2016
@@ -947,9 +962,9 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
         (**buf).list.rd.lastchr = 0x20;
         (**buf).list.rd.lastreadchrendedtovalue = 0;
         (**buf).list.rd.lastchroffset = 0;
-	(**buf).list.rd.pad1=0;
-	(**buf).list.rd.pad2=0;
-	(**buf).list.rd.pad3=0;
+	//(**buf).list.rd.pad1=0;
+	//(**buf).list.rd.pad2=0;
+	//(**buf).list.rd.pad3=0;
 
 	return CBSUCCESS;
 }
@@ -1211,10 +1226,14 @@ int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset ){
 	}
 	if( (*(**cbf).blk).contentlen <= (*(**cbf).blk).buflen ){
 	  if( offset < 0 ){ // Append (usual)
-	    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
-	    	err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen);
-	    else
+	    if( (**cbf).transferencoding==CBTRANSENCOCTETS ){
+		if( (**cbf).fd<0 ) // 1.8.2016
+		    err = CBERRFILEOP;
+		else
+		    err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen);
+	    }else{
 		err = cb_transfer_write( &(*cbf) );
+	    }
 	  }else{ // Write (replace)
 	    // in the following, the file pointer is not updated ["Adv. Progr."]:
 	    if( (**cbf).transferencoding!=CBTRANSENCOCTETS )

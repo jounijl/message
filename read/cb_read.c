@@ -382,7 +382,7 @@ int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucsco
         if( (*(*(**cbf).cb).list.currentleaf).length >= 0 ){
                 len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
 	}
-	cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
+	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0){
 		if( *ucscontent==NULL ){ cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: parameter was null."); return CBERRALLOC; }
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 
@@ -408,6 +408,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: cn was null."); return CBERRALLOC; }
         if( ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_content: ucscontent was null."); return CBERRALLOC; }
+
         /*
          * Count length */
 	maxlen = maxlength; // 19.7.2016
@@ -442,7 +443,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 // 19.7.2016 (similar with cb_get_content)
         if( (**cn).length > 0 )
                 *clength = (**cn).length * 4; // 15.9.2015, character count times four bytes per character
-	else
+        else
                 *clength = maxlength;
 // /19.7.2016
 
@@ -483,8 +484,6 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
 
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: CLENGTH %i.", *clength );
-
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
@@ -501,7 +500,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		}
 
                 err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
-		cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
 		if( err>CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
 	        if( (**cbf).cf.stopatmessageend==1 && err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
 	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016

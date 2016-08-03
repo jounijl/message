@@ -892,6 +892,9 @@ int  cb_increase_terminalcount(CBFILE **cbs){
 int  cb_test_message_end( CBFILE **cbs ){
 	int ret = CBSUCCESS;
 	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC;
+	if( (**cbs).cb==NULL ){ // 30.6.2016
+		cb_clog( CBLOGERR, CBERRALLOC, "\ncb_test_message_end: cb was null, error %i.", CBERRALLOC ); return CBERRALLOC;
+	}
         /*
          * Stop at the message payload end set outside of the library with cb_set_message_end . */
         if( (**cbs).cf.stopatmessageend==1 && (*(**cbs).cb).messageoffset>0 ){
@@ -1136,6 +1139,7 @@ cb_set_cursor_reset_name_index:
 
 	if( cb_test_header_end( &(*cbs) ) == CBMESSAGEHEADEREND ){
 		ret = CBMESSAGEHEADEREND;
+		cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 19.7.2016 STILL IN TEST (branch 'transfer')
 		goto cb_set_cursor_ucs_return;
 	}
 
@@ -1144,11 +1148,6 @@ cb_set_cursor_reset_name_index:
           // Automatic stop at header-end if it's set
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[0x%.2x,0x%.2x,0x%.2x,0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
 
-	  // 30.3.2016
-//	  if( (*(**cbs).cb).headeroffset>0 && (*(**cbs).cb).headeroffset <= (*(**cbs).cb).contentlen )
-//	    ret = CBMESSAGEHEADEREND;
-	  // /30.3.2016
-
           if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
             if( (*(**cbs).cb).headeroffset < 0 ){
 	      if( chroffset < 0x7FFFFFFF){ // integer size - 1 
@@ -1156,6 +1155,7 @@ cb_set_cursor_reset_name_index:
 	      }
 	    }
 	    ret = CBMESSAGEHEADEREND;
+	    cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 19.7.2016 STILL IN TEST (branch 'transfer')
 	    goto cb_set_cursor_ucs_return;
           }
 	}
@@ -1598,6 +1598,7 @@ cb_set_cursor_reset_name_index:
 	        if( chroffset < 0x7FFFFFFF) // integer size - 1 
                   (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character
 	      ret = CBMESSAGEHEADEREND;
+	      cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 19.7.2016 STILL IN TEST (branch 'transfer')
 	      goto cb_set_cursor_ucs_return;
             }
 	  }

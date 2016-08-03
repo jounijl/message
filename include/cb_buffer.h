@@ -317,7 +317,7 @@
 
 #ifdef CBBENCHMARK
 typedef struct cb_benchmark {
-	long long int reads;       // characters reads (cb_get_chr)
+	long long int reads;       // character reads (cb_get_chr)
 	long long int bytereads;   // bytes reads (cb_get_ch)
 } cb_benchmark;
 #endif
@@ -338,7 +338,7 @@ typedef struct cb_read {
 	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
 	long int           lastchroffset;
 	unsigned char      lastreadchrendedtovalue;
-	unsigned char      pad1, pad2, pad3;
+	unsigned char      padto64bit[7];
 } cb_read;
 
 /*
@@ -352,8 +352,7 @@ typedef struct cb_match {
 /*
  * Fifo ring structure */
 typedef struct cb_ring {
-	char fpadding;        // compiler warnings, pad to next storage size (32 bit)
-	char spadding;        // pad to next storage size (32 bit)
+	char padto64bit[6];        // compiler warnings, pad to next storage size (32 bit)
         unsigned char buf[CBREADAHEADSIZE+1];
         unsigned char storedsizes[CBREADAHEADSIZE+1];
 	signed long int currentindex;     // 28.7.2015, place of last read character to remember it the next time
@@ -439,7 +438,7 @@ typedef struct cb_namelist{
 	cb_name              *last;
 	signed long long int  namecount;        // names
 	signed long long int  nodecount;        // names and leaves, 28.10.2015
-	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeros this.
+	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeroes this.
 	cb_read               rd;
 	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 } cb_namelist;
@@ -456,7 +455,7 @@ typedef struct cbuf{
         signed long int          messageoffset;        // offset of RFC-2822 message end from "Content-Length:". This has to be set from outside after reading the value, cb_set_message_end.
 	signed long int          chunkmissingbytes;    // Bytes missing from previous read of chunk, 28.5.2016.
 	char                     lastblockreadpartial; // If the previous reading of a block was not full (excepting the end of stream after this block)
-	char                     pad[3];
+	char                     padto64bit[7];
 } cbuf;
 
 typedef struct cbuf cblk;
@@ -669,6 +668,7 @@ int  cb_terminate_transfer( CBFILE **cbf ); // send termination sequence, for ex
 int  cb_allocate_cbfile(CBFILE **buf, int fd, int bufsize, int blocksize); 
 int  cb_allocate_buffer(cbuf **cbf, int bufsize);
 int  cb_allocate_name(cb_name **cbn, int namelen);
+int  cb_init_name( cb_name **cbn  ); // initialize name variables, 22.7.2016
 int  cb_reinit_buffer(cbuf **buf); // zero contentlen, index and empties names
 int  cb_empty_block(CBFILE **buf, char reading); // reading=1 to read (rewind) or 0 to append.
 int  cb_reinit_cbfile(CBFILE **buf);
