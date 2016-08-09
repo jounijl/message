@@ -459,17 +459,24 @@ int  cb_set_to_conf( CBFILE **str ){
 	(**str).cf.findwords=0;
 	return CBSUCCESS;
 }
+int  cb_set_to_html_post_text_plain( CBFILE **str ){
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_html_text_plain: str was null." ); return CBERRALLOC; }
+	cb_set_to_html_post( &(*str) );
+	cb_set_rend( &(*str), (unsigned long int) 0x0D ); // <CR>
+	(**str).cf.removecrlf = 1; // remove <LF> from name (Opera: last <LF> is missing. Chrome and Opera: <CR><LF>)
+	return CBSUCCESS;
+}
 int  cb_set_to_html_post( CBFILE **str ){ 
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_html_post: str was null." ); return CBERRALLOC; }
         cb_set_rstart( &(*str), (unsigned long int) '=' );
-        cb_set_rend( &(*str), (unsigned long int) '&' );
+        cb_set_rend( &(*str), (unsigned long int) '&' ); // URL-encoding
         cb_set_cstart( &(*str), (unsigned long int) 0x1D ); // 'GS' group separator, some non-alphanumeric characters (these have to be encoded in POST with percent sign and hexadecimal value)
         cb_set_cend( &(*str), (unsigned long int) 0x1F ); // 'US' unit separator, "
         cb_set_bypass( &(*str), (unsigned long int) '\\' ); // "semantically invisible" [2822 3.2.3], should be encoded with percent sign
 	cb_set_search_state( &(*str), CBSTATEFUL );
         //(**str).cf.rfc2822headerend=0;
         (**str).cf.stopatheaderend=0;
-        (**str).cf.stopatmessageend=0;
+        (**str).cf.stopatmessageend=1; // 9.8.2016
         (**str).cf.asciicaseinsensitive=0;
         (**str).cf.unfold=0;
         (**str).cf.doubledelim=0;
@@ -713,7 +720,11 @@ int  cb_allocate_cbfile_from_blk(CBFILE **str, int fd, int bufsize, unsigned cha
 	}else{
 	  err = cb_allocate_buffer( &(**str).blk, 0 ); // blk
 	  if(err==-1){ return CBERRALLOC; }
-	  free( (*(**str).blk).buf );
+	  if( (*(**str).blk).buflen>0 && (*(**str).blk).buf!=NULL ){ // 5.8.2016
+	    memset( &(*(**str).blk).buf[0], 0x20, (size_t) (*(**str).blk).buflen ); // 5.8.2016
+	    (*(**str).blk).buf[ (*(**str).blk).buflen ] = '\0'; // 5.8.2016
+	    free( (*(**str).blk).buf );
+	  }
 	  (*(**str).blk).buf = &(**blk);
 	  (*(**str).blk).buflen = (long) blklen;
 	  (*(**str).blk).contentlen = (long) blklen;
@@ -767,6 +778,8 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	if( blk!=NULL && *blk!=NULL && blksize>=0 ){
 	  //if( (*(**cbf).blk).buf != NULL ){
 	  if( (*(**cbf).blk).buf != NULL && (*(**cbf).blk).buflen>0 ){ // 30.6.2016
+		memset( &(*(**cbf).blk).buf[0], 0x20, (size_t) (*(**cbf).blk).buflen ); // 5.8.2016
+		(*(**cbf).blk).buf[ (*(**cbf).blk).buflen ] = '\0'; // 5.8.2016
 		free( (*(**cbf).blk).buf ); // 30.6.2016
 		(*(**cbf).blk).buf = NULL;
 	  }
@@ -856,7 +869,8 @@ int  cb_free_cbfile(CBFILE **buf){
 	  cb_reinit_buffer( &(**buf).cb ); // free names
 	  if( (**buf).cb!=NULL && (*(**buf).cb).buf!=NULL ){
 	    if( (*(**buf).cb).buflen>0 ){
-	      memset( &(*(*(**buf).cb).buf), 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls, uncommented 15.7.2016
+	      //memset( &(*(*(**buf).cb).buf), 0x20, (size_t) ( (*(**buf).cb).buflen - 1 ) ); // 15.11.2015 write something to overwrite nulls, uncommented 15.7.2016
+	      memset( &(*(*(**buf).cb).buf), 0x20, (size_t) (*(**buf).cb).buflen ); // 15.11.2015 write something to overwrite nulls, uncommented 15.7.2016, 5.8.2016
 	      (*(**buf).cb).buf[ (*(**buf).cb).buflen ] = '\0'; // 17.7.2016
 	    }
 	    free( (*(**buf).cb).buf ); // free buffer data
@@ -871,7 +885,8 @@ int  cb_free_cbfile(CBFILE **buf){
 	if( (**buf).blk!=NULL ){
 	  if( (*(**buf).blk).buf!=NULL ){ // 15.7.2016
 	    if( (*(**buf).blk).buflen>0 ){
-	      memset( &(*(*(**buf).blk).buf), 0x20, (size_t) ( (*(**buf).blk).buflen - 1 ) ); // write something to overwrite nulls, 15.7.2016
+	      //memset( &(*(*(**buf).blk).buf), 0x20, (size_t) ( (*(**buf).blk).buflen - 1 ) ); // write something to overwrite nulls, 15.7.2016
+	      memset( &(*(*(**buf).blk).buf), 0x20, (size_t) (*(**buf).blk).buflen ); // write something to overwrite nulls, 15.7.2016, 5.8.2016
 	      (*(**buf).blk).buf[ (*(**buf).blk).buflen ] = '\0'; // 17.7.2016
 	    }
             free( (*(**buf).blk).buf ); // free block data
