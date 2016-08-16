@@ -1381,7 +1381,8 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	  }
 	  *ch=' ';
 	  // get char
-	  err = cb_get_char_read_block(cbs, &chr);
+	  //err = cb_get_char_read_block(cbs, &chr);
+	  err = cb_get_char_read_block( &(*cbs), &chr); // 16.8.2016
 
 	  if( err == CBSTREAMEND || err >= CBERROR ){ return err; }
 	  if( (**cbs).cf.stopatmessageend==1 && err == CBMESSAGEEND ){ return err; } // 30.3.2016
