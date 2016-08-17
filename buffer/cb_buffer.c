@@ -1118,7 +1118,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	cblk *blk = NULL; 
 	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL || (*(**cbf).blk).buf==NULL ){ // 28.5.2016
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_char_read_offset_block: parameter was null." );
-	  return CBERRALLOC; 
+	  return CBERRALLOC;
 	}
 	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
 	  cb_log( &(*cbf), CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
