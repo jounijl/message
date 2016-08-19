@@ -99,6 +99,7 @@ int  cb_copy_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength
 	*ucsname = &(*ptr);
 	return err;
 }
+// cb_get_current_name_subfunction( &(*cbs), &ptr, &(*namelength), 0, 1, 1);
 int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflength, char leaf, char allocate ){
 	/*
 	 * Allocate and copy current name to new ucsname */
@@ -119,12 +120,17 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	  	}
 		*ucsname = (unsigned char*) malloc( sizeof(unsigned char) * ( (unsigned int) namebuflength ) );
 	  }
-	  if( ucsname==NULL ) { 
-		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: malloc returned null.");
+	  if( ucsname==NULL ){
+		if( allocate==1 )
+			cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: malloc returned null.");
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: allocation error.");
 		return CBERRALLOC; 
 	  }
+	  if( ( namebuflength<(*(*(**cbs).cb).list.current).namelen && leaf!=1 ) || ( namebuflength<(*(*(**cbs).cb).list.currentleaf).namelen && leaf==1 ) ){
+		cb_clog( CBLOGDEBUG, CBINDEXOUTOFBOUNDS, "\ncb_get_current_name_subfunction: name buffer was smaller (%i) than the name length (%i), allocate=%i, leaf=%i, error %i.", namebuflength, (*(*(**cbs).cb).list.current).namelen, (int) allocate, (int) leaf, CBINDEXOUTOFBOUNDS );
+		return CBINDEXOUTOFBOUNDS;
+	  }
 	  if( leaf!=1 ){
-	    (*ucsname)[(*(*(**cbs).cb).list.current).namelen] = '\0';
 	    for( indx=0; indx<(*(*(**cbs).cb).list.current).namelen && indx<namebuflength; ++indx)
 	      (*ucsname)[indx] = (*(*(**cbs).cb).list.current).namebuf[indx];
 	    (*ucsname)[ (*(*(**cbs).cb).list.current).namelen ] = '\0'; // 2.7.2016
@@ -133,7 +139,6 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	    if(namelength==NULL) { return CBERRALLOC; }
  	    *namelength = (*(*(**cbs).cb).list.current).namelen;
 	  }else{
-	    (*ucsname)[(*(*(**cbs).cb).list.currentleaf).namelen] = '\0';
 	    for( indx=0; indx<(*(*(**cbs).cb).list.currentleaf).namelen && indx<namebuflength; ++indx)
 	      (*ucsname)[indx] = (*(*(**cbs).cb).list.currentleaf).namebuf[indx];
 	    (*ucsname)[ (*(*(**cbs).cb).list.currentleaf).namelen ] = '\0'; // 2.7.2016
@@ -159,7 +164,7 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
  * Searched next name in list. Not leafs. */
 int  cb_copy_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen){
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL ){    cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null."); return CBERRALLOC; }
-	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 1);
+	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 0);
 }
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	if( cbs==NULL || *cbs==NULL ){    cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC; }
@@ -167,7 +172,7 @@ int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength
           cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
           return CBERRALLOC;
         }
-	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), 0, 0);
+	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), 0, 1);
 }
 int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflength, char allocate ){
 	int ret = CBSUCCESS;
