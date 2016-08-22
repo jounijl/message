@@ -756,6 +756,10 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
  *
  * Freeing the buffer blk after use has to be careful. The buffer may have to be
  * set as null before freeing the CBFILE.
+ *
+ * Block has to be managed by the programmer (free at end and set to point to 
+ * null), 22.8.2016.
+ *
  */
 int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ){
 	int err = CBSUCCESS;
@@ -765,9 +769,9 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	if( (**cbf).cb==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: buffer was null." );  return CBERRALLOC; }
 	//30.6.2016 if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; }
 
-	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
-        //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
-        //cb_clog( CBLOGDEBUG, CBSUCCESS, "]." );
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
+        cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
+        cb_clog( CBLOGDEBUG, CBSUCCESS, "]." );
 
 	/*
 	 * Zero counters. */
@@ -776,17 +780,13 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	/*
 	 * Attach a new buffer to the block. */
 	if( blk!=NULL && *blk!=NULL && blksize>=0 ){
-	  //if( (*(**cbf).blk).buf != NULL ){
-	  if( (*(**cbf).blk).buf != NULL && (*(**cbf).blk).buflen>0 ){ // 30.6.2016
-		memset( &(*(**cbf).blk).buf[0], 0x20, (size_t) (*(**cbf).blk).buflen ); // 5.8.2016
-		(*(**cbf).blk).buf[ (*(**cbf).blk).buflen ] = '\0'; // 5.8.2016
-		free( (*(**cbf).blk).buf ); // 30.6.2016
-		(*(**cbf).blk).buf = NULL;
-	  }
 	  (*(**cbf).blk).buf = &(**blk);
 	  (*(**cbf).blk).buflen = blksize;
 	  (*(**cbf).blk).contentlen = blksize; // 19.3.2016
+	}else{
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reinit_cbfile_from_blk: parameter blk was null." );
 	}
+
 	return err;
 }
 

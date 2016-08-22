@@ -17,8 +17,13 @@
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
-#define CBSUCCESSJSONQUOTES    15    // cb_read cb_copy_content returns this if JSON string, quotes removed
-#define CBSUCCESSJSONARRAY     16    // cb_read cb_copy_content returns this if JSON array
+#define CBSUCCESSJSONQUOTES    30    // cb_read cb_copy_content returns this if JSON string, quotes removed
+#define CBSUCCESSJSONARRAY     31    // cb_read cb_copy_content returns this if JSON array
+#define CBSUCCESSJSONNUMBER    32
+#define CBSUCCESSJSONTRUE      33
+#define CBSUCCESSJSONFALSE     34
+#define CBSUCCESSJSONNULL      35
+#define CBSUCCESSJSONSTRING    36
 
 #define CBNOTJSON              90
 #define CBNOTJSONVALUE         91

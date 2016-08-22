@@ -29,11 +29,14 @@
  * position. New 'ucsname' is allocated and the name is copied 4-bytes
  * per character. Length is bytelength. ocoffset can not be used. */
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength); 
+int  cb_copy_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen);
 
 /*
  * 30.11.2013. Allocates new ucsname and copies current name to it. */
 int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
+int  cb_copy_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen );
 int  cb_get_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelength );
+int  cb_copy_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen );
 
 /*
  * 4.11.2013
