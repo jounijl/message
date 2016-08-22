@@ -56,7 +56,7 @@ int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, in
  * and *from is updated with the name length.
  */
 int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
-	int err = CBSUCCESS;
+	int err = CBSUCCESS, wsperr = CBSUCCESS; // 22.8.2016
 	unsigned long int chr=0x20;
 	if( from==NULL || cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_value: ucsvalue was null."); return CBERRALLOC; }
 	err = cb_check_json_value_subfunction( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
@@ -70,9 +70,9 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 		 */
 		/* 
 		 * Read away white spaces. */
-		while( *from<ucsvaluelen && ucsvaluelen>0 && *from>0 && *from<CBNAMEBUFLEN && err<CBNEGATION && \
+		while( *from<ucsvaluelen && ucsvaluelen>0 && *from>0 && *from<CBNAMEBUFLEN && err<CBNEGATION && wsperr<CBNEGATION && \
 			( WSP( chr ) || CR( chr ) || LF( chr ) ) ){
-			err = cb_get_ucs_chr( &chr, &(*ucsvalue), &(*from), ucsvaluelen);
+			wsperr = cb_get_ucs_chr( &chr, &(*ucsvalue), &(*from), ucsvaluelen);
 			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: read away white spaces chr [%c]", (char) chr );
 		}
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: FROM: %i, UCSVALUELEN: %i, ERR: %i.", *from, ucsvaluelen, err );
