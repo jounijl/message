@@ -379,6 +379,7 @@ typedef struct cb_conf {
 	unsigned char       doubledelim:1;                 // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) 
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
+	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
 	/* Name parsing options */
 	unsigned char       removenamewsp:1;               // Remove white space characters inside name
         unsigned char       asciicaseinsensitive:1;        // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
@@ -397,7 +398,7 @@ typedef struct cb_conf {
 	unsigned char       logpriority:6;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 	/* Read methods */
 	unsigned char       usesocket:1;                   // Read only headeroffset and messageoffset length blocks
-	unsigned char       nonblocking:4;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
+	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 	/* Stream end recognition */
 	unsigned char       stopateof:1;                   // Recognize CBSTREAMEND at EOF character. Default is 1.
 	unsigned char       stopafterpartialread:1;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
@@ -708,7 +709,8 @@ int  cb_set_to_conf( CBFILE **str ); // Sets doubledelim, CBSTATETREE, unique na
 int  cb_set_to_html_post( CBFILE **str ); // Post attributes with alphanumeric characters and percent encoding for others, no folding, case sensitive
 int  cb_set_to_html_post_text_plain( CBFILE **str ); // HTML POST content type text/plain, 9.8.2016
 int  cb_set_to_message_format( CBFILE **str ); // Remove CR. Sets new line as rend, rstart ':', folding, ending at header end, (ASCII) case insensitive names, comments as '(' and ')'.
-int  cb_set_to_word_search( CBFILE **str ); // Find a word list. Not usable with trees because words can end to SP, TAB, CR or LF.
+int  cb_set_to_word_search( CBFILE **str ); // Find a word list with words from $ ending with ',' or with the following special characters. Not usable with trees because words can end to SP, TAB, CR or LF.
+int  cb_set_to_name_list_search( CBFILE **str ); // Find names without values separated by rend (default is ','): name1, name2, name3, ...
 int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
 
 int  cb_set_message_end( CBFILE **str, long int contentoffset );

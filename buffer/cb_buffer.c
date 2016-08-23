@@ -378,6 +378,7 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
 
 /*
  * Namelist without values: name1, name2, name3, ... */
+/* Currently 23.8.2016, does not find. Lists names. Search again to find. */
 int  cb_set_to_name_list_search( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_name_list_search: str was null." ); return CBERRALLOC; }
         cb_set_to_word_search( &(*str) );

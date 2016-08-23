@@ -145,6 +145,11 @@ int main (int argc, char **argv) {
 	    uniquenamesandleaves=1;
 	    continue;
 	  }
+	  u = get_option( argv[i], argv[i+1], 'a', &value); // name list
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
+	    cb_set_to_name_list_search(&in);
+	    continue;
+	  }
 	  u = get_option( argv[i], argv[i+1], 'b', &value); // buffer size
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    bufsize = (int) strtol(value,&str_err,10);
@@ -286,9 +291,9 @@ int main (int argc, char **argv) {
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
 	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] <name> \n\n");
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] [ -a ] <name> \n\n");
 	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] \\\n");
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] [ -a ] \\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
 	fprintf(stderr,"\t-t include the search from the subtrees\n");
 	fprintf(stderr,"\t-u set to unique names \n");
@@ -296,6 +301,7 @@ void usage (char *progname[]){
 	fprintf(stderr,"\t-J use JSON format\n");
 	fprintf(stderr,"\t-x regular expression search\n");
 	fprintf(stderr,"\t-w search one name only\n");
+	fprintf(stderr,"\t-a search name list\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");

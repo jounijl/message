@@ -15,8 +15,8 @@ LD="/usr/bin/clang"
 # Library archive
 #
 
-LIBSRCS=" cb_buffer.c cb_compare.c ../read/cb_read.c ../read/cb_json.c ../read/cb_urlencode.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
-LIBOBJS=" cb_buffer.o cb_compare.o cb_read.o cb_json.o cb_urlencode.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
+LIBSRCS=" cb_transfer.c cb_buffer.c cb_compare.c ../read/cb_read.c ../read/cb_json.c ../read/cb_urlencode.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
+LIBOBJS=" cb_transfer.o cb_buffer.o cb_compare.o cb_read.o cb_json.o cb_urlencode.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
 LIBARCH="libcb.a"
 FLAGS=" -g -Weverything -I/usr/local/include -I. -I/usr/include -I../include -I../read "
 LDFLAGS=" -g -lc -I/usr/local/include -I. -I/usr/include -I../include -L/usr/lib -L/usr/local/lib -lpcre2-32 "
@@ -47,7 +47,6 @@ $CC $FLAGS -c ../buffer/test_cb.c
 rm test_cb
 # jarjestyksella on valia
 $LD $LDFLAGS -L. test_cb.o $LIBARCH -o test_cb
-
 
 #
 # Programs

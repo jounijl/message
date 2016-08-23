@@ -1169,7 +1169,7 @@ cb_set_cursor_reset_name_index:
 	  err = ret;
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
-	cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
 	//fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nset_cursor: new name, index (chr offset %li).", chroffset );
         //cb_clog( CBLOGDEBUG, CBNEGATION, "\nring buffer counters:");
@@ -1623,7 +1623,7 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 	   * cb_search_get_chr returns maximum bufsize offset */
 	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
-	  cb_clog( CBLOGDEBUG, CBNEGATION, "%c|", (unsigned char) chr ); // BEST
+	  //cb_clog( CBLOGDEBUG, CBNEGATION, "%c|", (unsigned char) chr ); // BEST
 	  //fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\nring buffer counters:");
 	  //cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
@@ -1658,7 +1658,7 @@ cb_set_cursor_ucs_return:
 
 	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i (err %i).", ret, err );
 
-	if( (**cbs).cf.namelist==1 && err==CBSTREAMEND && lastinnamelist==0 ){
+	if( (**cbs).cf.namelist==1 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) && lastinnamelist==0 ){
 		lastinnamelist = 1;
 		goto cb_set_cursor_match_length_ucs_matchctl_save_name;
 	}

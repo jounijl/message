@@ -36,7 +36,7 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 int  cb_find_every_name(CBFILE **cbs){
 	int err = CBSUCCESS; 
 	unsigned char *name = NULL;
-	unsigned char  chrs[2]  = { 0x20, '\0' };
+	unsigned char  chrs[2] = { 0x20, '\0' };
 	int namelength = 0;
 	unsigned char searchmethod=0;
 	if( cbs==NULL || *cbs==NULL )
@@ -59,7 +59,7 @@ int  cb_get_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelen
 	int err = CBSUCCESS;
 	unsigned char *ptr = NULL;
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
-		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_currentleaf_name: parameter was null.");
 		return CBERRALLOC;
 	}
 	err = cb_get_current_name_subfunction( &(*cbs), &ptr, &(*namelength), 0, 1, 1);
@@ -68,13 +68,11 @@ int  cb_get_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelen
 }
 int  cb_copy_currentleaf_name(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen ){ // 18.8.2016
 	int err = CBSUCCESS;
-	unsigned char *ptr = NULL;
-	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
-		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL ){
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_copy_currentleaf_name: parameter was null.");
 		return CBERRALLOC;
 	}
-	err = cb_get_current_name_subfunction( &(*cbs), &ptr, &(*namelength), namebuflen, 1, 0);
-	*ucsname = &(*ptr);
+	err = cb_get_current_name_subfunction( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 1, 0);
 	return err;
 }
 int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength ){
@@ -90,13 +88,11 @@ int  cb_get_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength 
 }
 int  cb_copy_current_name(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen ){ // 18.8.2016
 	int err = CBSUCCESS;
-	unsigned char *ptr = NULL;
-	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){
-		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL ){
+		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_copy_current_name: parameter was null.");
 		return CBERRALLOC;
 	}
-	err = cb_get_current_name_subfunction( &(*cbs), &ptr, &(*namelength), namebuflen, 0, 0);
-	*ucsname = &(*ptr);
+	err = cb_get_current_name_subfunction( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 0, 0);
 	return err;
 }
 int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflength, char leaf, char allocate ){
@@ -104,7 +100,15 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	 * Allocate and copy current name to new ucsname */
 	int ret = CBSUCCESS, indx=0;
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL || ( allocate!=1 && *ucsname==NULL ) ){
-		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_current_name: parameter was null.");
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name_subfunction: parameter was null.");
+		if( *ucsname==NULL && allocate!=1 )
+			cb_clog( CBLOGDEBUG, CBERRALLOC, " (*ucsname was null).");
+		else if( namelength==NULL )
+			cb_clog( CBLOGDEBUG, CBERRALLOC, " (namelength was null).");
+		else if( ucsname==NULL )
+			cb_clog( CBLOGDEBUG, CBERRALLOC, " (ucsname was null).");
+		else if( cbs==NULL || *cbs==NULL )
+			cb_clog( CBLOGDEBUG, CBERRALLOC, " (cbs or *cbs was null).");
 		return CBERRALLOC;
 	}
 
@@ -164,12 +168,14 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
  * Searched next name in list. Not leafs. */
 int  cb_copy_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen){
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL ){    
-		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null."); return CBERRALLOC; 
+		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_copy_next_name_ucs: parameter was null."); return CBERRALLOC; 
 	}
 	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 0);
 }
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
-	if( cbs==NULL || *cbs==NULL ){    cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: cbs was null."); return CBERRALLOC; }
+	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){    
+		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null."); return CBERRALLOC; 
+	}
         if( *ucsname!=NULL ){
           cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
           return CBERRALLOC;
@@ -206,13 +212,13 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 		*ucsname = NULL; // 11.12.2014
 	}
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM){ // returns only CBSUCCESS or CBSTREAM or error
-	  //ret = cb_get_current_name( &(*cbs), &(*ucsname), &(*namelength) );
-	  if( allocate==1 )
+	  if( allocate==1 ){
 	 	ret = cb_get_current_name( &(*cbs), &ptr, &(*namelength) ); // 11.7.2016
-	  else
-		ret = cb_copy_current_name( &(*cbs), &ptr, &(*namelength), namebuflength ); // 18.8.2016
-	  if( ptr!=NULL )
-	    *ucsname = &(*ptr); // 11.7.2016
+		if( ptr!=NULL )
+		    *ucsname = &(*ptr); // 11.7.2016
+	  }else{
+		ret = cb_copy_current_name( &(*cbs), &(*ucsname), &(*namelength), namebuflength ); // 18.8.2016
+	  }
 	  cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); // 23.8.2016
 	  if(ret>=CBERROR){ cb_log( &(*cbs), CBLOGERR, ret, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
 	  if(ret>=CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
