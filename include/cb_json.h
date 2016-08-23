@@ -1,4 +1,4 @@
-/* 
+/*
  * Functions to check JSON values. 
  * 
  * Copyright (C) 2015 and 2016. Jouni Laakso
