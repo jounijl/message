@@ -938,6 +938,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 			       // After rstart '=', subrstart '{' or subrend '}' has no effect until rend ';'.  (3.10.2015: and reader should read until rend)
 			       // For example: name { name2=text2; name3 { name4=text4; name5=text5; } }
 			       // (JSON can be replaced by setting rstart '"', rend '"' and by removing ':' from name)
+	char lastinnamelist = 0;
         unsigned long int ch3prev=CBRESULTEND+2, ch2prev=CBRESULTEND+1;
 	int openpairs=0, previousopenpairs=0; // cbstatetopology, cbstatetree (+ cb_name length information)
 	int levels=0; // try to find the last read openpairs with this variable
@@ -1168,7 +1169,7 @@ cb_set_cursor_reset_name_index:
 	  err = ret;
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c,0x%X|", (unsigned char) chr, (unsigned char) chr );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
+	cb_clog( CBLOGDEBUG, CBNEGATION, "|%c|", (unsigned char) chr ); // BEST
 	//fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nset_cursor: new name, index (chr offset %li).", chroffset );
         //cb_clog( CBLOGDEBUG, CBNEGATION, "\nring buffer counters:");
@@ -1284,6 +1285,9 @@ cb_set_cursor_reset_name_index:
 
 	  if(tovalue==1){
 
+	  // 23.8.2016, namelist:
+cb_set_cursor_match_length_ucs_matchctl_save_name:
+
 	    atvalue=1;
 
 	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\n Going to save name from charbuf to fname." );
@@ -1332,6 +1336,9 @@ cb_set_cursor_reset_name_index:
 	          }else{
 		    buferr = savenameerr; // 23.10.2015
 		  }
+		  if( (**cbs).cf.namelist==1 && lastinnamelist==1 ) // 23.8.2016, namelist
+		  	goto cb_set_cursor_ucs_return;
+
 	        }
 	      }
 	      if( (**cbs).cf.searchstate!=CBSTATETREE && (**cbs).cf.searchstate!=CBSTATETOPOLOGY ){
@@ -1616,7 +1623,7 @@ cb_set_cursor_reset_name_index:
 	   * cb_search_get_chr returns maximum bufsize offset */
 	  err = cb_search_get_chr( &(*cbs), &chr, &chroffset); // 1.9.2013
 
-	  //cb_clog( CBLOGDEBUG, CBNEGATION, "%c|", (unsigned char) chr ); // BEST
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "%c|", (unsigned char) chr ); // BEST
 	  //fprintf(stderr,"[%c (err %i)]", (unsigned char) chr, err);
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\nring buffer counters:");
 	  //cb_fifo_print_counters( &(**cbs).ahd, CBLOGDEBUG );
@@ -1648,7 +1655,14 @@ cb_set_cursor_ucs_return:
 	      (*(*(**cbs).cb).list.current).lasttimeused = (signed long int) time(NULL); // last time used in seconds
 	  }
 	}
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i.", ret);
+
+	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i (err %i).", ret, err );
+
+	if( (**cbs).cf.namelist==1 && err==CBSTREAMEND && lastinnamelist==0 ){
+		lastinnamelist = 1;
+		goto cb_set_cursor_match_length_ucs_matchctl_save_name;
+	}
+
 	return ret;
 
         return CBNOTFOUND;

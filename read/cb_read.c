@@ -46,7 +46,7 @@ int  cb_find_every_name(CBFILE **cbs){
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	//err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 1, -1 ); // no match
 	err = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelength, 0, -1 ); // no match, 24.10.2015
-	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_find_every_name: cb_set_cursor_match_length_ucs returned %i.", err);
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_find_every_name: cb_set_cursor_match_length_ucs returned %i.", err);
 	(**cbs).cf.searchmethod = searchmethod;
 	return err;
 }
@@ -197,7 +197,7 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 	searchmethod = (**cbs).cf.searchmethod;
 	(**cbs).cf.searchmethod = CBSEARCHNEXTNAMES;
 	ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, 0, 0 ); // matches first (any)
-	//cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i (ocoffset 0, matchctl 0).", ret );
+	cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_set_cursor_match_length_ucs returned %i (ocoffset 0, matchctl 0).", ret );
 	//ret = cb_set_cursor_match_length_ucs( &(*cbs), &name, &namelen, ocoffset, 0 ); // matches first (any) (cbsearchnextleaves was added later, 1.7.2015)
 	(**cbs).cf.searchmethod = searchmethod;
 
@@ -213,6 +213,7 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 		ret = cb_copy_current_name( &(*cbs), &ptr, &(*namelength), namebuflength ); // 18.8.2016
 	  if( ptr!=NULL )
 	    *ucsname = &(*ptr); // 11.7.2016
+	  cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); // 23.8.2016
 	  if(ret>=CBERROR){ cb_log( &(*cbs), CBLOGERR, ret, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
 	  if(ret>=CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
 	}

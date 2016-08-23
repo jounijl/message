@@ -3,7 +3,8 @@
 CC="/usr/bin/cc"
 LD="/usr/bin/clang"
 
-FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o ../cb_urlencode.o ../cb_json.o "
+FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o"
+FOBJS="${FOBJS} ../cb_urlencode.o ../cb_json.o ../cb_transfer.o "
 
 FLAGS=" -Weverything -g -O0 -I/usr/local/include -I. -I/usr/include -I../../include -I../../read "
 LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -I../../read -L/usr/lib -L/usr/local/lib -lc -lpcre2-32 "
@@ -49,19 +50,23 @@ LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -
 #$LD $LDFLAGS test_cbprint.o $FOBJS ../get_option.o -o cbprint
 #rm test_cbprint.o
 
-#$CC $FLAGS -c test_cbfindall.c &&
-#$LD $LDFLAGS test_cbfindall.o $FOBJS -o cbfindall
-#rm test_cbfindall.o
+$CC $FLAGS -c test_cbfindall.c &&
+$LD $LDFLAGS test_cbfindall.o $FOBJS -o cbfindall
+rm test_cbfindall.o
 
 #$CC $FLAGS -c test_cb_fifo.c &&
 #$LD $LDFLAGS test_cb_fifo.o $FOBJS -o test_cbfifo
 #rm test_cb_fifo.o
 
-#$CC $FLAGS -c test_cbwords.c &&
-#$LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
-#rm test_cbwords.o
+$CC $FLAGS -c test_cbwords.c &&
+$LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
+rm test_cbwords.o
+
+$CC $FLAGS -c test_cbwordlist.c &&
+$LD $LDFLAGS test_cbwordlist.o $FOBJS -o test_cblist
+rm test_cbwordlist.o
 
 $CC $FLAGS -c test_urlencode.c &&
-$LD $LDFLAGS test_urlencode.o $FOBJS ../get_option.o -o urldecode
+$LD $LDFLAGS test_urlencode.o $FOBJS ../get_option.o -o urlencode
 rm test_urlencode.o
 

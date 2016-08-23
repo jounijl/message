@@ -377,6 +377,20 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
 }         
 
 /*
+ * Namelist without values: name1, name2, name3, ... */
+int  cb_set_to_name_list_search( CBFILE **str ){
+	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_name_list_search: str was null." ); return CBERRALLOC; }
+        cb_set_to_word_search( &(*str) );
+        (**str).cf.findwords = 0;
+        (**str).cf.leadnames = 1;
+	(**str).cf.namelist  = 1; // add name at the end of stream
+        cb_set_search_state( &(*str), CBSTATELESS );   
+        cb_set_rend( &(*str), (unsigned long int) ',');
+        // rstart is not needed and should not be written in the text
+	return CBSUCCESS;
+}
+
+/*
  * Wordlist is different from other search settings. Rend and rstart are backwards.
  * The setting works only with CBSTATEFUL and with the following settings (20.3.2016):
  * findwords, removewsp, removesemicolon, removecrlf, removenamewsp, unfold. 
@@ -387,6 +401,7 @@ int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method){
 int  cb_set_to_word_search( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_word_search: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
+	(**str).cf.namelist=1; // add name at the end of stream, 23.8.2016
 	(**str).cf.doubledelim=0;
 	(**str).cf.json=0;
 	(**str).cf.removewsp=1;
@@ -610,6 +625,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.nonblocking=0; // if set, fd should be set with fcntl flag O_NONBLOCK
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
+	(**str).cf.namelist=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.jsonvaluecheck=0;
 	(**str).cf.jsonnamecheck=0;
