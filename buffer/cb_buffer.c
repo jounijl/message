@@ -58,6 +58,7 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nstopatheaderend:             \t0x%.2XH", (**str).cf.stopatheaderend);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopatmessageend:            \t0x%.2XH", (**str).cf.stopatmessageend);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovewsp:                   \t0x%.2XH", (**str).cf.removewsp);
+	cb_log(&(*str), priority, CBNEGATION, "\nremoveeof:                   \t0x%.2XH", (**str).cf.removeeof);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovecrlf:                  \t0x%.2XH", (**str).cf.removecrlf);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovesemicolon:             \t0x%.2XH", (**str).cf.removesemicolon);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovecommentsinname:        \t0x%.2XH", (**str).cf.removecommentsinname);
@@ -633,6 +634,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.urldecodevalue=0;
 	(**str).cf.removecrlf=0;
 	(**str).cf.removewsp=0;
+	(**str).cf.removeeof=0;
 	(**str).cf.removesemicolon=0; // wordlist has many differences because rend and rstart are backwards and not all settings are compatible, default is off
 	(**str).cf.removenamewsp=0;
 	(**str).cf.removecommentsinname=0;

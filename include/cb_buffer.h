@@ -384,6 +384,7 @@ typedef struct cb_conf {
 	unsigned char       removenamewsp:1;               // Remove white space characters inside name
         unsigned char       asciicaseinsensitive:1;        // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         unsigned char       removewsp:1;                   // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+        unsigned char       removeeof:1;                   // Remove EOF from name, 26.8.2016
         unsigned char       removecrlf:1;                  // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
         unsigned char       removesemicolon:1;             // Remove semicolon between value and name (not RFC 2822 compatible) 
 	unsigned char       removecommentsinname:1;        // Remove comments inside names (JSON can't do this, it does not have comments)
@@ -395,7 +396,7 @@ typedef struct cb_conf {
         unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
 	/* Log options */
-	unsigned char       logpriority:6;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
+	unsigned char       logpriority:5;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 	/* Read methods */
 	unsigned char       usesocket:1;                   // Read only headeroffset and messageoffset length blocks
 	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.

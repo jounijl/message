@@ -1694,7 +1694,7 @@ int cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, un
 
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\n cb_save_name_from_charbuf: name [");
 	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*charbuf), index, CBNAMEBUFLEN);
-	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "] index=%i, (**fname).buflen=%i cstart:[%c] cend:[%c] ", index, (**fname).buflen, (char) (**cbs).cf.cstart, (char) (**cbs).cf.cend);
+	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "] index=%i, (**fname).buflen=%i, removeeof=%i, cstart:[%c] cend:[%c] ", index, (**fname).buflen, (**cbs).cf.removeeof, (char) (**cbs).cf.cstart, (char) (**cbs).cf.cend);
 
         if(index<(**fname).buflen){
           (**fname).namelen=0; // 6.4.2013
@@ -1717,10 +1717,15 @@ cb_save_name_ucs_removals:
 	          goto cb_save_name_ucs_removals;
 	        }
 	      }
+	      if( (**cbs).cf.removeeof==1 ){ // Removes EOF from the start of the name, 26.8.2016
+                if( indx<index && cmp==( unsigned long int )0x00FF && buferr==CBSUCCESS){ // EOF (-1) in a character is 0x00FF
+	          goto cb_save_name_ucs_removals;
+	        }
+	      }
 	      if( (**cbs).cf.removesemicolon==1 ){ // 20.3.2016, not yet tested
                 if( indx<index && ( cmp == (unsigned long int) 0x003B ) && buferr==CBSUCCESS ){ // ';'
 	          goto cb_save_name_ucs_removals;
-	        }		
+	        }
 	      }
 
               /* Write name */
@@ -1735,10 +1740,10 @@ cb_save_name_ucs_removals:
 	                atname=1;
 		      }
 	            }
-		  }else if( cmp == (unsigned long int) 0x22 ){ // '"'
+	    	  }else if( cmp == (unsigned long int) 0x22 ){ // '"'
 	            ++injsonquotes; if(injsonquotes<0) injsonquotes=3;
 	          }
-	        }
+		}
               }
             }
           }
