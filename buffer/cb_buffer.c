@@ -53,6 +53,8 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchmethod:                \t0x%.2XH", (**str).cf.searchmethod);
 	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmethod:            \t0x%.2XH", (**str).cf.leafsearchmethod);
 	cb_log(&(*str), priority, CBNEGATION, "\nfindleaffromallnames:        \t0x%.2XH", (**str).cf.findleaffromallnames);
+	cb_log(&(*str), priority, CBNEGATION, "\nencoding:                    \t0x%.2XH", (**str).encoding );
+	cb_log(&(*str), priority, CBNEGATION, "\ntransferencoding:            \t0x%.2XH", (**str).transferencoding );
 	cb_log(&(*str), priority, CBNEGATION, "\nunfold:                      \t0x%.2XH", (**str).cf.unfold);
 	cb_log(&(*str), priority, CBNEGATION, "\nasciicaseinsensitive:        \t0x%.2XH", (**str).cf.asciicaseinsensitive);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopatheaderend:             \t0x%.2XH", (**str).cf.stopatheaderend);

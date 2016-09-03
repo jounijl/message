@@ -104,13 +104,30 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 		return CBERRALLOC;
  	} // 24.10.2015
 
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: matchctl %i.", (*mctl).matchctl );
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: address of name1: %lx, address of name2: %lx.", (long int) *name1, (long int) *name2 );
 
 /**
 	//if( (*mctl).matchctl<=-7 && (*mctl).matchctl>=-10){
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare, name1: [");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cb_clog( CBLOGDEBUG, CBNEGATION, "], name2: [");
-	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cb_clog( CBLOGDEBUG, CBNEGATION, "] len1: %i, len2: %i, matchctl %i", len1, len2, (*mctl).matchctl );
+	  if( (*name1)[0] == 0x00 ){
+		if( len1>0 )
+		  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); 
+		else
+		  cb_clog( CBLOGDEBUG, CBNEGATION, "<null>");
+	  }else{
+		cb_clog( CBLOGDEBUG, CBNEGATION, "%s", (*name1) );
+	  }
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "], name2: [");
+	  if( (*name2)[0] == 0x00 ){
+		if( len2>0 )
+	  	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2);
+		else
+		  cb_clog( CBLOGDEBUG, CBNEGATION, "<null>");
+	  }else{
+		cb_clog( CBLOGDEBUG, CBNEGATION, "%s", (*name2) );
+	  }
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "] len1: %i, len2: %i, matchctl %i", len1, len2, (*mctl).matchctl );
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: index %li, maxlength %li", (*(**cbs).cb).index, (*(**cbs).cb).maxlength );
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, " readlength %li, buflen %li, contentlen %li.", (*(**cbs).cb).readlength, (*(**cbs).cb).buflen, (*(**cbs).cb).contentlen );
 	//}

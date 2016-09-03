@@ -360,7 +360,7 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	else if( byteisutf8head5( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=5 ))  state=5;
 	else if( byteisutf8head6( byte )  && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>=6 ))  state=6;
 	else{  // not utf
-	  cb_log( &(*cbs), CBLOGNOTICE, CBNOTUTF, "\ncb_get_utf8_ch: first byte was not in utf format.");
+	  cb_log( &(*cbs), CBLOGNOTICE, CBNOTUTF, "\ncb_get_utf8_ch: first byte was not in utf format (0x%.2X).", byte );
 	  *storedbytes = 1; // 6.12.2014, compiler warning: storedbytes was unused
           return CBNOTUTF;
 	}
