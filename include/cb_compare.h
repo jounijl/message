@@ -52,4 +52,6 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
  * Match one line. Name2 has to be in host byte order (pcre32). */
 int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount);
 
-
+/*
+ * Match ASCII and additionally scandinavic letters if 'scandit' is set to 1. */
+int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, char scandit );

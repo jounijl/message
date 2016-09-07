@@ -27,6 +27,13 @@ int  cb_compare_print_fullinfo(cb_match *mctl);
 int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
 
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
+	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
+	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_rfc2822: parameter was null." );
+	  return CBERRALLOC;
+	}
+	return cb_compare_case_insensitive( &(*name1), len1, &(*name2), len2, from2, 0 );
+}
+int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, char scandit ){ // from2 23.11.2013, 7.9.2016
 	unsigned long int chr1=0x65, chr2=0x65;
 	int err1=CBSUCCESS, err2=CBSUCCESS;
 	int indx1=0, indx2=0;
@@ -63,6 +70,14 @@ int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, 
 	    if( chr1 >= 97 && chr1 <= 122 ) // small
 	      if( chr1 == (chr2+32) ) 
 	        continue;
+	  }else if( scandit==1 ){
+		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis, Ä to ä
+			continue;
+		}else if( ( chr1==0xC5 && chr2==0xE5 ) || ( chr2==0xC5 && chr1==0xE5 ) ){ // latin letter A with ring above, Å to å
+			continue;
+	  	}else if( ( chr1==0xF6 && chr2==0xD6 ) || ( chr2==0xF6 && chr1==0xD6 ) ){ // latin letter O with diaresis, Ö to ö
+			continue;
+		}
 	  }
 	  if( len1>(len2-from2) || ( len1==(len2-from2) && chr1<chr2 ) )
 	    return CBGREATERTHAN; // 31.7.2014
@@ -171,7 +186,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	    dfr = len2-len1;
 	    for(indx=0; ( indx<=dfr && err!=CBMATCH && err!=CBMATCHLENGTH ); indx+=4){ // %am%, greediness: compares dfr*len1 times per name
 	      if( (**cbs).cf.asciicaseinsensitive==1 && (len2-indx) > 0 ){
-	        err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, indx );
+	        err = cb_compare_case_insensitive( &(*name1), len1, &(*name2), len2, indx, (**cbs).cf.scanditcaseinsensitive );
 	      }else if( (len2-indx) > 0 ){
 	        err = cb_compare_strict( &(*name1), len1, &(*name2), len2, indx );
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: -6, cb_compare_strict returned %i, index %i.", err, indx );
@@ -189,7 +204,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  }else{
 	    dfr = len2-len1;
 	    if( (**cbs).cf.asciicaseinsensitive==1 && (len2-dfr) > 0 ){
-	       err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, dfr );
+	       //err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, dfr );
+	       err = cb_compare_case_insensitive( &(*name1), len1, &(*name2), len2, dfr, (**cbs).cf.scanditcaseinsensitive );
 	    }else if( (len2-dfr) > 0 ){
 	      err = cb_compare_strict( &(*name1), len1, &(*name2), len2, dfr );
 	    }else{
@@ -201,7 +217,8 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  stbp = &stb[0]; 
 	  err = cb_compare_strict( &stbp, 0, &(*name2), len2, 0 );
 	}else if((**cbs).cf.asciicaseinsensitive==1){ // name or nam%
-	  err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, 0 );
+	  //err = cb_compare_rfc2822( &(*name1), len1, &(*name2), len2, 0 );
+	  err = cb_compare_case_insensitive( &(*name1), len1, &(*name2), len2, 0, (**cbs).cf.scanditcaseinsensitive );
 	}else{ // name or nam% , (or lexical compare if matchctl is -11, -12, -13 or -14)
 	  err = cb_compare_strict( &(*name1), len1, &(*name2), len2, 0 );
 	}
