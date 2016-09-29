@@ -798,7 +798,7 @@ int  cb_test_cpu_endianness(void);
 /*
  * Functions to use CBFILE in different purposes, only as a block by setting buffersize to 0. */
 int  cb_allocate_cbfile_from_blk(CBFILE **buf, int fd, int bufsize, unsigned char **blk, int blklen);
-int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize ); // 28.2.2016, not tested (28.2.2016)
-int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as buffer
+int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize );
+int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as a buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);

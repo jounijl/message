@@ -515,6 +515,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 		 * JSON format can't be used with this. Never use URL-encoding, 25.5.2016. */
 		err = cb_decode_url_encoded_bytes( &(*ucscontent), *clength, &(*ucscontent), &(*clength), maxlength );
 		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_decode_url_encoded_bytes, error %i.", err ); }
+		cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_decode_url_encoded_bytes retuned %i.", err );
 	}
 	if( err>=CBNEGATION || (**cbf).cf.jsonvaluecheck!=1 )
 		return err;
@@ -545,7 +546,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: ");
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal (clength %i, maxlength %i, cn.length %i): ", *clength, maxlength, (**cn).length );
 
         /*
          * Copy contents and update length. */

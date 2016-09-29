@@ -56,6 +56,7 @@ int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb){
 	}
 	return err;
 }
+
 /*
  * Copy UCS string from URL encoded data. Does not allocate. 
  *
@@ -70,13 +71,19 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 		cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_decode_url_encoded_bytes: parameter was null, error %i.", CBERRALLOC );
 		return CBERRALLOC; 
 	}
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoding data [");
-	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucshexdata), ucshexdatalen, ucshexdatalen );
-	cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoding data [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucshexdata), ucshexdatalen, ucshexdatalen );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+
 	for(indx=0; indx<ucshexdatalen && ucsindx<ucsbuflen && err<CBNEGATION;){
 		chprev = chr;
+
 		err = cb_get_ucs_chr( &chr, &(*ucshexdata), &indx, ucshexdatalen);
 		if(err>CBERROR){ cb_clog( CBLOGDEBUG, err, "\ncb_decode_url_encoded_bytes: cb_get_ucs_chr (1), error %i.", err ); continue; } // stop
+
+// TASTA
+
 		if( chr == '%' && ucsindx<ucsbuflen && indx<ucshexdatalen && err<CBNEGATION ){
 			chprev = chr;
 			err = cb_get_ucs_chr( &chr, &(*ucshexdata), &indx, ucshexdatalen);
@@ -130,13 +137,18 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 		}else if( chr != '%' ){ // alpha, digit, special characters
 			err = cb_put_ucs_chr( chr, &(*ucsdata), &ucsindx, ucsbuflen);
 		}
+// TANNE
+
 	}
 	*ucsdatalen = ucsindx;
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoded data  [");
-	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsdata), *ucsdatalen, ucsbuflen );
-	cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoded data  [");
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsdata), *ucsdatalen, ucsbuflen );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+
 	return err;
 }
+
 /*
  * Copies URL encoded bytes to buffer 'hex' and return sizes. Does not allocate. */
 int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb){
