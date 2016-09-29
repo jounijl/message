@@ -1658,9 +1658,14 @@ cb_set_cursor_ucs_return:
 
 	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i (err %i).", ret, err );
 
-	if( (**cbs).cf.namelist==1 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) && lastinnamelist==0 ){
+	if( (**cbs).cf.namelist==1 && atvalue==0 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) && lastinnamelist==0 ){
+		/*
+		 * As mentioned before, wordlist (rstart and rend are backwards) works only with CBSTATEFUL.
+		 * This includes additionally the variable atvalue (in test 29.9.2016). 
+		 */
 		lastinnamelist = 1;
-		goto cb_set_cursor_match_length_ucs_matchctl_save_name;
+		if( index > 0 )
+			goto cb_set_cursor_match_length_ucs_matchctl_save_name;
 	}
 
 	return ret;
