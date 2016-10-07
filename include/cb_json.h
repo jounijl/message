@@ -46,3 +46,12 @@ int  cb_check_json_object( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
 int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
 int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
+
+/*
+ * Encodes JSON characters to a normal character (in UCS). Reads as much characters as needed.
+ * \\ \b \f \n \r \t \/ \" \uhhhh ... [http://www.json.org]
+ *
+ * Unencoded characters are returned without an error including quotation mark '"', number,
+ * boolean, array and object. This function is not involved in typechecking.
+ */
+int  cb_get_json_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);

@@ -118,6 +118,6 @@ int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int 
 /*
  * URL-decoding functions. */
 int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb);
-int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb);
+int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb); // sets written hexdatalen, bytecount bc and stored bytes sb
 int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, unsigned char **ucsdata, int *ucsdatalen, int ucsbuflen );
 

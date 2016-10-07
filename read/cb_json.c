@@ -507,3 +507,80 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
         return CBSUCCESSJSONSTRING; // 22.8.2016
 }
 
+/*
+ * Encodes JSON characters to a normal character (in UCS). Reads as much characters as needed. 
+ * \\ \b \f \n \r \t \/ \" \uhhhh ... [http://www.json.org]
+ *
+ * Unencoded characters are returned without an error including quotation mark '"', number, 
+ * boolean, array and object.
+ */
+
+int  cb_get_json_chr(CBFILE **cbs, unsigned long int *chr, int *bc, int *sb ){
+	int err = CBSUCCESS, bcount=0, bstore=0;
+	unsigned long int tchr = 0x20, num = 0x00;
+	if( cbs==NULL || *cbs==NULL || chr==NULL || bc==NULL || sb==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+	if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+	*bc = bcount;
+	*sb = bstore;
+	if( tchr==0x5C ){ // bypass '\'
+		err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+		*sb += bstore;
+		switch( tchr ){
+			case 0x5C: // '\' , bypass
+				*chr = (unsigned long int) 0x5C;
+				break;
+			case 0x22: // '"' 
+				*chr = (unsigned long int) 0x22;
+				break;
+			case 0x2F: // '/' 
+				*chr = (unsigned long int) 0x2F;
+				break;
+			case 'b': // 'b', backspace, BS
+				*chr = (unsigned long int) 0x08;
+				break;
+			case 'f': // form feed , FF
+				*chr = (unsigned long int) 0x0C;
+				break;
+			case 'n': // new line
+				*chr = (unsigned long int) 0x0A;
+				break;
+			case 'r': // CR 
+				*chr = (unsigned long int) 0x0D;
+				break;
+			case 't': // '"' 
+				*chr = (unsigned long int) 0x09;
+				break;
+			case 'u': // UCS character code in hexadecimal format 
+				err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+				if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+				num = num | tchr;
+				if( num!=0x00 && *bc==1 ) *bc=4;
+				*sb += bstore;
+				err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+				if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+				num = ( num<<8 );
+				num = num | tchr;
+				if( num!=0x00 && *bc==1 ) *bc=3;
+				*sb += bstore;
+				err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+				if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+				num = ( num<<8 );
+				num = num | tchr;
+				if( num!=0x00 && *bc==1 ) *bc=2;
+				*sb += bstore;
+				err = cb_get_chr( &(*cbs), &tchr, &bcount, &bstore );
+				if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_json_chr: cb_get_chr, error %i.", err ); return err; }
+				num = ( num<<8 );
+				num = num | tchr;
+				*chr = num;
+				*sb += bstore;
+				break;
+		}
+	}else{
+		*chr = tchr;
+	}
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_json_chr: CHR '%c'.", (char) *chr );
+	return CBSUCCESS;
+}
