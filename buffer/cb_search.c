@@ -755,7 +755,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 }
 
 int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset ){
-	int err = CBSUCCESS, bytecount=0, storedbytes=0;
+	int err = CBERROR, bytecount=0, storedbytes=0;
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || chroffset==NULL || chr==NULL){
 	  //cb_clog( CBLOGWARN, CBERRALLOC, "\ncb_search_get_chr: null parameter was given, error CBERRALLOC.", CBERRALLOC);
 	  return CBERRALLOC;
@@ -774,7 +774,6 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	if((**cbs).cf.unfold==1){
 	  err = cb_get_chr_unfold( &(*cbs), &(**cbs).ahd, &(*chr), &(*chroffset) );
 	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
-	  return err; 
 	}else{
 	  err = cb_get_chr( &(*cbs), &(*chr), &bytecount, &storedbytes );
 	  // Stream, buffer, file
@@ -786,9 +785,12 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	    if( (*(**cbs).cb).readlength>0 ) // no overflow, 2.8.2015
 	      *chroffset = (*(**cbs).cb).readlength - 1;
 	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
-	  return err;
 	}
-	return CBERROR;
+	if( (**cbs).cf.stopateof==1 && *chr==(unsigned long int)0x00FF ){ // Unicode EOF 0x00FF chart U0080, 31.10.2016
+		if( err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND )
+			return CBENDOFFILE;
+	}
+	return err;
 }
 
 int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
@@ -887,6 +889,13 @@ int  cb_increase_terminalcount(CBFILE **cbs){
 	return CBSUCCESS;
 }
 
+/* 30.10.2016. */
+int  cb_test_eof_read( CBFILE **cbs ){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	if( (*(**cbs).cb).eofoffset>0 && (*(**cbs).cb).eofoffset<=(*(**cbs).cb).index )
+		return CBSUCCESS;
+	return CBNEGATION;
+}
 /*
  * 8.5.2016. */
 int  cb_test_message_end( CBFILE **cbs ){
@@ -1112,6 +1121,15 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	// Set cursor to the end to search next names
 	(*(**cbs).cb).index = (*(**cbs).cb).contentlen; // -bytesahead ?
 
+
+	// 30.10.2016: test if EOF was already read if stopateof
+	if( (**cbs).cf.stopateof==1 ){
+		if( (*(**cbs).cb).eofoffset>0 && (*(**cbs).cb).eofoffset<=(*(**cbs).cb).index ){
+			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: EOF offset %li was over the index %li, returning CBENDOFFILE.", (*(**cbs).cb).eofoffset, (*(**cbs).cb).index );
+			return CBENDOFFILE;
+		}
+	}
+
 	//cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nopenpairs %i ocoffset %i", openpairs, ocoffset );
 
 
@@ -1189,7 +1207,9 @@ cb_set_cursor_reset_name_index:
 
 	//while( err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ 
 	//while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016
-	while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && err!=CBSTREAMEAGAIN && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016, 20.5.2016
+	//while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && err!=CBSTREAMEAGAIN && index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016, 20.5.2016
+	while( err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && err<CBERROR && err!=CBSTREAMEND && err!=CBSTREAMEAGAIN && err!=CBENDOFFILE && \
+		index < (CBNAMEBUFLEN-3) && buferr <= CBSUCCESS ){ // 27.3.2016, 20.5.2016, 31.10.2016
 
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 
@@ -1666,6 +1686,12 @@ cb_set_cursor_ucs_return:
 		lastinnamelist = 1;
 		if( index > 0 )
 			goto cb_set_cursor_match_length_ucs_matchctl_save_name;
+	}
+
+	if( (**cbs).cf.stopateof==1 ){ // 31.10.2016
+		if( ( ret>=CBNEGATION && ret!=CBVALUEEND && ret!=CBMESSAGEEND && ret!=CBMESSAGEHEADEREND ) && err==CBENDOFFILE ){
+			ret = CBENDOFFILE;
+		}
 	}
 
 	return ret;

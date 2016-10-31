@@ -61,6 +61,7 @@
 #define CBLENGTHNOTKNOWN       73
 #define CBREWASNULL            74
 #define CBSTREAMEAGAIN         75    // if file descriptor was configured to use non-blocking io, read returns CBSTREAMEAGAIN if data was not available and may be available later, 20.5.2016
+#define CBENDOFFILE            76
 //#define CBNOTJSON              75
 //#define CBNOTJSONVALUE         76
 //#define CBNOTJSONSTRING        77
@@ -282,6 +283,10 @@
 //#define CB2822MESSAGE
 #define CBMESSAGEFORMAT
 
+/*
+ * Unicode chart U0080 EOF 0x00FF */
+#define CEOF     ( (unsigned long int) 0x00FF )
+
 // RFC 2822 unfolding, (RFC 5198: CR can appear only followed by LF)
 
 /* ABNF names RFC 2234 6.1 */
@@ -400,6 +405,7 @@ typedef struct cb_conf {
 	unsigned char       jsonnamecheck:2;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:2; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:2;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
+	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
 
 	/* Log options */
 	unsigned char       logpriority:5;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
@@ -408,7 +414,8 @@ typedef struct cb_conf {
 	unsigned char       nonblocking:2;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 
 	/* Stream end recognition */
-	unsigned char       stopateof:2;                   // Recognize CBSTREAMEND at EOF character. Default is 1.
+	unsigned char       stopatbyteeof:1;               // Recognize CBSTREAMEND at EOF character. Default is 1. Every octet disregarding the character code.
+	unsigned char       stopateof:1;                   // Recognize CBENDOFFILE at EOF character. 
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
@@ -463,6 +470,7 @@ typedef struct cbuf{
         int                      headeroffset;         // offset of RFC-2822 header end with end characters (offset set at last new line character)
         signed long int          messageoffset;        // offset of RFC-2822 message end from "Content-Length:". This has to be set from outside after reading the value, cb_set_message_end.
 	signed long int          chunkmissingbytes;    // Bytes missing from previous read of chunk, 28.5.2016.
+	signed long int          eofoffset;            // Cursor offset of first EOF in UCS 32-bit format to test if bytes are left to read, 30.10.2016
 	char                     lastblockreadpartial; // If the previous reading of a block was not full (excepting the end of stream after this block)
 	char                     padto64bit[7];
 } cbuf;
@@ -583,7 +591,7 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  *
  * Returns on success: CBSUCCESS, CBSUCCESSLEAVESEXIST, CBSTREAM, CBFILESTREAM (only if CBCFGSEEKABLEFILE is set) or
  * CBMESSAGEHEADEREND or CBMESSAGEEND if they were set.
- * May return: CBNOTFOUND, CBVALUEEND, CBSTREAMEND
+ * May return: CBNOTFOUND, CBVALUEEND, CBSTREAMEND, CBENDOFFILE (if stopateof was set)
  * Possible errors: CBERRALLOC, CBOPERATIONNOTALLOWED (offsets)
  * cb_search_get_chr: CBSTREAMEND, CBNOENCODING, CBNOTUTF, CBUTFBOM, CBSTREAMEAGAIN (26.5.2016)
  *
@@ -689,6 +697,8 @@ int  cb_free_name(cb_name **name, int *freecount);
 int  cb_free_names_from(cb_name **cbn, int *freecount);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
+int  cb_set_list_unread( cb_name **cbname );  // set recursively all *next and *leaf matchcount to -1
+int  cb_set_attributes_unread( CBFILE **cbs ); // sets matchount to -1 to all names in cbs
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
 int  cb_get_matchctl(CBFILE **cbs, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); // compiles re in ctl from pattern (to use matchctl -7 and compile before), 12.4.2014
 
@@ -724,6 +734,7 @@ int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only endin
 int  cb_set_message_end( CBFILE **str, long int contentoffset );
 int  cb_test_message_end( CBFILE **cbs );
 int  cb_test_header_end( CBFILE **cbs );
+int  cb_test_eof_read( CBFILE **cbs );
 
 int  cb_use_as_buffer(CBFILE **buf); // File descriptor is not used
 int  cb_use_as_file(CBFILE **buf);   // Namelist is bound by filesize
@@ -802,3 +813,4 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can be used to get a block from blk when used as a buffer
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);
+

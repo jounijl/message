@@ -227,6 +227,10 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  case  1:
 	    if( err==CBMATCH )
 	      return CBMATCH; // returns complitely the same or an error
+	      //cb_clog( CBLOGDEBUG, CBNEGATION, " MATCH. " );
+	    //}else{
+	    //  cb_clog( CBLOGDEBUG, CBNEGATION, " No match. " );
+	    //}
 	    break;
 	  case  0:
 	    if( err==CBMATCHLENGTH )
@@ -480,11 +484,11 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	/*
 	 * Block by block. (Strings searched may not overlap.) */
 	err = cb_get_ucs_chr(&chr, &(*name2), &nameindx, CBREGSUBJBLOCK );
-	while( chr!= (unsigned long int) EOF && nameindx<=len2 && bufindx<=len2 && err==CBSUCCESS ){
+	while( chr!= (unsigned long int) 0x00FF && nameindx<=len2 && bufindx<=len2 && err==CBSUCCESS ){ // Unicode EOF
 	  if(chr!=0xFEFF)
 	    err = cb_put_ucs_chr( cb_from_ucs_to_host_byte_order( (unsigned int) chr), &ucsdata, &bufindx, CBREGSUBJBLOCK);
-	  if(bufindx>=(CBREGSUBJBLOCK-5) || chr== (unsigned long int) EOF || err==CBARRAYOUTOFBOUNDS || bufindx==len2 ){ // next block
-	    if( chr!=(unsigned char)EOF ){
+	  if(bufindx>=(CBREGSUBJBLOCK-5) || chr== (unsigned long int) 0x00FF || err==CBARRAYOUTOFBOUNDS || bufindx==len2 ){ // next block, Unicode EOF
+	    if( chr!=(unsigned char) 0x00FF ){ // Unicode EOF
 	      opt = opt | (unsigned int) PCRE2_NOTEOL; // Subject string is not the end of a line
 	    }else{
 	      opt = opt & ~PCRE2_NOTEOL; // Last block

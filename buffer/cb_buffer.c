@@ -73,8 +73,10 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nscanditcaseinsensitive:      \t0x%.2XH", (**str).cf.scanditcaseinsensitive);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopatheaderend:             \t0x%.2XH", (**str).cf.stopatheaderend);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopatmessageend:            \t0x%.2XH", (**str).cf.stopatmessageend);
+	cb_log(&(*str), priority, CBNEGATION, "\nstopatbyteeof:               \t0x%.2XH", (**str).cf.stopatbyteeof);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopateof:                   \t0x%.2XH", (**str).cf.stopateof);
 	cb_log(&(*str), priority, CBNEGATION, "\nstopafterpartialread:        \t0x%.2XH", (**str).cf.stopafterpartialread);
+	cb_log(&(*str), priority, CBNEGATION, "\nusesocket:                   \t0x%.2XH", (**str).cf.usesocket);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovewsp:                   \t0x%.2XH", (**str).cf.removewsp);
 	cb_log(&(*str), priority, CBNEGATION, "\nremoveeof:                   \t0x%.2XH", (**str).cf.removeeof);
 	cb_log(&(*str), priority, CBNEGATION, "\nremovecrlf:                  \t0x%.2XH", (**str).cf.removecrlf);
@@ -299,6 +301,44 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	return CBSUCCESS;
 }
 
+int  cb_set_attributes_unread( CBFILE **cbs ){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_attributes_unread: cbs was null." ); return CBERRALLOC; }
+	if( (*(**cbs).cb).list.name==NULL ) return CBSUCCESS;
+	return cb_set_list_unread( &(*(**cbs).cb).list.name );
+}
+
+int  cb_set_list_unread( cb_name **cbname ){
+	int err = CBSUCCESS;
+	cb_name *ptr  = NULL;
+	cb_name *ptr2 = NULL;
+	if( cbname==NULL || *cbname==NULL ) return CBERRALLOC;
+	ptr = &(**cbname) ;
+	while( ptr!=NULL ){
+
+		/*
+		 * Set as unread. */
+		(*ptr).matchcount=0;
+		(*ptr).lasttimeused=-1;
+
+		/*
+		 * Next to leaf. */
+		if( (*ptr).leaf!=NULL ){
+			ptr2 = &(* (cb_name*) (*ptr).leaf );
+			err  = cb_set_list_unread( &ptr2 );
+			if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_set_list_unread: cb_set_list_unread, error %i.", err ); }
+		}
+
+		/*
+		 * Next in list. */
+		ptr2 = &(*ptr);
+		if( (*ptr2).next!=NULL )
+			ptr = &(* (void*) (*ptr2).next );
+		else
+			ptr = NULL;
+	}
+	return CBSUCCESS;
+}
+
 int  cb_set_cstart(CBFILE **str, unsigned long int cstart){ // comment start
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_cstart: str was null." ); return CBERRALLOC; }
 	(**str).cf.cstart=cstart;
@@ -484,6 +524,7 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.removewsp=1;
         (**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+	(**str).cf.jsonremovebypassfromcontent=0; // 9.10.2016
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
         //(**str).cf.rfc2822headerend=0;
@@ -640,6 +681,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.leadnames=0;
 	(**str).cf.findleaffromallnames=0;
 	(**str).cf.stopafterpartialread=0;
+	(**str).cf.stopatbyteeof=0;
 	(**str).cf.stopateof=1;
 	//(**str).cf.usesocket=1; // test messageend every time if it is set, 2.5.2016
 	(**str).cf.usesocket=0; // test messageend every time if it is set, 2.5.2016
@@ -806,6 +848,7 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	if( blk==NULL ){   cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: parameter was null." );  return CBERRALLOC; }
 	if( (**cbf).cb==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: buffer was null." );  return CBERRALLOC; }
 	//30.6.2016 if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; }
+	if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; } // 27.10.2016
 
 	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
         //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
@@ -864,6 +907,7 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
         //(**cbf).messageoffset=0; // 26.3.2016
         (**cbf).headeroffset=-1; // 26.3.2016, 30.3.2016
         (**cbf).messageoffset=-1; // 26.3.2016, 30.3.2016
+        (**cbf).eofoffset=-1; // 30.10.2016
 	(**cbf).chunkmissingbytes=0; // 28.5.2016
 	(**cbf).lastblockreadpartial=0; // 10.6.2016
 	(**cbf).list.name=NULL;
@@ -1429,7 +1473,7 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	  // copy char if name-value -buffer is not full
 	  if((*(**cbs).cb).contentlen < (*(**cbs).cb).buflen ){
 	    //if( chr != (unsigned char) EOF ){
-	    if( ! ( (**cbs).cf.stopateof == 1 && chr == (unsigned char) EOF ) ){ // 9.6.2016
+	    if( ! ( (**cbs).cf.stopatbyteeof == 1 && chr == (unsigned char) EOF ) ){ // 9.6.2016
 	      (*(**cbs).cb).buf[(*(**cbs).cb).contentlen] = chr;
 	      ++(*(**cbs).cb).contentlen;
 	      ++(*(**cbs).cb).readlength;
@@ -1446,7 +1490,7 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 	  }else{
 	    *ch=chr;
 	    //if( chr == (unsigned char) EOF )
-	    if( (**cbs).cf.stopateof == 1 && chr == (unsigned char) EOF ) // 9.6.2016
+	    if( (**cbs).cf.stopatbyteeof == 1 && chr == (unsigned char) EOF ) // 9.6.2016
 	      return CBSTREAMEND;
 	    //if( (*(**cbs).cb).readlength < 0x7FFFFFFFFFFFFFFF ) // long long, > 64 bit
 	    if( (*(**cbs).cb).readlength < 0x7FFFFFFF ) // long, > 32 bit

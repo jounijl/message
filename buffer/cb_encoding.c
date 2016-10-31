@@ -44,16 +44,29 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: ahd.bytesahead %i, ahd.currentindex %li, messageend %li, contentlength %li.", \
         //       (**cbs).ahd.bytesahead, (**cbs).ahd.currentindex, (*(**cbs).cb).messageoffset, (*(**cbs).cb).contentlen );
 
+	/*
+	 * 31.10.2016. Stop if read is after EOF if stopateof is set. */
+	//if(  (**cbs).cf.stopateof==1  &&  (*(**cbs).cb).eofoffset<(*(**cbs).cb).index  &&  (*(**cbs).cb).index>0  && (*(**cbs).cb).eofoffset>0 )
+	//	return CBENDOFFILE;
+
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 
 	/*
 	 * 8.5.2016. */
 	if( (**cbs).cf.stopatmessageend==1 ){
-		if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){
-			if(err<CBERROR)
+		if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){ // has elapsed messageend
+			//12.10.2016: if(err<CBERROR )
+			if(err<CBERROR && ((*(**cbs).cb).index+1) >= (*(**cbs).cb).messageoffset ) // is currently over message end, 12.10.2016
 				return CBMESSAGEEND;
 			else
 				return err;
+		}
+	}
+
+	if( (*(**cbs).cb).eofoffset==-1 && err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND && *chr==(unsigned long int)0x00FF ){ // 30.10.2016, different from previous octet stop
+		(*(**cbs).cb).eofoffset = (*(**cbs).cb).index;
+		if( (**cbs).cf.stopateof==1 ){
+			err = CBENDOFFILE; // 31.10.2016
 		}
 	}
 
@@ -347,8 +360,9 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 
 	//
 	//if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
-	if( *chr == (unsigned long int) EOF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || \
-		( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEHEADEREND ) ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013, 30.3.2016, 8.4.2016
+	//if( *chr == (unsigned long int) EOF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || 
+	if( *chr == (unsigned long int) 0x00FF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || \
+		( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEHEADEREND ) ) { return err; } // err could be treated better ... 30.3.2013, 30.3.2016, 8.4.2016, 30.10.2016 Unicode EOF
 	//
 
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
