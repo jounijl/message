@@ -20,38 +20,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h> // memset
-#include <time.h>   // time (timestamp in cb_set_cursor)
+#include <string.h>  // memset
+#include <time.h>    // time (timestamp in cb_set_cursor)
 #include <stdbool.h> // C99 true/false
 #include "../include/cb_buffer.h"
 #include "../include/cb_json.h"
 
 
-int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpairs);
-int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpairs);
-int  cb_is_rstart(CBFILE **cbs, unsigned long int chr);
-int  cb_is_rend(CBFILE **cbs, unsigned long int chr);
-int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs, int previousopenpairs); // 21.8.2015
-int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
-int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl); // 11.3.2014, 23.3.2014
-int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl); // 16.3.2014, 23.3.2014
-int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl);
-int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
-int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
-int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
-int  cb_automatic_encoding_detection(CBFILE **cbs);
+static int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpairs);
+static int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpairs);
+static int  cb_is_rstart(CBFILE **cbs, unsigned long int chr);
+static int  cb_is_rend(CBFILE **cbs, unsigned long int chr);
+static int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs, int previousopenpairs); // 21.8.2015
+static int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs); // sets openpairs, not yet tested 7.12.2013
+static int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl); // 11.3.2014, 23.3.2014
+static int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl); // 16.3.2014, 23.3.2014
+static int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl);
+static int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *mctl); // 11.3.2014, 23.3.2014
+static int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffset);
+static int  cb_save_name_from_charbuf(CBFILE **cbs, cb_name **fname, long int offset, unsigned char **charbuf, int index, long int nameoffset);
+static int  cb_automatic_encoding_detection(CBFILE **cbs);
 
-int  cb_get_current_level_at_edge(CBFILE **cbs, int *level); // addition 29.9.2015
-int  cb_get_current_level(CBFILE **cbs, int *level); // to be used with cb_set_to_name -- addition 28.9.2015
-int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
+static int  cb_get_current_level_at_edge(CBFILE **cbs, int *level); // addition 29.9.2015
+static int  cb_get_current_level(CBFILE **cbs, int *level); // to be used with cb_set_to_name -- addition 28.9.2015
+static int  cb_get_current_level_sub(cb_name **cn, int *level); // addition 28.9.2015
 
-int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
-int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
-//int  cb_test_message_end( CBFILE **cbs );
-//int  cb_test_header_end( CBFILE **cbs );
+static int  cb_init_terminalcount(CBFILE **cbs); // 29.9.2015, count of downwards flow control characters read at the at the last edge of the stream from the last leaf ( '}' '}' '}' = 3 from the last leaf) 
+static int  cb_increase_terminalcount(CBFILE **cbs); // 29.9.2015
 
-
-int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassremoved ); // 8.11.2016
+static int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassremoved ); // 8.11.2016
 
 
 /*
@@ -69,8 +66,8 @@ int  cb_check_json_name( unsigned char **ucsname, int *namelength, char bypassre
  * at last rend, '&'. If last length was >=0, levels is set to 0 to read again the next name.
  */
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl){ // 23.3.2014
-	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){ 
-	  cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC; 
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
+	  cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
 	}
 
 	if( (*(**cbs).cb).list.current==NULL ){
@@ -98,22 +95,22 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	if(err<CBNEGATION){ return err; } // level is correct if CBSUCCESS or CBSUCCESSLEAVESEXIST
 
 	/*
-	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to 
+	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to
 	 * include the first open pair - if *level is more than 0: toterminal+1 . */
 	//if( currentlevel>1 )
 	//  --currentlevel;
-	*level = currentlevel - (*(**cbs).cb).list.toterminal; 
+	*level = currentlevel - (*(**cbs).cb).list.toterminal;
 
 	/*
 	 * Real bug here. The reader should keep track of the open pairs.
 	 * If the reading has stopped to a leaf of the tree, the levels is not necessarily
-	 * correct anymore when hitting the zero level or the the original list (or hitting the ground). 
+	 * correct anymore when hitting the zero level or the the original list (or hitting the ground).
 	 * Why was this again? 17.3.2016.
 	 * (Uncomment the error log and test.)
 	 */
 	if(*level<0){ // to be sure errors do not occur
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner: error, levels was negative, %i (currentlevel %i, toterminal %i). Set to 0.", *level, currentlevel, (*(**cbs).cb).list.toterminal );
-	  *level=0; 
+	  *level=0;
 	}
 
 	return err; // found or negation
@@ -160,14 +157,27 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  if(err==CBMATCH){ // 19.8.2015
             /*
              * 9.12.2013 (from set_to_name):
-             * If searching of multiple same names is needed (in buffer also), do not return 
-             * allready matched name. Instead, increase names matchcount (or set to 1 if it 
+             * If searching of multiple same names is needed (in buffer also), do not return
+             * allready matched name. Instead, increase names matchcount (or set to 1 if it
              * becomes 0) and search the next same name.
              */
             (*leafptr).matchcount++; if( (*leafptr).matchcount==0 ){ (*leafptr).matchcount+=2; }
 
-            if( ( (**cbs).cf.searchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || (**cbs).cf.searchmethod==CBSEARCHUNIQUELEAVES ){ 
-              //if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE){ // When used as only buffer, stream case does not apply
+	    // CBSEARCHNEXTGROUPLEAVES 11.11.2016
+            if( ( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || \
+		( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES && \
+			( (*leafptr).matchcount==1 || (*leafptr).group==(*(**cbs).cb).list.currentgroup ) ) || \
+		(**cbs).cf.leafsearchmethod==CBSEARCHUNIQUELEAVES ){ 
+	      //if( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES ) // 19.11.2016
+	      if( (*leafptr).matchcount==1 ) // test 19.11.2016
+	        (*leafptr).group = (*(**cbs).cb).list.currentgroup; // 11.11.2016
+
+	      //if( (*leafptr).group==(*(**cbs).cb).list.currentgroup && (**cbs).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES ){
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF (CBSEARCHNEXTGROUPLEAVES) GROUP %i, CURRENTGROUP %i, MATCHCOUNT %li [", (*leafptr).group, (*(**cbs).cb).list.currentgroup, (*leafptr).matchcount );
+		//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leafptr).namebuf, (*leafptr).namelen, (*leafptr).buflen );
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+	      //}
+
               if( (**cbs).cf.type!=CBCFGFILE && (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGBOUNDLESSBUFFER){ // When used as only buffer, stream case does not apply, 28.2.2016
                 if((*leafptr).offset>=( (*(**cbs).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
                   /*
@@ -714,14 +724,20 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	    if( err == CBMATCH ){ // 9.11.2013
 	      /*
 	       * 20.8.2013:
-	       * If searching of multiple same names is needed (in buffer also), do not return 
-	       * allready matched name. Instead, increase names matchcount (or set to 1 if it 
+	       * If searching of multiple same names is needed (in buffer also), do not return
+	       * allready matched name. Instead, increase names matchcount (or set to 1 if it
 	       * becomes 0) and search the next same name.
 	       */
 	      (*iter).matchcount++; if( (*iter).matchcount==0 ){ (*iter).matchcount+=2; }
 	      /* First match on new name or if unique names are in use, the first match or the same match again, even if in stream. */
-	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
-	        //if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // When used as only buffer, stream case does not apply
+	      //11.11.2016: if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
+	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || \
+		  ( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES && \
+			( (*iter).matchcount==1 || (*iter).group==(*(**str).cb).list.currentgroup ) ) || \
+		  (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
+		//if( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES ) // 19.11.2016
+		if( (*iter).matchcount==1 ) // test 19.11.2016
+	          (*iter).group = (*(**str).cb).list.currentgroup; // 11.11.2016
 	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE && (**str).cf.type!=CBCFGBOUNDLESSBUFFER) // When used as only buffer, stream case does not apply, 28.2.2016
 	          if((*iter).offset>=( (*(**str).cb).buflen + 0 + 1 ) ){ // buflen + smallest possible name + endchar
 		    /*
@@ -793,7 +809,7 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	return err;
 }
 
-int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
+inline int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
 	if( chr==(**cbs).cf.rstart )
 	  return true;
@@ -806,10 +822,12 @@ int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
 	}
 	return false;
 }
-int  cb_is_rend(CBFILE **cbs, unsigned long int chr){
+inline int  cb_is_rend(CBFILE **cbs, unsigned long int chr){
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
 	if( chr==(**cbs).cf.rend ) // '$', record end, name start
 	  return true;
+	if( (**cbs).cf.findwordstworends==1 && chr==(**cbs).cf.subrend )
+	  return true; // 3.11.2016
 	return false;
 }
 
@@ -932,7 +950,7 @@ int  cb_test_header_end( CBFILE **cbs ){
 
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // return values
-	int  buferr=CBSUCCESS, savenameerr=CBSUCCESS; 
+	int  buferr=CBSUCCESS, savenameerr=CBSUCCESS;
 	int  index=0, freecount=0;
 	unsigned long int chr=0, chprev=CBRESULTEND; 
 	long int chroffset=0;
@@ -1406,8 +1424,10 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 // CB_COMPARE 1.
 	        if( cis == CBMATCH ){ // 9.11.2013
 	          (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
-	          if( (*(**cbs).cb).list.last != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
+	          if( (*(**cbs).cb).list.last != NULL ){ // matchcount, this is first match, matchcount becomes 1, 25.8.2013
 	            (*(*(**cbs).cb).list.last).matchcount++;
+		    (*(*(**cbs).cb).list.last).group = (*(**cbs).cb).list.currentgroup; // 11.11.2016
+		  }
 	          if(err==CBSTREAM){
 	            //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nName found from stream.");
 	            ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
@@ -1431,8 +1451,10 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 // CB_COMPARE 2.
 	        if( cis == CBMATCH ){ // 9.11.2013
 	          (*(**cbs).cb).index = (*(**cbs).cb).contentlen - (**cbs).ahd.bytesahead; // cursor at rstart, 6.9.2013 (this line can be removed)
-	          if( (*(**cbs).cb).list.currentleaf != NULL ) // matchcount, this is first match, matchcount becomes 1, 25.8.2013
-	            (*(*(**cbs).cb).list.currentleaf).matchcount++; 
+	          if( (*(**cbs).cb).list.currentleaf != NULL ){ // matchcount, this is first match, matchcount becomes 1, 25.8.2013
+	            (*(*(**cbs).cb).list.currentleaf).matchcount++;
+		    (*(*(**cbs).cb).list.currentleaf).group = (*(**cbs).cb).list.currentgroup; // 11.11.2016
+		  }
 	          if(err==CBSTREAM){
 	            //cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\nLeaf found from stream.");
 	            ret = CBSTREAM; // cursor set, preferably the first time (remember to use cb_remove_name_from_stream)
@@ -1458,7 +1480,7 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 	       (*fname).next=NULL; (*fname).leaf=NULL; cb_free_name( &fname, &freecount ); fname=NULL;
 	    }
 	    /*
-	     * No match. Reset charbuf to search next name. 
+	     * No match. Reset charbuf to search next name.
 	     */
 	    if( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.leadnames==1 ){
 	      goto cb_set_cursor_reset_name_index; // 15.12.2013

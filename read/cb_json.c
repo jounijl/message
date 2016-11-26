@@ -45,8 +45,8 @@ typedef struct name {
 
 
 /* cb_check_json_string(  unsigned char **ucsname, int *namelength, int from  ) is in cb_buffer.h */
-int  cb_check_json_substring( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
-int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
+static int  cb_check_json_substring( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
+static int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from );
 
 /*
  * Function reading the white spaces away from the end. 

@@ -27,8 +27,8 @@
 #include "../include/cb_buffer.h"
 #include "../include/cb_encoding.h"
 
-int  cb_flush_chunks( int fd, unsigned char *buf, signed long int contentlen );
-int  cb_read_chunk( signed long int *missingchunkbytes, int fd, unsigned char *buf, signed long int buflen );
+static int  cb_flush_chunks( int fd, unsigned char *buf, signed long int contentlen );
+static int  cb_read_chunk( signed long int *missingchunkbytes, int fd, unsigned char *buf, signed long int buflen );
 
 /*
  * Return values like from 'read'. */

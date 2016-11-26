@@ -157,6 +157,15 @@
 #define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
 #define CBSEARCHUNIQUELEAVES      0   // Leaves are unique (returns allways the first name in list)
 #define CBSEARCHNEXTLEAVES        1   // Multiple same leaves (returns leaf if matchcount is zero, otherwice searches next in name value, also in stream)
+#define CBSEARCHNEXTGROUPNAMES    2   // Next names with matching to group number
+#define CBSEARCHNEXTGROUPLEAVES   4   // Next leaves with matching to group number
+
+/**
+ CBSEARCHNEXTGROUP 11.11.2016
+        Matches either the same group number again or a new attribute not yet matched. A group of attributes
+        can be set to belong to a group and found with the group number.
+ **/
+
 
 /*
  * Third search option is to leave buffer empty amd search allways the next name, with either above setting.
@@ -385,6 +394,7 @@ typedef struct cb_conf {
 	unsigned char       findleaffromallnames:1;        // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
 	unsigned char       doubledelim:1;                 // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) 
+	unsigned char       findwordstworends:1;           // wordlist with two rend-characters.
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
 	/* Name parsing options */
@@ -401,7 +411,7 @@ typedef struct cb_conf {
 	unsigned char       urldecodevalue:1;              // If set, cb_read.c decodes key-value pairs value in cb_copy_content (all read functions).
 
 	/* JSON options */
-	unsigned char       json:2;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       jsonnamecheck:2;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:2; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:2;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
@@ -442,6 +452,7 @@ typedef struct cb_name{
         signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
         int                   length;         // character count, length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
         signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when mathed, zero only if name is not searched yet
+	int                   group;          // May be set from outside if needed. A group id to mark attributes to belong together.
         void                 *next;           // Last is NULL {1}{2}{3}{4}
 	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
 	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
@@ -454,6 +465,8 @@ typedef struct cb_namelist{
 	cb_name              *last;
 	signed long long int  namecount;        // names
 	signed long long int  nodecount;        // names and leaves, 28.10.2015
+	int                   currentgroup;     // number of the group currently in use
+	int                   groupcount;       // number of the last group
 	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeroes this.
 	cb_read               rd;
 	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
@@ -697,6 +710,7 @@ int  cb_free_name(cb_name **name, int *freecount);
 int  cb_free_names_from(cb_name **cbn, int *freecount);
 
 int  cb_copy_name(cb_name **from, cb_name **to);
+int  cb_set_leaf_unread( cb_name **cbname ); // set every leaf as unread from the first leaf
 int  cb_set_list_unread( cb_name **cbname );  // set recursively all *next and *leaf matchcount to -1
 int  cb_set_attributes_unread( CBFILE **cbs ); // sets matchount to -1 to all names in cbs
 int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *ctl); // compares name1 to name2
@@ -748,6 +762,13 @@ int  cb_set_to_unique_names(CBFILE **cbf);
 int  cb_set_to_unique_leaves(CBFILE **cbf);
 int  cb_set_to_consecutive_names(CBFILE **cbf); // Searches multiple same named names, default
 int  cb_set_to_consecutive_leaves(CBFILE **cbf); // Searches multiple same named leaves, default
+int  cb_set_to_consecutive_group_names(CBFILE **cbf); // Searches multiple same named names. If same name is found, the one already in group is used.
+int  cb_set_to_consecutive_group_leaves(CBFILE **cbf); // Searches multiple same named leaves. If same name is found the one already in group is used.
+
+/*
+ * To use the group number of CBSEARCHNEXTGROUPNAMES and CBSEARCHNEXTGROUPLEAVES */
+int  cb_set_group_number( CBFILE **cbf, int grp );
+int  cb_increase_group_number( CBFILE **cbf );
 
 /*
  * Helper queues and queue structures 

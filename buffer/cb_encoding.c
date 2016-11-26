@@ -24,13 +24,13 @@
 
 void cb_bytecount(unsigned long int *chr, int *bytecount);
 
-int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
-int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
-int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
-int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
-int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
+static int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
+static int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
+//static int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
+static int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
+static int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
 
-int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes); // 29.9.2015
+static int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes); // 29.9.2015
 
 /*
  * If ahead had bytes or unfold==1, unfolds read character(s). */
@@ -210,6 +210,7 @@ int  cb_set_encoding(CBFILE **str, int number){
 	return CBSUCCESS;
 }
 
+/****
 int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 	int err=0, indx=0;
 	if(*cbs!=NULL && buf!=NULL)
@@ -222,6 +223,7 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 	  }
 	return CBERRALLOC;
 }
+ ****/
 
 int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	int err=CBSUCCESS, index=0; unsigned char byte=0x00; // null character

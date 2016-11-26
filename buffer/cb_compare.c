@@ -23,8 +23,8 @@
 #include "../include/cb_buffer.h"     // main function definitions (the only one needed)
 #include "../include/cb_compare.h"    // utilities
 
-int  cb_compare_print_fullinfo(cb_match *mctl);
-int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
+//static int  cb_compare_print_fullinfo(cb_match *mctl);
+static int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
 
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
@@ -42,10 +42,12 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	  return CBERRALLOC;
 	}
 
-	//fprintf(stderr,"\ncb_compare_rfc2822: [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); fprintf(stderr,"] [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i.", len1, len2);
-	//fprintf(stderr,"\ncb_compare_rfc2822: [from2=%i]", from2);
+	//if(scandit==1)	fprintf(stderr,"\ncb_compare_case_insensitive: (scandit) [");
+	//else		fprintf(stderr,"\ncb_compare_rfc2822: [");
+	//if( name1!=NULL && *name1!=NULL )
+	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); fprintf(stderr,"] [");
+	//if( name2!=NULL && *name2!=NULL )
+	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i from2: %i.", len1, len2, from2);
 
 	indx2 = from2;
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){ // 9.11.2013
@@ -53,23 +55,23 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	  err1 = cb_get_ucs_chr(&chr1, &(*name1), &indx1, len1);
 	  err2 = cb_get_ucs_chr(&chr2, &(*name2), &indx2, len2);
 
-	  chr1 = cb_from_ucs_to_host_byte_order( chr1 ); // 31.7.2014
-	  chr2 = cb_from_ucs_to_host_byte_order( chr2 ); // 31.7.2014
-
 	  if(err1>=CBNEGATION || err2>=CBNEGATION){
-	    //return CBNOTFOUND;
 	    return CBMISMATCH; // 20.10.2015
 	  }
 	  if( chr2 == chr1 ){
 	    continue; // while
 	  }else if( chr1 >= 65 && chr1 <= 90 ){ // large
-	    if( chr2 >= 97 && chr2 <= 122 ) // small, difference is 32
-	      if( chr2 == (chr1+32) ) // ASCII, 'A' + 32 = 'a'
+	    if( chr2 >= 97 && chr2 <= 122 ){ // small, difference is 32
+	      if( chr2 == (chr1+32) ){ // ASCII, 'A' + 32 = 'a'
 	        continue;
-	  }else if( chr2 >= 65 && chr2 <= 90 ){ // large
-	    if( chr1 >= 97 && chr1 <= 122 ) // small
-	      if( chr1 == (chr2+32) ) 
+	      }
+	    }
+	  }else if( chr1 >= 97 && chr1 <= 122 ){ // small
+	    if( chr2 >= 65 && chr2 <= 90 ){ // large
+	      if( chr1 == (chr2+32) ){
 	        continue;
+	      }
+	    }
 	  }else if( scandit==1 ){
 		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis, Ä to ä
 			continue;
@@ -84,7 +86,6 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	  else if( len1<(len2-from2) || ( len1==(len2-from2) && chr1>chr2 ) )
 	    return CBLESSTHAN; // 31.7.2014
 	  return CBMISMATCH; // 20.10.2015
-	  //return CBNOTFOUND;
 	}
 
 	if( len1==(len2-from2) ) // 31.7.2014
@@ -227,7 +228,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  case  1:
 	    if( err==CBMATCH )
 	      return CBMATCH; // returns complitely the same or an error
-	      //cb_clog( CBLOGDEBUG, CBNEGATION, " MATCH. " );
+	    //  cb_clog( CBLOGDEBUG, CBNEGATION, " MATCH. " );
 	    //}else{
 	    //  cb_clog( CBLOGDEBUG, CBNEGATION, " No match. " );
 	    //}
@@ -611,6 +612,7 @@ pcre_match_another:
 
 /*
  * pcre2 info. */
+/**************
 int  cb_compare_print_fullinfo(cb_match *mctl){
 	int res=0;
 	pcre2_code_32 *re = NULL;
@@ -636,4 +638,4 @@ int  cb_compare_print_fullinfo(cb_match *mctl){
 	}
 	return CBSUCCESS;
 }
-
+ **************/

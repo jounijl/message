@@ -44,9 +44,9 @@ int main(void) {
 	err = cb_allocate_cbfile(&in, 0, 2048, 512);
         if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
-	cb_set_to_word_search( &in );
+	//cb_set_to_search_one_name_only( &in );
 
-	(*in).cf.findwordstworends = 1;
+	cb_set_to_word_search( &in );
 
 	cb_set_encoding(&in, 1);
 

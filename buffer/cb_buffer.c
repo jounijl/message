@@ -27,19 +27,19 @@
 #include "../include/cb_buffer.h"
 
 
-int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
-int  cb_set_type(CBFILE **buf, unsigned char type);
-int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
-int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
-int  cb_print_leaves_inner(cb_name **cbn, char priority);
+static int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
+static int  cb_set_type(CBFILE **buf, unsigned char type);
+static int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
+//static int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
+static int  cb_print_leaves_inner(cb_name **cbn, char priority);
 //int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset, int transferencoding, int transferextension);
-int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset );
-int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
-int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
+static int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset );
+static int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
+static int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 //int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset, int transferencoding, int transferextension);
-int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset );
-int  cb_set_search_method(CBFILE **cbf, unsigned char method);
-int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
+static int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset );
+static int  cb_set_search_method(CBFILE **cbf, unsigned char method);
+static int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
 
 /*
  * Debug
@@ -62,9 +62,11 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchmethod:                \t");
 	if( (**str).cf.searchmethod==CBSEARCHUNIQUENAMES )		cb_log(&(*str), priority, CBNEGATION, "CBSEARCHUNIQUENAMES");
 	if( (**str).cf.searchmethod==CBSEARCHNEXTNAMES )		cb_log(&(*str), priority, CBNEGATION, "CBSEARCHNEXTNAMES");
+	if( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES )		cb_log(&(*str), priority, CBNEGATION, "CBSEARCHNEXTGROUPNAMES");
 	cb_log(&(*str), priority, CBNEGATION, "\nleafsearchmethod:            \t");
 	if( (**str).cf.leafsearchmethod==CBSEARCHUNIQUELEAVES )		cb_log(&(*str), priority, CBNEGATION, "CBSEARCHUNIQUELEAVES");
 	if( (**str).cf.leafsearchmethod==CBSEARCHNEXTLEAVES )		cb_log(&(*str), priority, CBNEGATION, "CBSEARCHNEXTLEAVES");
+	if( (**str).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES )	cb_log(&(*str), priority, CBNEGATION, "CBSEARCHNEXTGROUPLEAVES");
 	cb_log(&(*str), priority, CBNEGATION, "\nfindleaffromallnames:        \t0x%.2XH", (**str).cf.findleaffromallnames);
 	cb_log(&(*str), priority, CBNEGATION, "\nencoding:                    \t0x%.2XH", (**str).encoding );
 	cb_log(&(*str), priority, CBNEGATION, "\ntransferencoding:            \t0x%.2XH", (**str).transferencoding );
@@ -90,6 +92,7 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_log(&(*str), priority, CBNEGATION, "\njsonremovebypassfromcontent: \t0x%.2XH", (**str).cf.jsonremovebypassfromcontent);
 	cb_log(&(*str), priority, CBNEGATION, "\ndoubledelim:                 \t0x%.2XH", (**str).cf.doubledelim);
 	cb_log(&(*str), priority, CBNEGATION, "\nfindwords:                   \t0x%.2XH", (**str).cf.findwords);
+	cb_log(&(*str), priority, CBNEGATION, "\nfindwordstworends:           \t0x%.2XH", (**str).cf.findwordstworends);
 	cb_log(&(*str), priority, CBNEGATION, "\nsearchnameonly:              \t0x%.2XH", (**str).cf.searchnameonly);
 	if( (**str).cb!=NULL )
 	cb_log(&(*str), priority, CBNEGATION, "\nbuffer size:                 \t%liB", (*(**str).cb).buflen);
@@ -120,7 +123,7 @@ int  cb_print_benchmark(cb_benchmark *bm){
         return CBSUCCESS;
 }
 #endif
-int  cb_print_leaves(cb_name **cbn, char priority){ 
+int  cb_print_leaves(cb_name **cbn, char priority){
 	cb_name *ptr = NULL;
 	if(cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_leaves: allocation error (%i).", CBERRALLOC); return CBERRALLOC; }
 	if( (**cbn).leaf==NULL ) return CBEMPTY; // 14.11.2015
@@ -144,7 +147,7 @@ int  cb_print_leaves_inner(cb_name **cbn, char priority){
 	      cb_clog( priority, CBNEGATION, "\"");
 	      if( (*iter).namebuf!=NULL && (*iter).namelen>0 && (*iter).buflen>0 ) // 14.11.2015
 	        cb_print_ucs_chrbuf( priority, &(*iter).namebuf, (*iter).namelen, (*iter).buflen); // PRINT NAME
-	      cb_clog( priority, CBNEGATION, "\"");
+	      cb_clog( priority, CBNEGATION, "\"(%i,%li)", (*iter).group, (*iter).matchcount );
 	      if( (*iter).leaf==NULL && (*iter).next!=NULL)
 	        cb_clog( priority, CBNEGATION, ",");
 	      else if( (*iter).leaf!=NULL)
@@ -177,6 +180,7 @@ int  cb_print_name(cb_name **cbn, char priority){
         cb_clog( priority, CBNEGATION, "] namelen [%i] offset [%li] length [%i]",  (**cbn).namelen, (**cbn).offset, (**cbn).length); // 6.12.2014
         cb_clog( priority, CBNEGATION, " nameoffset [%li]\n", (**cbn).nameoffset);
         cb_clog( priority, CBNEGATION, " matchcount [%li]", (**cbn).matchcount);
+        cb_clog( priority, CBNEGATION, " group [%i]", (**cbn).group);
         cb_clog( priority, CBNEGATION, " first found [%li] (seconds)", (signed long int) (**cbn).firsttimefound);
         cb_clog( priority, CBNEGATION, " last used [%li]\n", (**cbn).lasttimeused);
         return err;
@@ -245,6 +249,7 @@ int  cb_copy_name( cb_name **from, cb_name **to ){
 	  if( (**from).leaf!=NULL ){  (**to).leaf = &(* (cb_name*) (**from).leaf);  }else{  (**to).leaf = NULL; } // 23.7.2016
           (**to).firsttimefound = (**from).firsttimefound;
           (**to).lasttimeused = (**from).lasttimeused;
+          (**to).group = (**from).group; // 11.11.2016
 	  return CBSUCCESS;
 	}
 	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_copy_name: parameter was null." );
@@ -259,6 +264,7 @@ int  cb_init_name( cb_name **cbn  ){ // 22.7.2016
         (**cbn).matchcount=0;
         (**cbn).firsttimefound=-1;
         (**cbn).lasttimeused=-1;
+	(**cbn).group=-1;
         //(**cbn).serial=-1;
         (**cbn).next=NULL;
         (**cbn).leaf=NULL;
@@ -306,7 +312,13 @@ int  cb_set_attributes_unread( CBFILE **cbs ){
 	if( (*(**cbs).cb).list.name==NULL ) return CBSUCCESS;
 	return cb_set_list_unread( &(*(**cbs).cb).list.name );
 }
-
+int  cb_set_leaf_unread( cb_name **cbname ){
+        if( cbname==NULL || *cbname==NULL ) return CBERRALLOC;
+	if( (**cbname).leaf==NULL )
+		return CBSUCCESS;
+	else
+        	return cb_set_list_unread( &(*(**cbname).leaf) );
+}
 int  cb_set_list_unread( cb_name **cbname ){
 	int err = CBSUCCESS;
 	cb_name *ptr  = NULL;
@@ -397,6 +409,25 @@ int  cb_set_to_nonblocking(CBFILE **cbf){ // not yet tested, 23.5.2016
 	}
 	return CBSUCCESS;
 }
+int  cb_increase_group_number( CBFILE **cbf ){
+	if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ) return CBERRALLOC;
+	return cb_set_group_number( &(*cbf), ++(*(**cbf).cb).list.currentgroup );
+}
+int  cb_set_group_number( CBFILE **cbf, int grp ){
+	if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL ) return CBERRALLOC;
+	(*(**cbf).cb).list.currentgroup = grp;
+	if( grp>(*(**cbf).cb).list.groupcount )
+		(*(**cbf).cb).list.groupcount = grp;
+	return CBSUCCESS;
+}
+int  cb_set_to_consecutive_group_names(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+        return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTGROUPNAMES);
+}
+int  cb_set_to_consecutive_group_leaves(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+        return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTGROUPLEAVES);
+}
 int  cb_set_to_consecutive_names(CBFILE **cbf){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTNAMES);
@@ -476,6 +507,7 @@ int  cb_set_to_word_search( CBFILE **str ){
 	//cb_set_search_state( &(*str), CBSTATELESS );
 	cb_set_rstart( &(*str), (unsigned long int) ',' ); // default value (CSV, SQL, ...), name separator (record start)
 	cb_set_rend( &(*str), (unsigned long int) '$' ); // default value (shell), record end, start of name
+	cb_set_subrend( &(*str), (unsigned long int) '&' ); // record end, start of name, 3.11.2016
 	return CBSUCCESS;
 }
 /*
@@ -687,6 +719,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.usesocket=0; // test messageend every time if it is set, 2.5.2016
 	(**str).cf.nonblocking=0; // if set, fd should be set with fcntl flag O_NONBLOCK
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
+	(**str).cf.findwordstworends=0; // use two rends (rend and subrend) with findwords
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	(**str).cf.namelist=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
@@ -891,7 +924,9 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).buflen=blksize;
 	(**cbf).contentlen=0;
 	(**cbf).list.namecount=0;
-	(**cbf).list.nodecount=0;   // 28.10.2015
+	(**cbf).list.nodecount=0;     // 28.10.2015
+	(**cbf).list.groupcount=0;    // 10.11.2016 in testing
+	(**cbf).list.currentgroup=0;  // 11.11.2016
 	(**cbf).list.toterminal=0;
 	//(**cbf).list.openpairs=0; // 28.9.2015
 	(**cbf).list.rd.lastchr=0x20; // 7.10.2015, 2.5.2016
