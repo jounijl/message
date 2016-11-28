@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>                        // abort
+#include <sys/types.h>                     // write
+#include <unistd.h>                        // write, STDERR_FILENO
 #include "../include/cb_buffer.h"
 
 /*
@@ -30,46 +32,64 @@
 // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 
 /*
- * Log if CBFILE can be attached to it. */
-int  cb_log( CBFILE **cbn, char priority, int errtype, const char* restrict format, ... ){
-	va_list argptr;
-	if( cbn==NULL || *cbn==NULL ){ abort(); return CBERRALLOC; }
-	if( (**cbn).cf.logpriority<priority ){
-		if( errtype==CBERRALLOC )
-			exit( errtype );
-		return CBSUCCESS;
-	}else{
-		va_start( argptr, format );
-		vfprintf( stderr, format, argptr );
-		va_end( argptr );
-	}
-	if( priority==CBLOGDEBUG && errtype==CBERRALLOC ){
-		fflush( stderr );
-		abort();
-	}else if( errtype==CBERRALLOC ){
-		exit( errtype );
-	}
+ * "C99 Standard" 6.7.8/10 (ISO/IEC 9899:TC3):
+ * "If an object that has automatic storage duration is not initialized explicitly, its value is
+ *  indeterminate. If an object that has static storage duration is not initialized explicitly,
+ *  then:
+ *  - if it has pointer type, it is initialized to a null pointer;
+ *  - if it has arithmetic type, it is initialized to (positive or unsigned) zero;
+ *  - if it is an aggregate, every member is initialized (recursively) according to these rules;
+ *  - if it is a union, the first named member is initialized (recursively) according to these
+ *  rules."
+ *
+ * The following is initialized to NULL (without the NULL value or with the NULL value):
+ */
+static CBFILE         *cblog = NULL;
+static unsigned char   logpriority = CBLOGERR;
+
+int  cb_log_set_cbfile( CBFILE **cbf ){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+	cblog = &( **cbf );
 	return CBSUCCESS;
 }
-/*
- * Common log. */
-int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
-	va_list argptr;
-	if( CBDEFAULTLOGPRIORITY<priority ){
-		if( errtype==CBERRALLOC )
-			exit( errtype );
-		return CBSUCCESS;
-	}else{
-		va_start( argptr, format );
-		vfprintf( stderr, format, argptr );
-		va_end( argptr );
-	}
-	if( priority==CBLOGDEBUG && errtype==CBERRALLOC ){
-		fflush( stderr );
-		abort();
-	}else if( errtype==CBERRALLOC ){
-		exit( errtype );
-	}
+int  cb_log_set_logpriority( unsigned char logpr ){
+	if(logpr<0 && logpriority>=0) return CBNOTSET;
+	logpriority = logpr;
 	return CBSUCCESS;
 }
 
+/*
+ * Log. */
+int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
+	int err = CBSUCCESS;
+	char snbuf[CBLOGLINELENGTH+1];
+	unsigned char *snb = NULL;
+	int  sncontentlen = 0;
+	va_list argptr;
+	snbuf[CBLOGLINELENGTH] = '\0';
+	snb = &( (unsigned char*) snbuf)[0];
+	if( logpriority>=priority || (logpriority<=0 && CBDEFAULTLOGPRIORITY>=priority )){
+		va_start( argptr, format );
+		//vfprintf( stderr, format, argptr );
+		sncontentlen = vsnprintf( &snbuf[0], CBLOGLINELENGTH, format, argptr ); // 28.11.2016
+		va_end( argptr );
+		if( cblog!=NULL ){
+			err = cb_write( &cblog, &(*snb), (long int) sncontentlen );
+			if(err>=CBERROR){ fprintf( stderr, "\ncb_log: cb_write, error %i.", err ); }
+		}else{
+			err = write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
+			if(err<0){ fprintf( stderr, "\ncb_log: write, error %i.", err ); }
+		}
+	}
+	if( errtype==CBERRALLOC ){
+		if( cblog==NULL )
+			fflush( stderr );
+		else
+			cb_flush( &cblog );
+		if( priority==CBLOGDEBUG )
+			abort();
+		else
+			exit( errtype );
+	}
+	return CBSUCCESS;
+}

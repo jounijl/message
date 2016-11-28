@@ -115,7 +115,7 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	if( (**cbs).cb!=NULL && ( ( (*(**cbs).cb).list.current!=NULL && leaf!=1 ) || ( (*(**cbs).cb).list.currentleaf!=NULL && leaf==1 ) ) ){
 	  if( allocate==1 ){
 	  	if( *ucsname!=NULL )
-	  		cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
+	  		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: debug, cb_get_current_name_ucs: *ucsname was not NULL.");
 	  	if(leaf!=1){
 		   namebuflength = (*(*(**cbs).cb).list.current).namelen + 1;
 	  	}else{
@@ -159,7 +159,7 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
 	if( (**cbs).cb!=NULL && (*(**cbs).cb).list.currentleaf==NULL && leaf==1 )
 	   return CBNOTFOUND;
 	else if( (**cbs).cb==NULL )
-	   cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: (**cbs).cb was null. ");
+	   cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_name: (**cbs).cb was null. ");
         if( ucsname==NULL || *ucsname==NULL ){ ret = CBERRALLOC; }
 	return ret;
 }
@@ -168,16 +168,16 @@ int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int 
  * Searched next name in list. Not leafs. */
 int  cb_copy_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflen){
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || *ucsname==NULL || namelength==NULL ){    
-		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_copy_next_name_ucs: parameter was null."); return CBERRALLOC; 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_next_name_ucs: parameter was null."); return CBERRALLOC; 
 	}
 	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), namebuflen, 0);
 }
 int  cb_get_next_name_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength){
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL ){    
-		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null."); return CBERRALLOC; 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null."); return CBERRALLOC; 
 	}
         if( *ucsname!=NULL ){
-          cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
+          cb_clog( CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
           return CBERRALLOC;
         }
 	return cb_get_next_name_ucs_sub( &(*cbs), &(*ucsname), &(*namelength), 0, 1);
@@ -192,11 +192,11 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 	name = &chrs[0];
 
 	if( cbs==NULL || *cbs==NULL || ucsname==NULL || namelength==NULL || ( allocate!=1 && *ucsname==NULL ) ){
-	  cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null.");
+	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_next_name_ucs: parameter was null.");
 	  return CBERRALLOC;
 	}
 	if( *ucsname!=NULL && allocate==1 ){
-	  cb_log( &(*cbs), CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
+	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_get_next_name_ucs: error, *ucsname was not NULL.");
 	  return CBERRALLOC;
 	}
 
@@ -219,9 +219,9 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 	  }else{
 		ret = cb_copy_current_name( &(*cbs), &(*ucsname), &(*namelength), namebuflength ); // 18.8.2016
 	  }
-	  //cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); // 23.8.2016
-	  if(ret>=CBERROR){ cb_log( &(*cbs), CBLOGERR, ret, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
-	  if(ret>=CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
+	  //cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); // 23.8.2016
+	  if(ret>=CBERROR){ cb_clog( CBLOGERR, ret, "\ncb_get_next_name_ucs: cb_get_current_name, error %i.", ret ); }
+	  if(ret>=CBNEGATION){ cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); }
 	}
 
 	/* May return CBMESSAGEHEADEREND if it was set */
@@ -293,19 +293,19 @@ int  cb_read_value_leaves( CBFILE **cbs ){
 	}
 
 /**
-        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_read_value_leaves: err=%i moved current from [", err );
+        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_read_value_leaves: err=%i moved current from [", err );
 	if( (*(**cbs).cb).list.current!=NULL )
           cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).namelen, (*(*(**cbs).cb).list.current).buflen );
 	else
-	  cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "<empty>");
-        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "]");
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "<empty>");
+        cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 
-	cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, " to [" );
+	cb_clog( CBLOGDEBUG, CBNEGATION, " to [" );
  	if( oldcurrent!=NULL )
           cb_print_ucs_chrbuf( CBLOGDEBUG, &(*oldcurrent).namebuf, (*oldcurrent).namelen, (*oldcurrent).buflen );
 	else
-	  cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "<empty>");
-        cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "]");
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "<empty>");
+        cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 **/
 	/*
 	 * Rewind to the previous name. */
@@ -332,8 +332,8 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 	/*
 	 * Read to the next name and move the current pointer to the previous name. */
 	err = cb_read_value_leaves( &(*cbs) );
-	if(err>CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_find_leaf_from_current: cb_read_value_leaves, error %i.", err); return err; }
-	if(err>CBNEGATION){ cb_log( &(*cbs), CBLOGDEBUG, err, "\ncb_find_leaf_from_current: cb_read_value_leaves returned %i.", err); }
+	if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_find_leaf_from_current: cb_read_value_leaves, error %i.", err); return err; }
+	if(err>CBNEGATION){ cb_clog( CBLOGDEBUG, err, "\ncb_find_leaf_from_current: cb_read_value_leaves returned %i.", err); }
 
 	/*
 	 * Search first matching leaf from any ocoffset. */
@@ -347,7 +347,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
 			return CBSUCCESS;
 		}else if(err>=CBERROR){
-		   cb_log( &(*cbs), CBLOGALERT, err, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, error %i.", err);
+		   cb_clog( CBLOGALERT, err, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs, error %i.", err);
 		   return err;
 		}else if(err==CBNOTFOUNDLEAVESEXIST || err==CBVALUEEND || err==CBSTREAMEND){
 		   if( err==CBVALUEEND || err==CBSTREAMEND ){
@@ -359,7 +359,7 @@ int  cb_find_leaf_from_current_matchctl(CBFILE **cbs, unsigned char **ucsname, i
 		    * Continue to search the next level leafs if some leafs existed. */
 	            *ocoffset+=1;
 		}else if(err>=CBNEGATION){
-		   ; // cb_log( &(*cbs), CBLOGDEBUG, CBNEGATION, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
+		   ; // cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_find_leaf_from_current: cb_set_cursor_match_length_ucs returned %i.", err);
 		}
 	}
 	return CBNOTFOUND;
@@ -455,7 +455,7 @@ int  cb_subfunction_get_currentleaf_content( CBFILE **cbf, unsigned char **ucsco
                 len = (*(*(**cbf).cb).list.currentleaf).length * 4; // 15.9.2015, character count times four bytes per character
 	}
 
-	//cb_log( &(*cbf), CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: maximum content length was %i.", len);
 	if(allocate==0){
 		if( *ucscontent==NULL ){ cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: parameter was null."); return CBERRALLOC; }
         	return cb_copy_content( &(*cbf), &(*(**cbf).cb).list.currentleaf, &(*ucscontent), &(*clength), len ); 

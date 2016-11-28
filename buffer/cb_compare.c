@@ -111,12 +111,12 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	stbp = &stb[0];
 	newmctl.re=NULL; newmctl.matchctl=1;
 
-	if(mctl==NULL){ cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_compare: allocation error, cb_match."); return CBERRALLOC; }
+	if(mctl==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare: allocation error, cb_match."); return CBERRALLOC; }
 	if( cbs==NULL || *cbs==NULL )
 	  return CBERRALLOC;
 
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL ){ 
-		cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\ncb_compare: name allocation error."); 
+		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare: name allocation error."); 
 		return CBERRALLOC;
  	} // 24.10.2015
 
@@ -157,12 +157,12 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * Compiles regexp from pattern just before search.
 	   * name1 has to be NULL -terminated string.
 	   */
-	  if(name1==NULL){	cb_log( &(*cbs), CBLOGALERT, CBERRALLOC, "\nerror in cb_compare, -8: name1 was null.");  return CBERRALLOC; }
+	  if(name1==NULL){	cb_clog( CBLOGALERT, CBERRALLOC, "\nerror in cb_compare, -8: name1 was null.");  return CBERRALLOC; }
 
 	  err = cb_get_matchctl( &(*cbs), &(*name1), len1, 0, &newmctl, (*mctl).matchctl ); // 13.4.2014
-	  if(err!=CBSUCCESS){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
+	  if(err!=CBSUCCESS){ cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
 	  err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
-	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
+	  if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015
 	  pcre2_code_free_32( (pcre2_code_32*) newmctl.re ); // 15.11.2015, free just compiled re
 	}else if( (*mctl).matchctl==-7 || (*mctl).matchctl==-9 ){ // new 18.3.2014, not yet tested 18.3.2014
@@ -173,9 +173,9 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	   * to mctl before and elsewhere. name2 has
 	   * to be NULL terminated.
 	   */
-	  if( (*mctl).re==NULL){	cb_log( &(*cbs), CBLOGINFO, CBREWASNULL, "\nerror in cb_compare, -7: re was null (%i).", CBREWASNULL);  return CBREWASNULL; }
+	  if( (*mctl).re==NULL){	cb_clog( CBLOGINFO, CBREWASNULL, "\nerror in cb_compare, -7: re was null (%i).", CBREWASNULL);  return CBREWASNULL; }
 	  err = cb_compare_regexp( &(*name2), len2, &(*mctl), &mcount); 
-	  if(err>=CBERROR){ cb_log( &(*cbs), CBLOGERR, err, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
+	  if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare, -7: error in cb_compare_regexp, %i.", err); }
 	  (*mctl).resmcount = mcount; // 9.8.2015
 	  // 15.11.2015, do not free parameter re.
 	}else if( (*mctl).matchctl==-6 ){ // %am%
@@ -347,7 +347,7 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 /*
  * To use compare -7 and -8 . 4-byte text with PCRE UTF-32 (in place of UCS). */
 int  cb_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
-	if(ctl==NULL){ cb_log( &(*cbf), CBLOGALERT, CBERRALLOC, "\ncb_get_matchctl: allocation error."); return CBERRALLOC; }
+	if(ctl==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_matchctl: allocation error."); return CBERRALLOC; }
 	if(cbf!=NULL && *cbf!=NULL)
 	  if( (**cbf).cf.asciicaseinsensitive==1)
 	    options = options | (unsigned int) PCRE2_CASELESS; // can be set to another here

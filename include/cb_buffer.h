@@ -111,6 +111,7 @@
 #define CBNAMEBUFLEN         4096
 #define CBREADAHEADSIZE        28
 #define CBSEEKABLEWRITESIZE   128
+#define CBLOGLINELENGTH      4096
 
 /*
  CBREADAHEADSIZE is used to read RFC-822 unfolding characters. It's size should be small
@@ -418,14 +419,14 @@ typedef struct cb_conf {
 	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
 
 	/* Log options */
-	unsigned char       logpriority:5;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
+	//removed 28.11.2016: unsigned char       logpriority:5;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
 	/* Read methods */
-	unsigned char       usesocket:1;                   // Read only headeroffset and messageoffset length blocks
-	unsigned char       nonblocking:2;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
+	unsigned char       usesocket:3;                   // Read only headeroffset and messageoffset length blocks
+	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 
 	/* Stream end recognition */
-	unsigned char       stopatbyteeof:1;               // Recognize CBSTREAMEND at EOF character. Default is 1. Every octet disregarding the character code.
-	unsigned char       stopateof:1;                   // Recognize CBENDOFFILE at EOF character. 
+	unsigned char       stopatbyteeof:2;               // Recognize CBSTREAMEND at EOF character. Default is 1. Every octet disregarding the character code.
+	unsigned char       stopateof:2;                   // Recognize CBENDOFFILE at EOF character. 
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
@@ -803,7 +804,9 @@ int  cb_print_benchmark(cb_benchmark *bm);
 
 // Log writing (as in fprintf)
 int  cb_log( CBFILE **cbn, char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 4, 5))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
-int  cb_clog( char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4))); 
+int  cb_clog( char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4)));
+int  cb_log_set_cbfile( CBFILE **cbf ); // Sets a CBFILE to write the log. If not set, writes to stderr. 28.11.2016
+int  cb_log_set_logpriority( unsigned char logpr ); // 28.11.2016
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013
