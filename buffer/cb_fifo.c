@@ -219,7 +219,7 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
 }
 
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int buflen){
-        static unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
+        const unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
         if( chr==NULL || bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
         if( *bufindx>(buflen-4) ){               return CBARRAYOUTOFBOUNDS; }
         *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1; 

@@ -84,12 +84,12 @@ int  cb_transfer_write( CBFILE **cbf ){ // Not yet well tested, 15.7.2017
 }
 int  cb_terminate_transfer( CBFILE **cbf ){
 	int wrote = -1;
-	//static char chunkedtermination[6] = { 0x20, '0', 0x20, 0x0D, 0x0A, '\0' };
-	//static int  chunkedterminationlen = 5;
-	static char chunkedtermination[4]   = { '0', 0x0D, 0x0A, '\0' }; // Chrome, 2.8.2016
-	static int  chunkedterminationlen   = 3;
-	//static char octettermination[3]   = { 0x0D, 0x0A, '\0' };
-	//static int  octetterminationlen   = 2;
+	//char chunkedtermination[6] = { 0x20, '0', 0x20, 0x0D, 0x0A, '\0' };
+	//int  chunkedterminationlen = 5;
+	char chunkedtermination[4]   = { '0', 0x0D, 0x0A, '\0' }; // Chrome, 2.8.2016
+	int  chunkedterminationlen   = 3;
+	//char octettermination[3]   = { 0x0D, 0x0A, '\0' };
+	//int  octetterminationlen   = 2;
 	if( cbf==NULL || *cbf==NULL ){	cb_clog( CBLOGERR, CBERRALLOC, "\ncb_terminate_transfer: parameter was null." ); return CBERRALLOC; }
 	if( (**cbf).fd<0 ){ cb_clog( CBLOGERR, CBERRFILEOP, "\ncb_transfer_write: fd was %i, error.", (**cbf).fd ); return -1; }
         switch( (**cbf).transferextension ){
@@ -123,10 +123,10 @@ int  cb_terminate_transfer( CBFILE **cbf ){
 int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, signed long int buflen ){ // 28.5.2016
         int rd = 0, wasread = 1, indx=0, numindx=0;
 	signed long int chunksize       = 0;
-	static unsigned char numbuf[14] = { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' }; // text max length 2147483647, 10 characters + 0x + H, 13
-	static int  numbuflen           = 13;
-	static unsigned char extensionbuf[513];
-	static int  extensionbuflen     = 512;
+	unsigned char numbuf[14] = { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' }; // text max length 2147483647, 10 characters + 0x + H, 13
+	int  numbuflen           = 13;
+	unsigned char extensionbuf[513];
+	int  extensionbuflen     = 512;
 	const char                 *ptr = NULL;
 	unsigned char ch = 0x20;
 	char stop=0;
@@ -182,10 +182,10 @@ int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, s
 int  cb_flush_chunks( int fd, unsigned char *buf, signed long int contentlen ){ // 27.5.2016
         int chunksize = 0;
         int written   = 1, wrote = 0;
-        static char crlfbuf[23] = { 0x0D, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' };
-        int          crlfbuflen = 22;
-        int                 len = 1;
-        char               *ptr = NULL;
+        char crlfbuf[23] = { 0x0D, 0x0A, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, '\0' };
+        int   crlfbuflen = 22;
+        int          len = 1;
+        char        *ptr = NULL;
 	unsigned char   *bufptr = NULL;
 	long int         bufpos = 0;
         ptr = &crlfbuf[0];

@@ -52,6 +52,7 @@ int  cb_log_set_cbfile( CBFILE **cbf ){
 	cblog = &( **cbf );
 	return CBSUCCESS;
 }
+
 int  cb_log_set_logpriority( unsigned char logpr ){
 	if(logpr<0 && logpriority>=0) return CBNOTSET;
 	logpriority = logpr;

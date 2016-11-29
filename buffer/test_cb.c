@@ -93,9 +93,9 @@ int main (int argc, char *argv[]) {
 	int indx=0, indx2=0, encoding=0, encbytes=0, strdbytes=0, bufsize=BUFSIZE, blksize=BLKSIZE;
 	int fromend=0, encodingstested=0, atoms=0, outindx=0, outbcount=0, outstoredsize=0;
         char inputstream=0;
-	static unsigned long int nl = 0x0A; // lf
+	unsigned long int nl = 0x0A; // lf
 #ifdef WINDOWSOS
-	static unsigned long int cr = 0x0D; // cr
+	unsigned long int cr = 0x0D; // cr
 #endif
 	unsigned char *filename = NULL;
 	unsigned char infile[FILENAMELEN+5+1];

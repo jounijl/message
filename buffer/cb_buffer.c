@@ -732,8 +732,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.removesemicolon=0; // wordlist has many differences because rend and rstart are backwards and not all settings are compatible, default is off
 	(**str).cf.removenamewsp=0;
 	(**str).cf.removecommentsinname=0;
-	//(**str).cf.logpriority=CBLOGDEBUG; // not used, to be removed, 28.11.2016
-	cb_log_set_logpriority( CBDEFAULTLOGPRIORITY ); // 28.11.2016
+	//(**str).cf.logpriority=CBLOGDEBUG; // removed 28.11.2016
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
 	(**str).cf.leafsearchmethod=CBSEARCHNEXTLEAVES; // 11.5.2016, default
