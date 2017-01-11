@@ -102,13 +102,18 @@
 #define CBLOGNOTICE             6
 #define CBLOGINFO               7
 #define CBLOGDEBUG              8
+#define CBLOGINDIVIDUAL         20	// Log only if exactly the loglevel and CBLOGINDIVIDUAL<loglevel<CBLOGMULTIPLE
+#define CBLOGTIMING             21
+#define CBLOGMULTIPLE           30      // Log if the loglevel>CBLOGMULTIPLE and CBLOGMULTIPLE<loglevel<CBLOGINDIVIDUAL or loglevel<CBLOGMULTIPLE
 
 #define CBDEFAULTLOGPRIORITY    8
+
 
 /*
  * Default values (multiple of 4)
  */
-#define CBNAMEBUFLEN         4096
+//11.12.2016: #define CBNAMEBUFLEN         4096
+#define CBNAMEBUFLEN        32768
 #define CBREADAHEADSIZE        28
 #define CBSEEKABLEWRITESIZE   128
 #define CBLOGLINELENGTH      4096
@@ -154,17 +159,22 @@
 
 /*
  * Search options */
-#define CBSEARCHUNIQUENAMES       0   // Names are unique (returns allways the first name in list)
-#define CBSEARCHNEXTNAMES         1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
-#define CBSEARCHUNIQUELEAVES      0   // Leaves are unique (returns allways the first name in list)
-#define CBSEARCHNEXTLEAVES        1   // Multiple same leaves (returns leaf if matchcount is zero, otherwice searches next in name value, also in stream)
-#define CBSEARCHNEXTGROUPNAMES    2   // Next names with matching to group number
-#define CBSEARCHNEXTGROUPLEAVES   4   // Next leaves with matching to group number
+#define CBSEARCHUNIQUENAMES          0   // Names are unique (returns allways the first name in list)
+#define CBSEARCHNEXTNAMES            1   // Multiple same names (returns name if matchcount is zero, otherwice searches next in list or in stream)
+#define CBSEARCHUNIQUELEAVES         0   // Leaves are unique (returns allways the first name in list)
+#define CBSEARCHNEXTLEAVES           1   // Multiple same leaves (returns leaf if matchcount is zero, otherwice searches next in name value, also in stream)
+#define CBSEARCHNEXTGROUPNAMES       2   // Next names with matching to group number
+#define CBSEARCHNEXTGROUPLEAVES      4   // Next leaves with matching to group number
+#define CBSEARCHNEXTLASTGROUPNAMES   5   // Previous names smaller than the previous group (matched will be increased to the currentgroup)
+#define CBSEARCHNEXTLASTGROUPLEAVES  6   // Previous leaves smaller than the previous group (matched will be increased to the currentgroup)
 
 /**
  CBSEARCHNEXTGROUP 11.11.2016
         Matches either the same group number again or a new attribute not yet matched. A group of attributes
         can be set to belong to a group and found with the group number.
+
+ CBSEARCHNEXTLASTGROUP 31.12.2016
+        Matches smaller than the current group number and sets the currentgroup if matched. 
  **/
 
 
@@ -314,6 +324,17 @@
 #define JSON_CTRL( chr )                       ( chr=='"' || chr=='\\' || chr=='/' || chr=='b' || chr=='f' || chr=='n' || chr=='r' || chr=='t' || chr=='u' )
 #define JSON_HEX( chr )                        ( ( chr>='0' && chr<='9' ) || ( chr>='A' && chr<='F' ) || ( chr>='a' && chr<='f' ) )
 
+/* SQL end characters if needed. */
+#define sqlrstartchr( chr )                    ( chr==')' || chr=='+' || chr=='-' || chr==',' || chr==0x20 || chr==0x09 || chr=='*' || chr=='/' || \
+						 chr==';' || chr=='$' || chr=='@' || ( chr<=0x2D && chr>=0x20) || chr==0x0D || chr==0x0A || chr=='<' || \
+						 chr=='>' || chr=='=' || chr=='{' || chr=='}' || chr=='[' || chr==']' || chr=='|' || chr=='%' || \
+						 chr=='(' || chr=='?' || chr=='\'' || chr==':' || chr=='^' || chr=='~' )
+// chr=='_' ||
+
+// https://www.postgresql.org/docs/9.3/static/sql-syntax-lexical.html
+// https://docs.oracle.com/cd/B10501_01/text.920/a96518/cqspcl.htm
+// http://www.ibm.com/support/knowledgecenter/SSEPGG_10.1.0/com.ibm.db2.luw.admin.ts.doc/doc/c0059609.html
+
 /*
  * Characters to remove from name: BOM. Comment string is removed elsewhere.
  * UTF-8: "initial U+FEFF character may be stripped", RFC-3629 page-6, UTF-16: 
@@ -336,25 +357,6 @@ typedef struct cb_benchmark {
 	long long int bytereads;   // bytes reads (cb_get_ch)
 } cb_benchmark;
 #endif
-
-/*
- * Reader function state to update the level of the tree
- * correctly in cb_get_chr. A method to communicate with
- * the reader function.  29.9.2015 
- *
- * 7.10.2015: saves last read character. How the value is read,
- * should not be restricted. If variables preserving the state
- * is needed, they should be in cb_read.
- */
-typedef struct cb_read {
-	/* 
-	 * Read state variables can be moved here if the state can be detached from set_cursor_... 
-	 * and moved to some reading function. */
-	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
-	long int           lastchroffset;
-	unsigned char      lastreadchrendedtovalue;
-	unsigned char      padto64bit[7];
-} cb_read;
 
 /*
  * Compare ctl */
@@ -393,11 +395,15 @@ typedef struct cb_conf {
         unsigned char       unfold:1;                      // Search names unfolding the text first, RFC 2822
 	unsigned char       leadnames:1;                   // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
 	unsigned char       findleaffromallnames:1;        // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
+	//unsigned char     findleaffromallleaves:1;       // 1.1.2017 TEST. Find leaf from all leaves (1) or from the current leaf only (0). If levels are less than ocoffset, stops with CBNOTFOUND.
 	unsigned char       doubledelim:1;                 // When using CBSTATETREE, after every second openpair, rstart and rstop are changed to another
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) 
 	unsigned char       findwordstworends:1;           // wordlist with two rend-characters.
+	unsigned char       findwordssql:1;                // wordlist with SQL syntax rstart characters ( +),0x20-/*... )
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
+	/* Stream source */
+	//unsigned char       usesecondaryfd:1;              // use secondary fd after CBSTREAMEND, 13.12.2016.
 	/* Name parsing options */
 	unsigned char       removenamewsp:1;               // Remove white space characters inside name
 
@@ -413,7 +419,7 @@ typedef struct cb_conf {
 
 	/* JSON options */
 	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
-	unsigned char       jsonnamecheck:2;               // Check the form of the name of the JSON attribute (in cb_search.c).
+	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:2; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:2;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
 	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
@@ -460,6 +466,34 @@ typedef struct cb_name{
 	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
+
+/*
+ * Reader function state to update the level of the tree
+ * correctly in cb_get_chr. A method to communicate with
+ * the reader function.  29.9.2015 
+ *
+ * 7.10.2015: saves last read character. How the value is read,
+ * should not be restricted. If variables preserving the state
+ * is needed, they should be in cb_read.
+ */
+typedef struct cb_read {
+	/* 
+	 * Read state variables can be moved here if the state can be detached from set_cursor_... 
+	 * and moved to some reading function. */
+	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
+	long int           lastchroffset;
+	unsigned char      lastreadchrendedtovalue;
+	unsigned char      padto64bit[7];
+	/*
+	 * Reading from the tree in memory (not from the end from stream), 1.1.2017.
+	 * Thsese are needed to determine the current level and to use cb_set_root( )
+	 * -function. */
+	int                last_level;         // Reset by match in cb_set_to_name and updated by match in cb_set_to_leaf
+	cb_name           *last_name;          // Either current from previous match in cb_set_to_name or previous currentleaf match from cb_set_to_leaf
+	int                current_root_level; // cb_set_root( ) copies valid level from last_leaf_level (used in cb_set_to_... functions )
+	cb_name           *current_root;       // cb_set_root( ) copies valid reference from last_leaf (used in cb_set_to_... functions )
+} cb_read;
+
 typedef struct cb_namelist{
         cb_name              *name;
 	cb_name              *current;
@@ -492,13 +526,14 @@ typedef struct cbuf{
 typedef struct cbuf cblk;
 
 typedef struct CBFILE{
-	int                 fd;		// Stream file descriptor
-	cbuf               *cb;		// Data in valuepairs (preferably in applications order)
-	cblk               *blk;	// Input read or output write -block 
-	cb_ring             ahd;	// Ring buffer to save data read ahead
-        cb_conf             cf;         // All configurations, 20.8.2013
+	int                 fd;		   // Stream file descriptor
+	//int                 secondaryfd;   // Second stream file descriptor to use after CBSTREAMEND if usesecondaryfd was set
+	cbuf               *cb;		   // Data in valuepairs (preferably in applications order)
+	cblk               *blk;	   // Input read or output write -block 
+	cb_ring             ahd;	   // Ring buffer to save data read ahead
+        cb_conf             cf;            // All configurations, 20.8.2013
 	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
-	int                 encoding;   // list of encodings is in file cb_encoding.h 
+	int                 encoding;      // list of encodings is in file cb_encoding.h 
 	int                 transferencoding; // Transferencoding
 	int                 transferextension; // Optional transfer encoding extension
 #ifdef CBBENCHMARK
@@ -612,7 +647,9 @@ int  cb_set_cursor_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength);
  */
 int  cb_set_cursor_match_length(CBFILE **cbs, unsigned char **name, int *namelength, int ocoffset, int matchctl);
 int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
+//int  cb_set_cursor_from_currentleaf_ucs(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, int matchctl);
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *ctl);
+//int  cb_set_cursor_from_currentleaf_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int namelength, int ocoffset, cb_match *ctl);
 
 
 /*
@@ -625,6 +662,19 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
  */
 
 int  cb_remove_name_from_stream(CBFILE **cbs);
+
+
+
+/*
+ * (Only if) attribute names are not unique in a tree and same names have to be
+ * searched again. Does not work yet, 1.1.2017.
+ *
+ * To start finding find from previously matched cb_name, either in list or in tree.
+ * Meant to be used in searching from the tree structure in memory. May be usable in 
+ * reading the list as well. Not tested, 1.1.2017.
+ */
+int  cb_set_root( CBFILE **cbs );
+int  cb_release_root( CBFILE **cbs );
 
 
 /*
@@ -765,6 +815,8 @@ int  cb_set_to_consecutive_names(CBFILE **cbf); // Searches multiple same named 
 int  cb_set_to_consecutive_leaves(CBFILE **cbf); // Searches multiple same named leaves, default
 int  cb_set_to_consecutive_group_names(CBFILE **cbf); // Searches multiple same named names. If same name is found, the one already in group is used.
 int  cb_set_to_consecutive_group_leaves(CBFILE **cbf); // Searches multiple same named leaves. If same name is found the one already in group is used.
+int  cb_set_to_consecutive_group_last_names(CBFILE **cbf); // ". Previous names smaller than the currentgroup.
+int  cb_set_to_consecutive_group_last_leaves(CBFILE **cbf); // ". Previous leaves smaller than the currentgroup.
 
 /*
  * To use the group number of CBSEARCHNEXTGROUPNAMES and CBSEARCHNEXTGROUPLEAVES */
@@ -777,7 +829,7 @@ int  cb_increase_group_number( CBFILE **cbf );
 // 4-byte character array
 int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int bufsize);
 int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int bufsize);
-int  cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int buflen);
+int  cb_print_ucs_chrbuf(int priority, unsigned char **chrbuf, int namelen, int buflen);
 int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int chrcount ); // copies chrcount or less characters to use as a new 4-byte block
 
 // 4-byte fifo, without buffer or it's size
@@ -789,24 +841,25 @@ int  cb_fifo_set_stream(cb_ring *cfi); // all get operations return CBSTREAM aft
 int  cb_fifo_set_endchr(cb_ring *cfi); // all get operations return CBSTREAMEND after this
 
 // Debug
-int  cb_fifo_print_buffer(cb_ring *cfi, char priority);
-int  cb_fifo_print_counters(cb_ring *cfi, char priority);
+int  cb_fifo_print_buffer(cb_ring *cfi, int priority);
+int  cb_fifo_print_counters(cb_ring *cfi, int priority);
 
 // Debug
-int  cb_print_name(cb_name **cbn, char priority);
-int  cb_print_names(CBFILE **str, char priority);
-int  cb_print_leaves(cb_name **cbn, char priority); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
-void cb_print_counters(CBFILE **str, char priority);
-int  cb_print_conf(CBFILE **str, char priority);
+int  cb_print_name(cb_name **cbn, int priority);
+int  cb_print_names(CBFILE **str, int priority);
+int  cb_print_leaves(cb_name **cbn, int priority); // Prints inner leaves of values if CBSTATETREE was used. Not yet tested 5.12.2013.
+void cb_print_counters(CBFILE **str, int priority);
+int  cb_print_conf(CBFILE **str, int priority);
 #ifdef CBBENCHMARK
 int  cb_print_benchmark(cb_benchmark *bm);
 #endif
 
 // Log writing (as in fprintf)
-int  cb_log( CBFILE **cbn, char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 4, 5))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
-int  cb_clog( char priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4)));
+//int  cb_log( CBFILE **cbn, int priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 4, 5))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
+int  cb_clog( int priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4)));
 int  cb_log_set_cbfile( CBFILE **cbf ); // Sets a CBFILE to write the log. If not set, writes to stderr. 28.11.2016
-int  cb_log_set_logpriority( unsigned char logpr ); // 28.11.2016
+int  cb_log_set_logpriority( signed int logpr ); // 28.11.2016
+int  cb_log_get_logpriority( void ); // 29.1.2016
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013

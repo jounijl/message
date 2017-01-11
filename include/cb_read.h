@@ -21,7 +21,7 @@
  * cb_read.c These use the base library:  (a library using the basic library).
  */
 
-#define MAXCONTENTLEN     1024
+#define MAXCONTENTLEN     12582912 	// 1024 some old limit (to be removed), 10.12.2016
 
 /*
  * 4.11.2013

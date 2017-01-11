@@ -31,7 +31,7 @@ static int  cb_get_char_read_block(CBFILE **cbf, unsigned char *ch);
 static int  cb_set_type(CBFILE **buf, unsigned char type);
 static int  cb_allocate_empty_cbfile(CBFILE **str, int fd);
 //static int  cb_get_leaf(cb_name **tree, cb_name **leaf, int count, int *left); // not tested yet 7.12.2013
-static int  cb_print_leaves_inner(cb_name **cbn, char priority);
+static int  cb_print_leaves_inner(cb_name **cbn, int priority);
 //int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset, int transferencoding, int transferextension);
 static int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset );
 static int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
@@ -45,7 +45,7 @@ static int  cb_set_leaf_search_method(CBFILE **cbf, unsigned char method);
  * Debug
  */
 
-int cb_print_conf(CBFILE **str, char priority){
+int cb_print_conf(CBFILE **str, int priority){
 	int err = CBSUCCESS;
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_print_conf: str was null."); return CBERRALLOC; }
 	cb_clog( priority, CBNEGATION, "\ntype:                        \t");
@@ -63,10 +63,12 @@ int cb_print_conf(CBFILE **str, char priority){
 	if( (**str).cf.searchmethod==CBSEARCHUNIQUENAMES )		cb_clog( priority, CBNEGATION, "CBSEARCHUNIQUENAMES");
 	if( (**str).cf.searchmethod==CBSEARCHNEXTNAMES )		cb_clog( priority, CBNEGATION, "CBSEARCHNEXTNAMES");
 	if( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES )		cb_clog( priority, CBNEGATION, "CBSEARCHNEXTGROUPNAMES");
+	if( (**str).cf.searchmethod==CBSEARCHNEXTLASTGROUPNAMES )	cb_clog( priority, CBNEGATION, "CBSEARCHNEXTLASTGROUPNAMES");
 	cb_clog( priority, CBNEGATION, "\nleafsearchmethod:            \t");
 	if( (**str).cf.leafsearchmethod==CBSEARCHUNIQUELEAVES )		cb_clog( priority, CBNEGATION, "CBSEARCHUNIQUELEAVES");
 	if( (**str).cf.leafsearchmethod==CBSEARCHNEXTLEAVES )		cb_clog( priority, CBNEGATION, "CBSEARCHNEXTLEAVES");
 	if( (**str).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES )	cb_clog( priority, CBNEGATION, "CBSEARCHNEXTGROUPLEAVES");
+	if( (**str).cf.leafsearchmethod==CBSEARCHNEXTLASTGROUPLEAVES )	cb_clog( priority, CBNEGATION, "CBSEARCHNEXTLASTGROUPLEAVES");
 	cb_clog( priority, CBNEGATION, "\nfindleaffromallnames:        \t0x%.2XH", (**str).cf.findleaffromallnames);
 	cb_clog( priority, CBNEGATION, "\nencoding:                    \t0x%.2XH", (**str).encoding );
 	cb_clog( priority, CBNEGATION, "\ntransferencoding:            \t0x%.2XH", (**str).transferencoding );
@@ -93,6 +95,7 @@ int cb_print_conf(CBFILE **str, char priority){
 	cb_clog( priority, CBNEGATION, "\ndoubledelim:                 \t0x%.2XH", (**str).cf.doubledelim);
 	cb_clog( priority, CBNEGATION, "\nfindwords:                   \t0x%.2XH", (**str).cf.findwords);
 	cb_clog( priority, CBNEGATION, "\nfindwordstworends:           \t0x%.2XH", (**str).cf.findwordstworends);
+	cb_clog( priority, CBNEGATION, "\nfindwordssql:                \t0x%.2XH", (**str).cf.findwordssql);
 	cb_clog( priority, CBNEGATION, "\nsearchnameonly:              \t0x%.2XH", (**str).cf.searchnameonly);
 	if( (**str).cb!=NULL )
 	cb_clog( priority, CBNEGATION, "\nbuffer size:                 \t%liB", (*(**str).cb).buflen);
@@ -123,14 +126,14 @@ int  cb_print_benchmark(cb_benchmark *bm){
         return CBSUCCESS;
 }
 #endif
-int  cb_print_leaves(cb_name **cbn, char priority){
+int  cb_print_leaves(cb_name **cbn, int priority){
 	cb_name *ptr = NULL;
 	if(cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_leaves: allocation error (%i).", CBERRALLOC); return CBERRALLOC; }
 	if( (**cbn).leaf==NULL ) return CBEMPTY; // 14.11.2015
 	ptr = &(* (cb_name*) (**cbn).leaf );
 	return cb_print_leaves_inner( &ptr, priority );
 }
-int  cb_print_leaves_inner(cb_name **cbn, char priority){ 
+int  cb_print_leaves_inner(cb_name **cbn, int priority){ 
 	int err = CBSUCCESS;
 	cb_name *iter = NULL, *leaf = NULL;
 	if(cbn==NULL || *cbn==NULL){ 
@@ -170,7 +173,7 @@ int  cb_print_leaves_inner(cb_name **cbn, char priority){
 	return err;
 }
 
-int  cb_print_name(cb_name **cbn, char priority){ 
+int  cb_print_name(cb_name **cbn, int priority){ 
 	int err=CBSUCCESS;
 	if( cbn==NULL || *cbn==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_name: cbn was null." ); return CBERRALLOC; }
 
@@ -185,7 +188,7 @@ int  cb_print_name(cb_name **cbn, char priority){
         cb_clog( priority, CBNEGATION, " last used [%li]\n", (**cbn).lasttimeused);
         return err;
 }
-int  cb_print_names(CBFILE **str, char priority){ 
+int  cb_print_names(CBFILE **str, int priority){ 
 	cb_name *iter = NULL; int names=0;
 	if( str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_print_names: str was null." ); return CBERRALLOC; }
 	cb_clog(  priority, CBNEGATION, "\n cb_print_names: \n");
@@ -222,14 +225,14 @@ int  cb_print_names(CBFILE **str, char priority){
         return CBERRALLOC;
 }
 // Debug
-void cb_print_counters(CBFILE **cbf, char priority){
+void cb_print_counters(CBFILE **cbf, int priority){
         if(cbf!=NULL && *cbf!=NULL){
           cb_clog(   priority, CBNEGATION, "\nnamecount:%lli \t index:%li     \t contentlen:%li \tbuflen:%li       \treadlength:%li ", \
 	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen, (*(**cbf).cb).readlength );
 	  cb_clog(   priority, CBNEGATION, "\ncontentlen:%li \t maxlength:%li \t headeroffset:%i\tmessageoffset:%li\tfd:%i\n", (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength, (*(**cbf).cb).headeroffset, (*(**cbf).cb).messageoffset, (**cbf).fd );
 	  if( (*(**cbf).cb).list.name==NULL ){  cb_clog(   priority, CBNEGATION, "name was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "name was not null, \t"); }
 	  if( (*(**cbf).cb).list.last==NULL ){  cb_clog(   priority, CBNEGATION, "last was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "last was not null, \t"); }
-	  if( (*(**cbf).cb).list.current==NULL ){  cb_clog(   priority, CBNEGATION, "\ncurrent was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "\ncurrent was not null, \t"); }
+	  if( (*(**cbf).cb).list.current==NULL ){  cb_clog(   priority, CBNEGATION, "current was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "current was not null, \t"); }
 	  if( (*(**cbf).cb).list.currentleaf==NULL ){  cb_clog(   priority, CBNEGATION, "currentleaf was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "currentleaf was not null, \t"); }
 	}
 }
@@ -427,6 +430,14 @@ int  cb_set_to_consecutive_group_names(CBFILE **cbf){
 int  cb_set_to_consecutive_group_leaves(CBFILE **cbf){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
         return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTGROUPLEAVES);
+}
+int  cb_set_to_consecutive_group_last_names(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+        return cb_set_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTLASTGROUPNAMES);
+}
+int  cb_set_to_consecutive_group_last_leaves(CBFILE **cbf){
+	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+        return cb_set_leaf_search_method(&(*cbf), (unsigned char) CBSEARCHNEXTLASTGROUPLEAVES);
 }
 int  cb_set_to_consecutive_names(CBFILE **cbf){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
@@ -642,7 +653,7 @@ int  cb_set_to_message_format( CBFILE **str ){
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
 	(**str).cf.stopateof=0; // different content types, deflate method for example, 9.6.2016
-	return CBSUCCESS;	
+	return CBSUCCESS;
 }
 int  cb_set_to_json( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_json: str was null." ); return CBERRALLOC; }
@@ -653,7 +664,7 @@ int  cb_set_to_json( CBFILE **str ){
 	/*
 	 * Value from ':' to ',' or to '}' - arrays, (strings, numbers 
 	 * and literals) are considered here as a value. With setting
-	 * 'json=1', '}' changes value even if, ',' was missing. See ascii 
+	 * 'json=1', '}' changes value even if, ',' was missing. See ascii
 	 * diagram in function cb_put_leaf . */
 	cb_set_subrstart( &(*str), (unsigned long int) '{' ); // object start
 	cb_set_subrend( &(*str), (unsigned long int) '}' ); // object end
@@ -720,6 +731,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.nonblocking=0; // if set, fd should be set with fcntl flag O_NONBLOCK
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
 	(**str).cf.findwordstworends=0; // use two rends (rend and subrend) with findwords
+	(**str).cf.findwordssql=0;
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	(**str).cf.namelist=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
@@ -856,6 +868,7 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: cbf was null.");
 	  return CBERRALLOC;
 	}
+	//if( *cbf==NULL ) // TEST 29.11.2016
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if( *cbf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: allocation error, malloc (%i).", CBERRALLOC ); return CBERRALLOC; } // 13.11.2015
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
@@ -929,9 +942,15 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.currentgroup=0;  // 11.11.2016
 	(**cbf).list.toterminal=0;
 	//(**cbf).list.openpairs=0; // 28.9.2015
+	/* To read from end of stream. */
 	(**cbf).list.rd.lastchr=0x20; // 7.10.2015, 2.5.2016
 	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
+	/* To read with cb_set_to_name and cb_set_to_leaf */
+	(**cbf).list.rd.last_level = 0;
+	(**cbf).list.rd.last_name  = NULL;
+	(**cbf).list.rd.current_root_level = 0;
+	(**cbf).list.rd.current_root = NULL;
 	//(**cbf).list.rd.pad1=0;
 	//(**cbf).list.rd.pad2=0;
 	//(**cbf).list.rd.pad3=0;
@@ -1278,8 +1297,9 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	       if( (**cbf).cf.usesocket!=1 ){ // 29.3.2016
 		 if( (**cbf).transferencoding==CBTRANSENCOCTETS ){
                  	sz = read( (**cbf).fd, &(*(*blk).buf), (size_t)(*blk).buflen);
-		 }else
+		 }else{
 			sz = cb_transfer_read( &(*cbf), (*blk).buflen );
+		 }
 
                }else{ // 29.3.2016
                  readlength = (*blk).buflen;
@@ -1301,6 +1321,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 		       sz = cb_transfer_read( &(*cbf), readlength );
 		 }
                }
+	       //cb_clog( CBLOGDEBUG, CBSUCCESS, "\nblock read: %i (%i)", sz, (**cbf).fd );
 	    }
 
 	    if( (long int) sz < readlength ) // 10.5.2016
@@ -1330,6 +1351,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 		  cb_clog( CBLOGERR, CBNEGATION, "\ncb_get_ch: fcntl returned %i, errno %i '%s'.", err, errno, strerror( errno ) );
 		}
 	      }
+	      //cb_clog( CBLOGDEBUG, CBSUCCESS, " CBSTREAMEND" );
 	      return CBSTREAMEND; // pre 20.5.2016
 	    }
 	  }else{ // use as block
@@ -1396,7 +1418,7 @@ int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset ){
 	  }
 	}
 	if(err<0){
-	  cb_clog( CBLOGINFO, CBERRFILEWRITE, "\ncb_flush_cbfile_to_offset: errno %i .", errno);
+	  cb_clog( CBLOGINFO, CBERRFILEWRITE, "\ncb_flush_cbfile_to_offset: errno %i (fd %i).", errno, (**cbf).fd );
 	  err = CBERRFILEWRITE ; 
 	}else{
 	  err = CBSUCCESS;
@@ -1444,7 +1466,12 @@ int  cb_write(CBFILE **cbs, unsigned char *buf, long int size){
 	    return err;
 	  }
 	}
- 	cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_write: parameter was null." );
+ 	cb_clog( CBLOGDEBUG, CBERROR, "\ncb_write: parameter" );
+	if( cbs==NULL || (**cbs).blk==NULL )
+	 	cb_clog( CBLOGDEBUG, CBERROR, " cbs" );
+	if( buf==NULL )
+	 	cb_clog( CBLOGDEBUG, CBERROR, " buf" );
+ 	cb_clog( CBLOGDEBUG, CBERRALLOC, " was null." );
 	return CBERRALLOC;
 }
 int  cb_write_cbuf(CBFILE **cbs, cbuf *cbf){

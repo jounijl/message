@@ -1,4 +1,4 @@
-/* 
+/*
  * Library to read and write streams. Searches valuepairs locations to a list. Uses different character encodings.
  * 
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
@@ -69,19 +69,34 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
 	}
-
-	if( (*(**cbs).cb).list.current==NULL ){
+	if( (*(**cbs).cb).list.rd.current_root!=NULL ){
+	  (*(**cbs).cb).list.currentleaf = &(* (*(**cbs).cb).list.rd.current_root );
+	  *level = (*(**cbs).cb).list.rd.current_root_level;
+	}else if( (*(**cbs).cb).list.current==NULL ){
 	  *level = 0;
 	  return CBEMPTY;
+	}else{
+		*level = 1; // current was not null, at least a name is found at level one
+		if( (* (*(**cbs).cb).list.current ).leaf != NULL ){
+		  *level = 2;
+		  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
+		}
 	}
-	*level = 1; // current was not null, at least a name is found at level one
-	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
-	if( (*(**cbs).cb).list.currentleaf!=NULL ){ // addition 28.9.2015
-	  *level = 2;
-	}
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf: LEVEL %i.", *level );
 	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.3.2014
 }
-// unsigned to 'int namelen' 6.12.2014
+int  cb_set_root( CBFILE **cbs ){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	if( (*(**cbs).cb).list.rd.last_name!=NULL ) (*(**cbs).cb).list.rd.current_root = &(* (*(**cbs).cb).list.rd.last_name );
+	if( (*(**cbs).cb).list.rd.last_level>=0) (*(**cbs).cb).list.rd.current_root_level = (*(**cbs).cb).list.rd.last_level;
+	return CBSUCCESS;
+}
+int  cb_release_root( CBFILE **cbs ){
+	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
+	(*(**cbs).cb).list.rd.current_root = NULL;
+	(*(**cbs).cb).list.rd.current_root_level = -1;
+	return CBSUCCESS;
+}
 int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl){ // 11.4.2014, 23.3.2014
 	int err=CBSUCCESS, currentlevel=0; 
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
@@ -92,13 +107,27 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 
 	err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &currentlevel, &(*mctl) );
 	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_set_to_leaf_inner: cb_set_to_leaf_inner_levels, error %i.", err ); }
-	if(err<CBNEGATION){ return err; } // level is correct if CBSUCCESS or CBSUCCESSLEAVESEXIST
+
+	if( currentlevel>=(*level) )
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER: CURRENTLEVEL %i, LEVEL %i (start, err %i).", currentlevel, *level, err );
+
+	/*
+	 * 1.1.2017. */
+	if( err<CBNEGATION ){
+		/*
+		 * Match. */
+		(*(**cbs).cb).list.rd.last_name  = &(* (*(**cbs).cb).list.currentleaf );
+		(*(**cbs).cb).list.rd.last_level = *level;
+
+		return err; // pre 1.1.2017: level is correct if CBSUCCESS or CBSUCCESSLEAVESEXIST
+	}
 
 	/*
 	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to
 	 * include the first open pair - if *level is more than 0: toterminal+1 . */
 	//if( currentlevel>1 )
 	//  --currentlevel;
+// 1.1.2017: toterminal has nothing to do with this function (used in determining the level of the last added leaf)
 	*level = currentlevel - (*(**cbs).cb).list.toterminal;
 
 	/*
@@ -118,10 +147,14 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 // level 19.8.2015
 int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl){ // 11.4.2014, 23.3.2014
 	int err = CBSUCCESS; char nextlevelempty=1;
+	int startlevel=0; // tmp debug, 3.1.2017
 	cb_name *leafptr = NULL;
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf_inner_levels: allocation error."); return CBERRALLOC;
 	}
+	startlevel = *level; // tmp debug, 3.1.2017
+
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: LEVEL %i, toterminal %i", *level, (*(**cbs).cb).list.toterminal );
 
 	if( ( CBMAXLEAVES - 1 + openpairs ) < 0 || *level > CBMAXLEAVES ){ // just in case an erroneus loop hangs the application
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: error, endless loop prevention, level exceeded %i.", *level);
@@ -141,14 +174,15 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	    nextlevelempty=0; // 3.7.2015
 	}
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, " comparing ["); 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, " ["); 
-	//if(name!=NULL)
-	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "] to [");
-	//if(leafptr!=NULL)
-	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leafptr).namebuf, (*leafptr).namelen, (*leafptr).buflen );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "] " );
+	/***
+	cb_clog( CBLOGDEBUG, CBNEGATION, " comparing ["); 
+	if(name!=NULL)
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "] to [");
+	if(leafptr!=NULL)
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leafptr).namebuf, (*leafptr).namelen, (*leafptr).buflen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "] " );
+	 ***/
 
 	if( openpairs == 1 ){ // 1 = first leaf (leaf or next)
 
@@ -167,8 +201,9 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
             if( ( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTLEAVES && (*leafptr).matchcount==1 ) || \
 		( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES && \
 			( (*leafptr).matchcount==1 || (*leafptr).group==(*(**cbs).cb).list.currentgroup ) ) || \
+		( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTLASTGROUPLEAVES && \
+			( (*leafptr).matchcount==1 || (*leafptr).group<(*(**cbs).cb).list.currentgroup ) ) || \
 		(**cbs).cf.leafsearchmethod==CBSEARCHUNIQUELEAVES ){ 
-	      //if( (**cbs).cf.leafsearchmethod==CBSEARCHNEXTGROUPLEAVES ) // 19.11.2016
 	      if( (*leafptr).matchcount==1 ) // test 19.11.2016
 	        (*leafptr).group = (*(**cbs).cb).list.currentgroup; // 11.11.2016
 
@@ -207,19 +242,24 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  *level = *level + 1; // level should return the last leafs openpairs count
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: TO LEFT." );
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, (openpairs-1), &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
+
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST){ // 3.7.2015
+	    if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (left, err %i).", startlevel, *level, err );
 	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: returning CBSUCCESS, levels %i (2 - leaf).", *level);
 	    return err;
-	  }else
+	  }else{
 	    *level = *level - 1; // return to the previous level
-// 4.10.2015: EHDOTUS: tahan kohtaan jos next==null, palauttaa *level ilman miinusta -> on jo lisatty lisayksena 28.9.2015
-
+	  }
 	}
 	if( (*leafptr).next!=NULL ){ // Right (written after leaf if it is written)
 	  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*leafptr).next);
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: TO RIGHT." );
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
+
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST ){ // 3.7.2015
+	    if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (right, err %i).", startlevel, *level, err );
 	    return err;
 	  }
 	}else if( (*leafptr).next==NULL && (*leafptr).leaf!=NULL && openpairs>=0 ){ // from this else starts addition made 28.9.2015 -- addition 28.9.2015, 2.10.2015
@@ -228,6 +268,11 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  *level = *level + 1; // 2.10.2015 explanations: -1, if next null, +1 if leaf was not null previously
 	}
 	// here ends an addition made 28.9.2015 -- /addition 28.9.2015
+
+
+	if( startlevel>=(*level) )
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (not found, err %i).", startlevel, *level, err );
+
 
 	// next was removed in version 22.9.2015: if null here, levels may be found but the currentleaf is null (needed in further tests)
 	(*(**cbs).cb).list.currentleaf = NULL; // 30.9.2015 this is still here (and 8.10.2015)
@@ -276,8 +321,6 @@ int  cb_set_to_last_leaf(cb_name **tree, cb_name **lastleaf, int *openpairs){
 	if( tree==NULL || openpairs==NULL) return CBERRALLOC;
 	if( *tree==NULL ){ *lastleaf=NULL; *openpairs=0; return CBEMPTY;}
 	leafcount = 1; // tree was not null
-
-        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_last_leaf: " );
 
 	iter = &(* (cb_name*) (**tree).leaf);
 	node = &(**tree); 
@@ -406,7 +449,6 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpa
 
 	/*
 	 * Update previous leafs length */
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_put_leaf: Update previous leafs length: new leafs nameoffset %li openpairs %i previousopenpairs %i .", (**leaf).nameoffset, openpairs, previousopenpairs );
 	err = cb_update_previous_length( &(*str), (**leaf).nameoffset, openpairs, previousopenpairs );
 	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_put_name: cb_update_previous_length, error %i.", err );  return err; }
 
@@ -460,17 +502,14 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
         if(str==NULL || *str==NULL || (**str).cb==NULL )
           return CBERRALLOC;
 	// Previous names contents length
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_update_previous_length: update previous names/leafs length: offset %li, openpairs %i, previousopenpairs %i.", (*(*(**str).cb).list.current).offset, openpairs, previousopenpairs );
 
         if( (*(**str).cb).list.last!=NULL && (*(**str).cb).list.namecount>=1 && \
 			nameoffset>=( (*(*(**str).cb).list.last).offset + 2 ) && nameoffset<0x7FFFFFFF ){
 	  /*
 	   * Names
 	   */
-	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\n previousopenpairs %i, openpairs %i", previousopenpairs, openpairs );
 	  if( openpairs==0 ){ // to list (longest length)
 	     // NAME
-	     //cb_clog( CBLOGDEBUG, CBNEGATION, "\n1 names length to namelist" );
 	     if( (*(**str).cb).list.last!=NULL ){
 	       if( (*(**str).cb).list.last==NULL ) return CBERRALLOC; 
 	         (*(*(**str).cb).list.last).length = nameoffset - (*(*(**str).cb).list.last).offset - 2; // last is allways a name? (2: '=' and '&')
@@ -484,7 +523,6 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 	   */
 	  if( openpairs==previousopenpairs && ( openpairs>0 || previousopenpairs>0 ) ){ // from leaf to it's next leaf in list
 	    // LEAF
-	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\n2 from leaf to leaf" );
 	    if( (*(**str).cb).list.last==NULL ) return CBERRALLOC; 
 	    if( (*(*(**str).cb).list.currentleaf).offset >= (*(*(**str).cb).list.last).offset ) // is lasts leaf
 	      if( nameoffset >= ( (*(*(**str).cb).list.currentleaf).offset + 2 ) ) // leaf is after this leaf
@@ -492,7 +530,6 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 	      // since read pointer is allways at read position, leaf can be added without knowing if one leaf is missing in between
           }else if( previousopenpairs>openpairs ){  // from leaf to it's name in list (second time, name previously) or from leaf to a lower leaf
 	    // LEAF
-            //cb_clog( CBLOGDEBUG, CBNEGATION, "\n3 from leaf downwards");
 	    if( (*(**str).cb).list.currentleaf==NULL ) return CBERRALLOC; 
               (*(*(**str).cb).list.currentleaf).length = nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2; // 2: '=' and '&'
 	  }
@@ -634,9 +671,6 @@ int  cb_get_current_level_at_edge(CBFILE **cbs, int *level){ // addition 29.9.20
 	 *
 	 */
 
-	//if( *level<0 )
-	//  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_level_at_edge: debug, error, level<0, *level %i (currentlevel %i, toterminal %i).", *level, currentlevel, (*(**cbs).cb).list.toterminal );
-
 	return err;
 }
 /*
@@ -660,8 +694,6 @@ int  cb_get_current_level(CBFILE **cbs, int *level){ // addition 28.9.2015
 	}else{
 	  return CBSUCCESS; // ..._set_leaf returns here, CBEMPTY
 	}
-	//if( (*iter).next!=NULL )
-	//  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_level: error, name after last was not null.");
 
 	if( (*iter).leaf==NULL ){
 	  return CBSUCCESS;
@@ -688,7 +720,7 @@ int  cb_get_current_level_sub(cb_name **cn, int *level){ // addition 28.9.2015
 		iter = &(* (cb_name*) (**cn).leaf );
 		err = cb_get_current_level_sub( &iter, &(*level) );
 	}else{ 
-	 	; //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_level_sub: next and leaf was null, level %i.", *level);
+	 	; 
 	}
 
 	return CBSUCCESS;
@@ -706,12 +738,13 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	if(str==NULL || *str==NULL || name==NULL || *name==NULL || mctl==NULL)  // 22.10.2015
 		return CBERRALLOC;
 
-        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_name: " );
-
-	//cb_clog( CBLOGDEBUG, CBNEGATION, " comparing ["); 
-	//if(name!=NULL)
-	//	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "] ");
+	/**
+        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_name: " );
+	cb_clog( CBLOGDEBUG, CBNEGATION, " comparing ["); 
+	if(name!=NULL)
+		cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelen, namelen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "] ");
+	 **/
 
 	if(*str!=NULL && (**str).cb != NULL && mctl!=NULL ){
 	  iter = &(*(*(**str).cb).list.name);
@@ -734,8 +767,9 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	      if( ( (**str).cf.searchmethod==CBSEARCHNEXTNAMES && (*iter).matchcount==1 ) || \
 		  ( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES && \
 			( (*iter).matchcount==1 || (*iter).group==(*(**str).cb).list.currentgroup ) ) || \
+		  ( (**str).cf.searchmethod==CBSEARCHNEXTLASTGROUPNAMES && \
+			( (*iter).matchcount==1 || (*iter).group==(*(**str).cb).list.currentgroup ) ) || \
 		  (**str).cf.searchmethod==CBSEARCHUNIQUENAMES ){
-		//if( (**str).cf.searchmethod==CBSEARCHNEXTGROUPNAMES ) // 19.11.2016
 		if( (*iter).matchcount==1 ) // test 19.11.2016
 	          (*iter).group = (*(**str).cb).list.currentgroup; // 11.11.2016
 	        if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE && (**str).cf.type!=CBCFGBOUNDLESSBUFFER) // When used as only buffer, stream case does not apply, 28.2.2016
@@ -753,6 +787,14 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 	        (*(**str).cb).index=(*iter).offset; // 1.12.2013
 	        (*(**str).cb).list.current=&(*iter); // 1.12.2013
 	        (*(**str).cb).list.currentleaf=&(*iter); // 11.12.2013
+
+		/*
+		 * Reset or update the 'last_name' before returning, 2.1.2017.. */
+		(*(**str).cb).list.rd.last_name  = &(* (*(**str).cb).list.current );
+		(*(**str).cb).list.rd.last_level = 0;
+
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\nCB_SET_TO_NAME" );
+
 		if(nextlevelempty==0) // 3.7.2015
 		  return CBSUCCESSLEAVESEXIST; // 3.7.2015
 	        return CBSUCCESS;
@@ -803,8 +845,10 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
 	}
 	if( (**cbs).cf.stopateof==1 && *chr==(unsigned long int)0x00FF ){ // Unicode EOF 0x00FF chart U0080, 31.10.2016
-		if( err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND )
+		if( err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND ){
+			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
 			return CBENDOFFILE;
+		}
 	}
 	return err;
 }
@@ -820,6 +864,8 @@ inline int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
 	  if( WSP( chr ) || CR( chr ) || LF( chr ) )
 	    return true;
 	}
+	if( (**cbs).cf.findwordssql==1 && sqlrstartchr( chr ) && chr!=(**cbs).cf.rend && chr!=(**cbs).cf.subrend ) // 4.12.2016
+	  return true; // 4.12.2016
 	return false;
 }
 inline int  cb_is_rend(CBFILE **cbs, unsigned long int chr){
@@ -895,7 +941,6 @@ int  cb_set_cursor_match_length_ucs(CBFILE **cbs, unsigned char **ucsname, int *
 int  cb_init_terminalcount(CBFILE **cbs){
 	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL) return CBERRALLOC;
 	(*(**cbs).cb).list.toterminal=0;
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_init_terminalcount: toterminal %i.", (*(**cbs).cb).list.toterminal );
 	return CBSUCCESS;
 }
 int  cb_increase_terminalcount(CBFILE **cbs){
@@ -903,7 +948,6 @@ int  cb_increase_terminalcount(CBFILE **cbs){
 	++(*(**cbs).cb).list.toterminal;
 	if((*(**cbs).cb).list.toterminal<0)
 	  (*(**cbs).cb).list.toterminal=0;
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_increase_terminalcount: toterminal %i.", (*(**cbs).cb).list.toterminal );
 	return CBSUCCESS;
 }
 
@@ -957,7 +1001,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	long int nameoffset=0; // 6.12.2014
 	char tovalue = 0;
 	char injsonquotes = 0, injsonarray = 0, wasjsonrend=0, wasjsonsubrend=0, jsonemptybracket=0; // json values
-	unsigned char charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
+	unsigned char  charbuf[CBNAMEBUFLEN+1]; // array 30.8.2013
 	unsigned char *charbufptr = NULL;
 	cb_name *fname = NULL; // Allocates two times, reads first to charbur, then allocates clean version to fname and finally in cb_put_name writing third time allocating the second time
 	char atvalue=0; 
@@ -1144,7 +1188,10 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	if( (**cbs).cf.stopateof==1 ){
 		if( (*(**cbs).cb).eofoffset>0 && (*(**cbs).cb).eofoffset<=(*(**cbs).cb).index ){
 			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: EOF offset %li was over the index %li, returning CBENDOFFILE.", (*(**cbs).cb).eofoffset, (*(**cbs).cb).index );
-			return CBENDOFFILE;
+			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
+			ret = CBENDOFFILE;
+               		goto cb_set_cursor_ucs_return;
+			//19.12.2016: return CBENDOFFILE;
 		}
 	}
 
@@ -1675,6 +1722,14 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 
 	}
 
+	/**
+	 **/
+	if( index >= (CBNAMEBUFLEN-3) && (**cbs).cf.searchstate!=CBSTATELESS ){
+		cb_clog( CBLOGERR, CBBUFFULL, "\ncb_set_cursor_match_length_ucs_matchctl: namebuffer is full, error %i.", CBBUFFULL );
+		err = CBBUFFULL;
+		ret = CBBUFFULL; // 11.12.2016
+	}
+
 	//if(err==CBSTREAMEND) // 27.12.2014
 	//  ret = CBSTREAMEND;
 
@@ -1712,6 +1767,7 @@ cb_set_cursor_ucs_return:
 
 	if( (**cbs).cf.stopateof==1 ){ // 31.10.2016
 		if( ( ret>=CBNEGATION && ret!=CBVALUEEND && ret!=CBMESSAGEEND && ret!=CBMESSAGEHEADEREND ) && err==CBENDOFFILE ){
+			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
 			ret = CBENDOFFILE;
 		}
 	}

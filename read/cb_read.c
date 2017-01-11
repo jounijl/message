@@ -557,7 +557,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
  */
 int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
-        unsigned long int chr = 0x20, chprev = 0x20;
+        unsigned long int chr = 0x20, chprev = 0x20, chprev2 = 0x20;
 	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0;
         int openpairs=1; char found=0, firstjsonbracket=1;
         int maxlen = maxlength, lindx=0;
@@ -576,7 +576,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
         for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && \
 		 ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
-                chprev = chr;
+                chprev2 = chprev; chprev = chr;
 
 		if( (**cbf).cf.json==1 ){
 		   if( chr=='}' && firstjsonbracket==1 && injsonquotes!=1 )
@@ -590,6 +590,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		//if( err==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr CBMESSAGEEND."); }
 		//if( err==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr CBMESSAGEHEADEREND."); }
 		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
+		if( err==CBSTREAM && (**cbf).cf.type==CBCFGSTREAM ) cb_remove_name_from_stream( &(*cbf) ); // 10.12.2016
 		//if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr, negation %i.", err); }
 	        if( (**cbf).cf.stopatmessageend==1 && err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
 	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
@@ -640,9 +641,15 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr, '\"' ); // BEST
 				/*
 				 * Removes bypass characters from content. */
+				//if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && 
+				//    (**cbf).cf.json==1 && ! ( ( chprev=='\\' && chr=='"' ) || ( chprev=='\\' && chr=='\\' ) ) ) ){ // 2.3.2016
 				if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && \
-				      (**cbf).cf.json==1 && ! ( ( chprev=='\\' && chr=='"' ) || ( chprev=='\\' && chr=='\\' ) ) ) ){ // 2.3.2016
-                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				      ! ( ( chprev!='\\' && chr=='"' ) || \
+					  ( chprev!='\\' && chr=='\\' ) ) ) ){ // 2.3.2016, 11.12.2016
+				   if( ! ( chprev!='\\' && chr=='\\' ) )
+	                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				   else if( chprev=='\\' && chr=='\\' )
+	                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 				   //if( err==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_put_ucs_chr CBMESSAGEEND."); }
 				   //if( err==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_put_ucs_chr CBMESSAGEHEADEREND."); }
 				   if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }

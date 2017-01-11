@@ -45,7 +45,7 @@
  * The following is initialized to NULL (without the NULL value or with the NULL value):
  */
 static CBFILE         *cblog = NULL;
-static unsigned char   logpriority = CBLOGERR;
+static signed int      logpriority = CBLOGDEBUG;
 
 int  cb_log_set_cbfile( CBFILE **cbf ){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
@@ -53,7 +53,10 @@ int  cb_log_set_cbfile( CBFILE **cbf ){
 	return CBSUCCESS;
 }
 
-int  cb_log_set_logpriority( unsigned char logpr ){
+int  cb_log_get_logpriority( void ){
+	return logpriority;
+}
+int  cb_log_set_logpriority( signed int logpr ){
 	if(logpr<0 && logpriority>=0) return CBNOTSET;
 	logpriority = logpr;
 	return CBSUCCESS;
@@ -61,22 +64,31 @@ int  cb_log_set_logpriority( unsigned char logpr ){
 
 /*
  * Log. */
-int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
-	int err = CBSUCCESS;
+int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
+	int err = CBSUCCESS, indx=0, bc=0, sb=0;
 	char snbuf[CBLOGLINELENGTH+1];
 	unsigned char *snb = NULL;
 	int  sncontentlen = 0;
 	va_list argptr;
 	snbuf[CBLOGLINELENGTH] = '\0';
 	snb = &( (unsigned char*) snbuf)[0];
-	if( logpriority>=priority || (logpriority<=0 && CBDEFAULTLOGPRIORITY>=priority )){
+	if( ( logpriority>=priority && logpriority<CBLOGINDIVIDUAL ) || \
+	 	( logpriority>=CBLOGINDIVIDUAL && logpriority<CBLOGMULTIPLE && priority==logpriority ) || \
+		    ( logpriority>=CBLOGMULTIPLE && logpriority>=priority ) ){
+
+  		/* Log only if exactly the loglevel and CBLOGINDIVIDUAL<loglevel<CBLOGMULTIPLE                            *
+		 * Log if the loglevel>CBLOGMULTIPLE and CBLOGMULTIPLE<loglevel<CBLOGINDIVIDUAL or loglevel<CBLOGMULTIPLE */
+
 		va_start( argptr, format );
 		//vfprintf( stderr, format, argptr );
 		sncontentlen = vsnprintf( &snbuf[0], CBLOGLINELENGTH, format, argptr ); // 28.11.2016
 		va_end( argptr );
-		if( cblog!=NULL ){
-			err = cb_write( &cblog, &(*snb), (long int) sncontentlen );
+		if( cblog!=NULL && (*cblog).blk!=NULL && snb!=NULL ){
+			for(indx=0; indx<sncontentlen && err<CBERROR; ++indx)
+				err = cb_put_chr( &cblog, (unsigned long int) snb[ indx ], &sb, &bc ); // all character encodings
+			//err = cb_write( &cblog, &(*snb), (long int) sncontentlen ); // byte by byte
 			if(err>=CBERROR){ fprintf( stderr, "\ncb_log: cb_write, error %i.", err ); }
+			cb_flush( &cblog ); // 22.12.2016
 		}else{
 			err = write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
 			if(err<0){ fprintf( stderr, "\ncb_log: write, error %i.", err ); }
@@ -84,7 +96,7 @@ int  cb_clog( char priority, int errtype, const char* restrict format, ... ){
 	}
 	if( errtype==CBERRALLOC ){
 		if( cblog==NULL )
-			fflush( stderr );
+			fflush( stderr ); // write has already been done, fflush is wrong command here
 		else
 			cb_flush( &cblog );
 		if( priority==CBLOGDEBUG )
