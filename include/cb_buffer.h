@@ -388,10 +388,10 @@ typedef struct cb_conf {
         unsigned char       type:4;                        // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations), buffer with boundless namelist size
 	/* Search settings */
         unsigned char       searchmethod:4;                // search next name (multiple names) or search allways first name (unique names), CBSEARCH*
-
+//
         unsigned char       leafsearchmethod:4;            // search leaf name (multiple leaves) or search allways first leaf (unique leaves), CBSEARCH*
 	unsigned char       searchstate:4;                 // No states = 0 (CBSTATELESS), CBSTATEFUL, CBSTATETOPOLOGY, CBSTATETREE
-
+//
         unsigned char       unfold:1;                      // Search names unfolding the text first, RFC 2822
 	unsigned char       leadnames:1;                   // Saves names from inside values, from '=' to '=' and from '&' to '=', not just from '&' to '=', a pointer to name name1=name2=name2value (this is not in use in CBSTATETOPOLOGY and CBSTATETREE).
 	unsigned char       findleaffromallnames:1;        // Find leaf from all names (1) or from the current name only (0). If levels are less than ocoffset, stops with CBNOTFOUND. Not tested yet 27.8.2015.
@@ -401,9 +401,9 @@ typedef struct cb_conf {
 	unsigned char       findwordstworends:1;           // wordlist with two rend-characters.
 	unsigned char       findwordssql:1;                // wordlist with SQL syntax rstart characters ( +),0x20-/*... )
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
+//
 	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
-	/* Stream source */
-	//unsigned char       usesecondaryfd:1;              // use secondary fd after CBSTREAMEND, 13.12.2016.
+	unsigned char       searchrightfromroot:1;         // Additionally search to the next from set root (cb_set_root), not only from the leaf of the root, 23.2.2017
 	/* Name parsing options */
 	unsigned char       removenamewsp:1;               // Remove white space characters inside name
 
@@ -412,32 +412,36 @@ typedef struct cb_conf {
         unsigned char       removewsp:1;                   // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
         unsigned char       removeeof:1;                   // Remove EOF from name, 26.8.2016
         unsigned char       removecrlf:1;                  // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
+//
         unsigned char       removesemicolon:1;             // Remove semicolon between value and name (not RFC 2822 compatible) 
 	unsigned char       removecommentsinname:1;        // Remove comments inside names (JSON can't do this, it does not have comments)
 	/* Value parsing options */
 	unsigned char       urldecodevalue:1;              // If set, cb_read.c decodes key-value pairs value in cb_copy_content (all read functions).
 
 	/* JSON options */
-	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	unsigned char       json:2;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
-        unsigned char       jsonremovebypassfromcontent:2; // Normal allways, removes '\' in front of '"' and '\"
-	unsigned char       jsonvaluecheck:2;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
+        unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
+	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
+//
 	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
 
 	/* Log options */
-	//removed 28.11.2016: unsigned char       logpriority:5;                 // Log output priority (one of from CBLOGEMERG to CBLOGDEBUG)
+
 	/* Read methods */
 	unsigned char       usesocket:3;                   // Read only headeroffset and messageoffset length blocks
 	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 
 	/* Stream end recognition */
 	unsigned char       stopatbyteeof:2;               // Recognize CBSTREAMEND at EOF character. Default is 1. Every octet disregarding the character code.
+//
 	unsigned char       stopateof:2;                   // Recognize CBENDOFFILE at EOF character. 
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
 
 	unsigned char       pad[1];                        // pad to next integer size (word length 32 or 64, now 64)
+//
 
 	unsigned long int   rstart;          // Result start character
 	unsigned long int   rend;            // Result end character

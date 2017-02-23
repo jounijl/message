@@ -97,6 +97,7 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\nfindwordstworends:           \t0x%.2XH", (**str).cf.findwordstworends);
 	cb_clog( priority, CBNEGATION, "\nfindwordssql:                \t0x%.2XH", (**str).cf.findwordssql);
 	cb_clog( priority, CBNEGATION, "\nsearchnameonly:              \t0x%.2XH", (**str).cf.searchnameonly);
+	cb_clog( priority, CBNEGATION, "\nsearchrightfromroot:         \t0x%.2XH", (**str).cf.searchrightfromroot);
 	if( (**str).cb!=NULL )
 	cb_clog( priority, CBNEGATION, "\nbuffer size:                 \t%liB", (*(**str).cb).buflen);
 	if( (**str).blk!=NULL )
@@ -748,6 +749,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
         (**str).cf.searchmethod=CBSEARCHNEXTNAMES; // default
         //(**str).cf.searchmethod=CBSEARCHUNIQUENAMES;
 	(**str).cf.leafsearchmethod=CBSEARCHNEXTLEAVES; // 11.5.2016, default
+	(**str).cf.searchrightfromroot = 0; // 22.2.2017
         (**str).cf.stopatheaderend=0; // default
         (**str).cf.stopatmessageend=0; // default
 #ifdef CBMESSAGEFORMAT

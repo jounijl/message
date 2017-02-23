@@ -29,6 +29,7 @@
 #include <errno.h>  // int errno
 
 #include "../include/cb_buffer.h"
+#include "../include/cb_read.h"
 #include "../get_option/get_option.h"
 
 #define LIKECHR       '%'
@@ -52,7 +53,7 @@ int main (int argc, char **argv) {
 	int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
 	unsigned int namearraylen=0, y=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
-	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0;
+	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0, inmem=0, sgroups=0;
 	char *str_err, *value, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
@@ -138,6 +139,16 @@ int main (int argc, char **argv) {
 	  u = get_option( argv[i], argv[i+1], 'x', &value); // regular expression search
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
 	    tree = -10;
+	    continue;
+	  }
+	  u = get_option( argv[i], argv[i+1], 'm', &value); // cb_find_every_name before starting
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
+	    inmem = 1;
+	    continue;
+	  }
+	  u = get_option( argv[i], argv[i+1], 'g', &value); // CBSEARCHNEXTGROUPNAMES, CBSEARCHNEXTGROUPLEAVES
+	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE || u == GETOPTSUCCESSNOVALUE){
+	    sgroups = 1;
 	    continue;
 	  }
 	  u = get_option( argv[i], argv[i+1], 'u', &value); // unique names
@@ -241,6 +252,19 @@ int main (int argc, char **argv) {
 	if( uniquenamesandleaves==1 ){
 	    cb_set_to_unique_names(&in);
 	    cb_set_to_unique_leaves(&in);
+	    if( sgroups==1 ){
+		usage(&argv[0]);
+		exit(ERRUSAGE);
+	    }
+	}else if( sgroups==1 ){
+	    cb_set_to_consecutive_group_names(&in);
+	    cb_set_to_consecutive_group_leaves(&in);
+	}
+
+	// Try to search from the tree in memory
+	if( inmem==1 ){
+		cb_find_every_name( &in );
+		cb_print_names(&in, CBLOGDEBUG); // debug
 	}
 
 	// Program
@@ -291,17 +315,19 @@ int main (int argc, char **argv) {
 void usage (char *progname[]){
 	fprintf(stderr,"Usage:\n");
 	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] [ -a ] <name> \n\n");
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] <name> \n\n");
 	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -z ] [ -a ] \\\n");
+	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] \\\n");
 	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
 	fprintf(stderr,"\t-t include the search from the subtrees\n");
 	fprintf(stderr,"\t-u set to unique names \n");
+	fprintf(stderr,"\t-g set to group names \n");
 	fprintf(stderr,"\t-z set to the configuration file format\n");
 	fprintf(stderr,"\t-J use JSON format\n");
 	fprintf(stderr,"\t-x regular expression search\n");
 	fprintf(stderr,"\t-w search one name only\n");
 	fprintf(stderr,"\t-a search name list\n");
+	fprintf(stderr,"\t-m read input to the buffer before starting\n");
 	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
 	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
 	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
@@ -394,6 +420,10 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	  print_name(&(*in), &nameptr );
 	  fprintf(stderr, " cbsearch, printing leaves:");
 	  cb_print_leaves( &nameptr, CBLOGDEBUG );
+
+	  if( (**in).cf.searchmethod==CBSEARCHNEXTGROUPNAMES ) // both were set at start, testing on is enough, 3.1.2017
+		cb_increase_group_number( &(*in) );
+
 	}
 	if(err==CBMESSAGEHEADEREND ){
 	  fprintf(stderr, "\n Header end. \n");

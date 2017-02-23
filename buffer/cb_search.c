@@ -66,29 +66,77 @@ static int  cb_check_json_name( unsigned char **ucsname, int *namelength, char b
  * at last rend, '&'. If last length was >=0, levels is set to 0 to read again the next name.
  */
 int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpairs, int *level, cb_match *mctl){ // 23.3.2014
+	int err = CBSUCCESS;
+	cb_name  copyname;
+	cb_name *copyptr = NULL;
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
 	}
-	if( (*(**cbs).cb).list.rd.current_root!=NULL ){
-	  (*(**cbs).cb).list.currentleaf = &(* (*(**cbs).cb).list.rd.current_root );
-	  *level = (*(**cbs).cb).list.rd.current_root_level;
+	if( (*(**cbs).cb).list.rd.current_root!=NULL && (*(*(**cbs).cb).list.rd.current_root ).leaf!=NULL ){ // Do not search to the right
+	  if( (**cbs).cf.searchrightfromroot==1 ){
+		/*
+		 * Search to the right from root. */
+	  	(*(**cbs).cb).list.currentleaf = &(* (*(**cbs).cb).list.rd.current_root ); // previous before 21.2.2017
+	  	*level = (*(**cbs).cb).list.rd.current_root_level; // previous before 21.2.2017
+	  }else{
+		/*
+		 * Search only the leafs of root. */
+	  	(*(**cbs).cb).list.currentleaf = &(*(* (*(**cbs).cb).list.rd.current_root ).leaf);
+	  	//*level = ( (*(**cbs).cb).list.rd.current_root_level + 1 );
+	  	*level = (*(**cbs).cb).list.rd.current_root_level ; // to be checked again, 21.2.2017
+	  	openpairs = 1;
+	  }
+	}else if( (*(**cbs).cb).list.rd.current_root!=NULL ){ // previous before 21.2.2017
+	  if( (**cbs).cf.searchrightfromroot==1 ){
+		/*
+		 * Search to the right from root. */
+	  	(*(**cbs).cb).list.currentleaf = &(* (*(**cbs).cb).list.rd.current_root ); // previous before 21.2.2017
+	  	*level = (*(**cbs).cb).list.rd.current_root_level; // previous before 21.2.2017
+	  }else{
+		/*
+		 * Search only to the left of root. 
+		 * Pass a copy of current_root with next==NULL to compare only itself (reflexivity). 21.2.2017 */
+		copyptr = &copyname;
+		cb_init_name( &copyptr );
+		if( cb_copy_name( &(*(**cbs).cb).list.rd.current_root, &copyptr ) < CBNEGATION ){
+			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf: COMPARING CURRENT_ROOT ONLY" );
+			(*copyptr).next = NULL; // Compare the current_root only and return, do not search to the right
+		  	(*(**cbs).cb).list.currentleaf = &(*copyptr);
+		}else{
+			*level = 0;
+			return CBEMPTY;	
+		}
+	  }
 	}else if( (*(**cbs).cb).list.current==NULL ){
 	  *level = 0;
 	  return CBEMPTY;
 	}else{
-		*level = 1; // current was not null, at least a name is found at level one
-		if( (* (*(**cbs).cb).list.current ).leaf != NULL ){
-		  *level = 2;
-		  (*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf);
-		}
+	  *level = 1; // current was not null, at least a name is found at level one
+	  if( (* (*(**cbs).cb).list.current ).leaf != NULL ){
+	    	*level = 2;
+	    	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf );
+	  }
 	}
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf: LEVEL %i.", *level );
-	return cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.3.2014
+	err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.3.2014
+	if( copyptr!=NULL ){
+		/*
+		 * Do not leave the copy to the list or tree. */
+	 	if( (*(**cbs).cb).list.rd.current_root!=NULL )
+		  (*(**cbs).cb).list.currentleaf = &(* (*(**cbs).cb).list.rd.current_root );
+		else
+		  (*(**cbs).cb).list.currentleaf = NULL;
+	}
+	copyptr = NULL;
+	return err;
 }
 int  cb_set_root( CBFILE **cbs ){
 	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
 	if( (*(**cbs).cb).list.rd.last_name!=NULL ) (*(**cbs).cb).list.rd.current_root = &(* (*(**cbs).cb).list.rd.last_name );
 	if( (*(**cbs).cb).list.rd.last_level>=0) (*(**cbs).cb).list.rd.current_root_level = (*(**cbs).cb).list.rd.last_level;
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_root: setting current_root_level %i, current_root [", (*(**cbs).cb).list.rd.current_root_level );
+	//if( (*(**cbs).cb).list.rd.current_root!=NULL && (*(*(**cbs).cb).list.rd.current_root).namebuf!=NULL )
+	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(* (*(**cbs).cb).list.rd.current_root ).namebuf, (*(*(**cbs).cb).list.rd.current_root).namelen, (*(*(**cbs).cb).list.rd.current_root).buflen );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "]" );
 	return CBSUCCESS;
 }
 int  cb_release_root( CBFILE **cbs ){
@@ -108,8 +156,8 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &currentlevel, &(*mctl) );
 	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_set_to_leaf_inner: cb_set_to_leaf_inner_levels, error %i.", err ); }
 
-	if( currentlevel>=(*level) )
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER: CURRENTLEVEL %i, LEVEL %i (start, err %i).", currentlevel, *level, err );
+	//if( currentlevel>=(*level) )
+	//	cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER: CURRENTLEVEL %i, LEVEL %i (start, err %i).", currentlevel, *level, err );
 
 	/*
 	 * 1.1.2017. */
@@ -154,7 +202,7 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	}
 	startlevel = *level; // tmp debug, 3.1.2017
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: LEVEL %i, toterminal %i", *level, (*(**cbs).cb).list.toterminal );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: LEVEL %i, toterminal %i, openpairs %i", *level, (*(**cbs).cb).list.toterminal, openpairs );
 
 	if( ( CBMAXLEAVES - 1 + openpairs ) < 0 || *level > CBMAXLEAVES ){ // just in case an erroneus loop hangs the application
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: error, endless loop prevention, level exceeded %i.", *level);
@@ -244,8 +292,8 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, (openpairs-1), &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
 
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST){ // 3.7.2015
-	    if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (left, err %i).", startlevel, *level, err );
+	    //if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
+	    //	cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (left, err %i).", startlevel, *level, err );
 	    //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: returning CBSUCCESS, levels %i (2 - leaf).", *level);
 	    return err;
 	  }else{
@@ -258,8 +306,8 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  err = cb_set_to_leaf_inner_levels( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.4.2014, 23.3.2014
 
 	  if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST ){ // 3.7.2015
-	    if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (right, err %i).", startlevel, *level, err );
+	    //if( startlevel>=(*level) )  // TMP DEBUG 3.1.2017
+	    //	cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (right, err %i).", startlevel, *level, err );
 	    return err;
 	  }
 	}else if( (*leafptr).next==NULL && (*leafptr).leaf!=NULL && openpairs>=0 ){ // from this else starts addition made 28.9.2015 -- addition 28.9.2015, 2.10.2015
@@ -270,8 +318,8 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	// here ends an addition made 28.9.2015 -- /addition 28.9.2015
 
 
-	if( startlevel>=(*level) )
-	  cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (not found, err %i).", startlevel, *level, err );
+	//if( startlevel>=(*level) )
+	//  cb_clog( CBLOGDEBUG, CBNEGATION, "\nSET_TO_LEAF_INNER_LEVELS: STARTLEVEL %i, LEVEL %i (not found, err %i).", startlevel, *level, err );
 
 
 	// next was removed in version 22.9.2015: if null here, levels may be found but the currentleaf is null (needed in further tests)
@@ -793,7 +841,7 @@ int  cb_set_to_name(CBFILE **str, unsigned char **name, int namelen, cb_match *m
 		(*(**str).cb).list.rd.last_name  = &(* (*(**str).cb).list.current );
 		(*(**str).cb).list.rd.last_level = 0;
 
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\nCB_SET_TO_NAME" );
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\nCB_SET_TO_NAME" );
 
 		if(nextlevelempty==0) // 3.7.2015
 		  return CBSUCCESSLEAVESEXIST; // 3.7.2015
