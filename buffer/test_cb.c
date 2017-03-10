@@ -144,9 +144,9 @@ int main (int argc, char *argv[]) {
 	// Allocate name list to save names to test with them
 	//err = cb_allocate_buffer(&name_list, bufsize);
 	name_list.name=NULL; name_list.current=NULL; name_list.last=NULL; 
-	name_list.currentleaf=NULL; name_list.namecount=0;
+	name_list.currentleaf=NULL; name_list.namecount=0; name_list.toterminal=0;
 	name_list_empty.name=NULL; name_list_empty.current=NULL; name_list_empty.last=NULL; 
-	name_list_empty.currentleaf=NULL; name_list_empty.namecount=0;
+	name_list_empty.currentleaf=NULL; name_list_empty.namecount=0; name_list_empty.toterminal=0;
 	if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_buffer, namelist: %lli.", err); return CBERRALLOC;}
 	// Filenames
 	memset(&(*infile), ' ', (size_t) FILENAMELEN); infile[FILENAMELEN+5]='\0';

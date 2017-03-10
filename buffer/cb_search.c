@@ -173,6 +173,8 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	/*
 	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to
 	 * include the first open pair - if *level is more than 0: toterminal+1 . */
+        //if( currentlevel>1 )
+        //  --currentlevel;	
 	// 1.1.2017: toterminal has nothing to do with this function (used in determining the level of the last added leaf)
 	*level = currentlevel - (*(**cbs).cb).list.toterminal;
 
@@ -715,6 +717,10 @@ int  cb_get_current_level_at_edge(CBFILE **cbs, int *level){ // addition 29.9.20
 	 *
 	 */
 
+	// 10.3.2017, just in case
+	if( *level < 0 )
+		*level = 0;
+
 	return err;
 }
 /*
@@ -760,7 +766,8 @@ int  cb_get_current_level_sub(cb_name **cn, int *level){ // addition 28.9.2015
 		iter = &(* (cb_name*) (**cn).next );
 		err = cb_get_current_level_sub( &iter, &(*level) );
 	}else if( (**cn).leaf!=NULL ){ // XV, 3.10.2015, 6.10.2015
-	        *level += 1;
+	        //*level += 1;
+	        ++(*level);
 		iter = &(* (cb_name*) (**cn).leaf );
 		err = cb_get_current_level_sub( &iter, &(*level) );
 	}else{ 
@@ -1141,6 +1148,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	      cb_clog( CBLOGERR, CBERRALLOC, "\ncb_set_cursor_match_length_ucs_matchctl: cb_get_current_level, allocation error. ");
 	      return CBERRALLOC;
 	    }else{
+	      cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: cb_set_to_name: TOTERMINAL %i, LEVELS %i (debug tmp)", \
+		(*(**cbs).cb).list.toterminal, levels );
 	      openpairs = levels;
 	    }
 	  }
