@@ -173,9 +173,7 @@ int  cb_set_to_leaf_inner(CBFILE **cbs, unsigned char **name, int namelen, int o
 	/*
 	 * currentlevel is counted from the last level and it's open pair. Also the toterminal has to
 	 * include the first open pair - if *level is more than 0: toterminal+1 . */
-	//if( currentlevel>1 )
-	//  --currentlevel;
-// 1.1.2017: toterminal has nothing to do with this function (used in determining the level of the last added leaf)
+	// 1.1.2017: toterminal has nothing to do with this function (used in determining the level of the last added leaf)
 	*level = currentlevel - (*(**cbs).cb).list.toterminal;
 
 	/*
@@ -201,8 +199,6 @@ int  cb_set_to_leaf_inner_levels(CBFILE **cbs, unsigned char **name, int namelen
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf_inner_levels: allocation error."); return CBERRALLOC;
 	}
 	startlevel = *level; // tmp debug, 3.1.2017
-
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: LEVEL %i, toterminal %i, openpairs %i", *level, (*(**cbs).cb).list.toterminal, openpairs );
 
 	if( ( CBMAXLEAVES - 1 + openpairs ) < 0 || *level > CBMAXLEAVES ){ // just in case an erroneus loop hangs the application
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf_inner_levels: error, endless loop prevention, level exceeded %i.", *level);
