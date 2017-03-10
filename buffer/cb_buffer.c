@@ -494,7 +494,7 @@ int  cb_set_to_name_list_search( CBFILE **str ){
 }
 
 /*
- * Wordlist is different from other search settings. Rend and rstart are backwards.
+ * Wordlist is different from the other search settings. Rend and rstart are backwards.
  * The setting works only with CBSTATEFUL and with the following settings (20.3.2016):
  * findwords, removewsp, removesemicolon, removecrlf, removenamewsp, unfold. 
  *

@@ -47,6 +47,13 @@
 static CBFILE         *cblog = NULL;
 static signed int      logpriority = CBLOGDEBUG;
 
+int  cb_flush_log( void ){
+	if( cblog!=NULL )
+		return cb_flush( &cblog );
+	else
+		fflush( stderr ); // write directly writes, fflush should be useless here, 27.2.2017
+	return CBEMPTY;
+}
 int  cb_log_set_cbfile( CBFILE **cbf ){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
 	cblog = &( **cbf );
@@ -88,7 +95,7 @@ int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
 				err = cb_put_chr( &cblog, (unsigned long int) snb[ indx ], &sb, &bc ); // all character encodings
 			//err = cb_write( &cblog, &(*snb), (long int) sncontentlen ); // byte by byte
 			if(err>=CBERROR){ fprintf( stderr, "\ncb_log: cb_write, error %i.", err ); }
-			cb_flush( &cblog ); // 22.12.2016
+			//27.2.2017: cb_flush( &cblog ); // 22.12.2016
 		}else{
 			err = write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
 			if(err<0){ fprintf( stderr, "\ncb_log: write, error %i.", err ); }

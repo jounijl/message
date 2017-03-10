@@ -99,7 +99,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 		copyptr = &copyname;
 		cb_init_name( &copyptr );
 		if( cb_copy_name( &(*(**cbs).cb).list.rd.current_root, &copyptr ) < CBNEGATION ){
-			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf: COMPARING CURRENT_ROOT ONLY" );
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_to_leaf: COMPARING CURRENT_ROOT ONLY" );
 			(*copyptr).next = NULL; // Compare the current_root only and return, do not search to the right
 		  	(*(**cbs).cb).list.currentleaf = &(*copyptr);
 		}else{
@@ -1234,8 +1234,9 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 
 	// 30.10.2016: test if EOF was already read if stopateof
 	if( (**cbs).cf.stopateof==1 ){
-		if( (*(**cbs).cb).eofoffset>0 && (*(**cbs).cb).eofoffset<=(*(**cbs).cb).index ){
-			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: EOF offset %li was over the index %li, returning CBENDOFFILE.", (*(**cbs).cb).eofoffset, (*(**cbs).cb).index );
+		if( (*(**cbs).cb).eofoffset>0 && (*(**cbs).cb).eofoffset<=(*(**cbs).cb).index ){ 
+			if( (*(**cbs).cb).eofoffset<(*(**cbs).cb).index ) // 9.3.2017
+				cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: EOF offset %li was over the index %li, returning CBENDOFFILE.", (*(**cbs).cb).eofoffset, (*(**cbs).cb).index );
 			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
 			ret = CBENDOFFILE;
                		goto cb_set_cursor_ucs_return;

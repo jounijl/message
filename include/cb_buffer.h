@@ -861,6 +861,7 @@ int  cb_print_benchmark(cb_benchmark *bm);
 // Log writing (as in fprintf)
 //int  cb_log( CBFILE **cbn, int priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 4, 5))); // https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 int  cb_clog( int priority, int errtype, const char * restrict format, ... ) __attribute__ ((format (printf, 3, 4)));
+int  cb_flush_log( void );
 int  cb_log_set_cbfile( CBFILE **cbf ); // Sets a CBFILE to write the log. If not set, writes to stderr. 28.11.2016
 int  cb_log_set_logpriority( signed int logpr ); // 28.11.2016
 int  cb_log_get_logpriority( void ); // 29.1.2016

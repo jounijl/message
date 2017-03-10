@@ -549,7 +549,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 	return cb_check_json_value( &(*cbf), &(*ucscontent), *clength, &from );
 }
 /*
- * If (**cbf).cf.json==1, removes quotes around the content.
+ * If (**cbf).cf.json==1, removes quotes around the content. Removes currentname from stream if reading was outside of buffer (remark 28.2.2017).
  *
  * Returns:  CBSUCCESSJSONQUOTES	- Was a JSON string, quotes removed.
  *           CBSUCCESSJSONARRAY 	- Includes JSON array brackets.

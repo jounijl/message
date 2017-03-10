@@ -23,7 +23,7 @@
 #include "../include/cb_buffer.h"
 
 // Debug
-int  cb_fifo_print_buffer(cb_ring *cfi, char priority){
+int  cb_fifo_print_buffer(cb_ring *cfi, int priority){
         int i=0, err=0, chrsize=0; unsigned long int chr = ' ';
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
@@ -35,7 +35,7 @@ int  cb_fifo_print_buffer(cb_ring *cfi, char priority){
 	return err;
 }
 // Debug
-int  cb_fifo_print_counters(cb_ring *cfi, char priority){
+int  cb_fifo_print_counters(cb_ring *cfi, int priority){
         if(cfi==NULL || (*cfi).buf==NULL)
           return CBERRALLOC;
         cb_clog( priority, CBSUCCESS, "\nahead:            %i", (*cfi).ahead );
@@ -179,7 +179,7 @@ int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
 /*
  * 4-byte characterbuffer. 
  */
-int cb_print_ucs_chrbuf(char priority, unsigned char **chrbuf, int namelen, int buflen){
+int cb_print_ucs_chrbuf(int priority, unsigned char **chrbuf, int namelen, int buflen){
         int index=0, err=CBSUCCESS;
         unsigned long int chr=0x20; // 11.12.2014
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
