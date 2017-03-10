@@ -48,7 +48,13 @@ int main(void) {
 
 	(*in).cf.findwordstworends = 1;
 
+	(*in).cf.findwordssql = 1;
+
 	cb_set_encoding(&in, 1);
+
+	fprintf( stderr, "rend 0x%.2lX,%c subrend 0x%.2lX,%c rstart 0x%.2lX,%c subrstart 0x%.2lX,%c", \
+		(*in).cf.rend, (char) (*in).cf.rend, (*in).cf.subrend, (char) (*in).cf.subrend, (*in).cf.rstart, (char) (*in).cf.rstart, \
+		(*in).cf.subrstart, (char) (*in).cf.subrstart );
 
 	err = cb_find_every_name(&in);
 	if( err==CBVALUEEND ){

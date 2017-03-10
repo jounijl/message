@@ -62,6 +62,10 @@ $CC $FLAGS -c test_cbwords.c &&
 $LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
 rm test_cbwords.o
 
+$CC $FLAGS -c test_searchonename.c &&
+$LD $LDFLAGS test_searchonename.o $FOBJS -o test_onename
+rm test_searchonename.o
+
 $CC $FLAGS -c test_cbwordlist.c &&
 $LD $LDFLAGS test_cbwordlist.o $FOBJS -o test_cblist
 rm test_cbwordlist.o
