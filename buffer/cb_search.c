@@ -1148,8 +1148,6 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	      cb_clog( CBLOGERR, CBERRALLOC, "\ncb_set_cursor_match_length_ucs_matchctl: cb_get_current_level, allocation error. ");
 	      return CBERRALLOC;
 	    }else{
-	      cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: cb_set_to_name: TOTERMINAL %i, LEVELS %i (debug tmp)", \
-		(*(**cbs).cb).list.toterminal, levels );
 	      openpairs = levels;
 	    }
 	  }
