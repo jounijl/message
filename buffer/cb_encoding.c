@@ -136,11 +136,13 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *stored
         int err=CBSUCCESS; 
         if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
         if((**cbs).encoding==CBENCUTF8) // utf
-          return cb_put_ucs_ch(cbs, &chr, &(*bytecount), &(*storedbytes) );
+          return cb_put_ucs_ch( &(*cbs), &chr, &(*bytecount), &(*storedbytes) ); // 17.3.2017
+          //return cb_put_ucs_ch(cbs, &chr, &(*bytecount), &(*storedbytes) );
         if((**cbs).encoding==CBENC1BYTE){ // 1 byte
           *bytecount=(**cbs).encodingbytes;
           *storedbytes=(**cbs).encodingbytes;
-          return cb_put_multibyte_ch( cbs, chr );
+          return cb_put_multibyte_ch( &(*cbs), chr ); // 17.3.2017
+          //return cb_put_multibyte_ch( cbs, chr );
         }
         if((**cbs).encoding==CBENC2BYTE || (**cbs).encoding==CBENC4BYTE){ // 2 bytes or more, endianness
           *bytecount=(**cbs).encodingbytes;
@@ -152,13 +154,14 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *stored
           if( (**cbs).encoding==CBENC2BYTE )
             schr = cb_reverse_two_bytes(chr);
 #endif
-          err = cb_put_multibyte_ch( cbs, schr );
+          //err = cb_put_multibyte_ch( cbs, schr );
+          err = cb_put_multibyte_ch( &(*cbs), schr ); // 17.3.2017
           return err;
         }
         if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
-          return cb_put_utf32_ch(&(*cbs), &chr, &(*bytecount), &(*storedbytes) );
+          return cb_put_utf32_ch( &(*cbs), &chr, &(*bytecount), &(*storedbytes) );
         if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
-          return cb_put_utf16_ch(&(*cbs), &chr, &(*bytecount), &(*storedbytes) );
+          return cb_put_utf16_ch( &(*cbs), &chr, &(*bytecount), &(*storedbytes) );
         return CBNOENCODING;
 }
 
@@ -175,38 +178,38 @@ int  cb_get_encoding(CBFILE **str, int *number){
 int  cb_set_transfer_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).transferencoding = number;
-	return CBSUCCESS;	
+	return CBSUCCESS;
 }
 int  cb_set_transfer_extension(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).transferextension = number;
-	return CBSUCCESS;	
+	return CBSUCCESS;
 }
 int  cb_set_encoding(CBFILE **str, int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
 	if(number==CBENCAUTO) // automatic, tries bom and reverts to default if encoding is not found
-	  cb_set_encodingbytes(str,1); // detection has to be at one byte
+	  cb_set_encodingbytes( &(*str), 1 ); // detection has to be at one byte, 17.3.2017
 	if(number==CBENC1BYTE) // 1 byte
-	  cb_set_encodingbytes(str,1); // one byte
+	  cb_set_encodingbytes( &(*str), 1 ); // one byte, 17.3.2017
 	if(number==CBENC2BYTE) // 2 byte
-	  cb_set_encodingbytes(str,2); 
+	  cb_set_encodingbytes( &(*str), 2 ); // 17.3.2017 ...
 	if(number==CBENCUTF8) // UTF-8
-	  cb_set_encodingbytes(str,0); // zero is any length
+	  cb_set_encodingbytes( &(*str), 0 ); // zero is any length
 	if(number==CBENC4BYTE) // 4 byte
-	  cb_set_encodingbytes(str,4); 
+	  cb_set_encodingbytes( &(*str), 4 ); 
 	if(number==CBENCUTF16LE) // UTF-16 LE
-	  cb_set_encodingbytes(str,2); // in case of third, reads one character more (not yet done 11.8.2013)
+	  cb_set_encodingbytes( &(*str), 2 ); // in case of third, reads one character more (not yet done 11.8.2013)
 	if(number==CBENCPOSSIBLEUTF16LE) // Possible UTF-16 LE (bytecount in detection was less than 4), used as it is the same, UTF-16 LE
-	  cb_set_encodingbytes(str,2); 
+	  cb_set_encodingbytes( &(*str), 2 ); 
 	if(number==CBENCUTF16BE) // UTF-16 BE
-	  cb_set_encodingbytes(str,2); 
+	  cb_set_encodingbytes( &(*str), 2 ); 
 	if(number==5) // UTF-16 BE
-	  cb_set_encodingbytes(str,2); 
+	  cb_set_encodingbytes( &(*str), 2 ); 
 	if(number==CBENCUTF32LE) // UTF-32 LE
-	  cb_set_encodingbytes(str,4); 
+	  cb_set_encodingbytes( &(*str), 4 ); 
 	if(number==CBENCUTF32BE) // UTF-32 BE
-	  cb_set_encodingbytes(str,4); 
+	  cb_set_encodingbytes( &(*str), 4 ); 
 	return CBSUCCESS;
 }
 
@@ -216,9 +219,11 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 	if(*cbs!=NULL && buf!=NULL)
 	  if((**cbs).blk!=NULL){
 	    for(indx=0; indx<size && err<CBERROR; ++indx){
-	      err = cb_put_multibyte_ch(cbs, (unsigned long int)buf[indx] );
+	      err = cb_put_multibyte_ch( &(*cbs), (unsigned long int)buf[indx] ); // 17.3.2017
+	      //err = cb_put_multibyte_ch(cbs, (unsigned long int)buf[indx] );
 	    }
-	    err = cb_flush(cbs);
+	    err = cb_flush( &(*cbs) ); // 17.3.2017
+	    //err = cb_flush(cbs);
 	    return err;
 	  }
 	return CBERRALLOC;
@@ -227,12 +232,14 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 
 int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	int err=CBSUCCESS, index=0; unsigned char byte=0x00; // null character
+	if( cbs==NULL || *cbs==NULL || ch==NULL ) return CBERRALLOC; // 17.3.2017
 	*ch = 0;
 	//for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
 	// TEST 30.3.2016 - not tested, 30.3.3016
 	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR && ( (**cbs).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && \
 		( (**cbs).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ) ; ++index ){ // 30.3.2016
-	  err = cb_get_ch(cbs, &byte);
+	  //err = cb_get_ch(cbs, &byte);
+	  err = cb_get_ch( &(*cbs), &byte); // 17.3.2017
 	  *ch+=(unsigned long int)byte;
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
 	}
@@ -242,6 +249,7 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
 	int err=CBSUCCESS, index=0, indx=0;
 	unsigned char byte='0'; unsigned long int tmp=0;
+	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC; // 17.3.2017
 	tmp = ch;
 	for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
 	  for(indx=((**cbs).encodingbytes-index); indx>1; --indx){
@@ -249,7 +257,8 @@ int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
 	  }
 	  byte = (unsigned char) tmp; tmp = ch;
 	  //err  = cb_put_ch(cbs, &byte);
-	  err  = cb_put_ch(cbs, byte); // 12.8.2013
+	  //err  = cb_put_ch(cbs, byte); // 12.8.2013
+	  err  = cb_put_ch( &(*cbs), byte); // 12.8.2013, 17.3.2017
 	}
 	return err;
 }
@@ -266,14 +275,14 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	unsigned long int chr_tmp=0, chr_tmp2=0;
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
 
-	if( *bytecount>4 && ( (**cbs).encodingbytes==0||(**cbs).encodingbytes>4) ){
+	if( *bytecount>4 && ( (**cbs).encodingbytes==0 || (**cbs).encodingbytes>4 ) ){
 	  // To ease the use of cb_put_utf8_ch which has the same chr_high,
 	  // swap high to low and reuse chr_high as a low word and write it last
 	  // if bytecount indicates that both are needed.
 	  chr_tmp=*chr_high; *chr_high=*chr; *chr=chr_tmp;
 	}
 
-	while(*bytecount>byteswritten && byteswritten<6 && ( byteswritten<(**cbs).encodingbytes || (**cbs).encodingbytes==0 ) ){
+	while( *bytecount>byteswritten && byteswritten<6 && ( byteswritten<(**cbs).encodingbytes || (**cbs).encodingbytes==0 ) ){
 	  byte2 = byte;
 	  if( byteswritten<=4 ) chr_tmp2 = *chr; // low end
 	  else chr_tmp2 = *chr_high; // high end
@@ -283,7 +292,8 @@ int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	  }
 	  byte = (unsigned char) chr_tmp;
 	  // err = cb_put_ch(cbs, &byte); byteswritten++;
-	  err = cb_put_ch(cbs, byte); byteswritten++; // 12.8.2013
+	  //err = cb_put_ch(cbs, byte); byteswritten++; // 12.8.2013
+	  err = cb_put_ch( &(*cbs), byte); byteswritten++; // 12.8.2013, 17.3.2017
 	  if(err>CBNEGATION){ cb_clog( CBLOGNOTICE, err, "\ncb_put_utf8_ch: cb_put_ch: bytecount %i error %i.", byteswritten, err); return err;}
 	  if(byteswritten==1){
 	        if(byteisutf8head2( byte )){  utfbytes=2;
@@ -357,7 +367,8 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
 	*chr=0; *chr_high=0; *bytecount=0;
 
-	err = cb_get_ch(cbs, &byte);
+	//err = cb_get_ch(cbs, &byte);
+	err = cb_get_ch( &(*cbs), &byte); // 17.3.2017
 	*chr=byte; *bytecount=1;
 
 	//
@@ -385,7 +396,8 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 
 	if( state>1 && state<=6 ){
 	  for(indx=1;indx<state;++indx){
-	    err = cb_get_ch(cbs, &byte); *bytecount=*bytecount+1;
+	    err = cb_get_ch( &(*cbs), &byte); *bytecount=*bytecount+1; // 17.3.2017
+	    //err = cb_get_ch(cbs, &byte); *bytecount=*bytecount+1;
 	    if(state<=4){
 	      *chr=*chr<<8; *chr+=byte;
 	      if(state==3){
@@ -419,7 +431,8 @@ cb_get_utf8_ch_return_bom:
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
 	unsigned long int low=0, high=0, tmp1=0, tmp2=0, result=0;
 	int bytes=0, err=0; *chr=0; *bytecount=0;
-	err = cb_get_utf8_ch(cbs, &low, &high, &bytes, storedbytes);
+	err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, storedbytes);
+	//err = cb_get_utf8_ch(cbs, &low, &high, &bytes, storedbytes);
 
 	*chr=low;
 	if( bytes==1 ){ high=0; *bytecount=1;
@@ -486,11 +499,12 @@ cb_get_ucs_ch_return:
 
 int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
 	int bytes=0; 
-	unsigned long int tmp=0, low=0, high=0;
+	unsigned long int tmp=0x00, low=0x00, high=0x00;
 	unsigned char byte1=0, byte2=0, byte3=0, byte4=0, byte5=0, byte6=0;
 
 	if(cbs==NULL || *cbs==NULL) { return CBERRALLOC; }
-	cb_bytecount( chr, &bytes ); // if first bit is 1, should put two bytes, first byte 0x00
+	//cb_bytecount( chr, &bytes ); // if first bit is 1, should put two bytes, first byte 0x00
+	cb_bytecount( &(*chr), &bytes ); // if first bit is 1, should put two bytes, first byte 0x00, 17.3.2017
 	if( (**cbs).encodingbytes<bytes && (**cbs).encodingbytes!=0 ){
 	  return CBERRBYTECOUNT;
 	}
@@ -498,7 +512,8 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	byte1 = (unsigned char) *chr; *bytecount=bytes;
 	if( bytes==1 && byteisascii( byte1 ) ){
 	  low=byte1;
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  //return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}
 	// Tails
 	tmp = *chr; byte1 = (unsigned char) tmp; masktoutf8tail( byte1 );
@@ -511,26 +526,27 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	if( bytes==2 ){
 	  masktoutf8head2( byte2 ); tmp=byte2; low=tmp<<8;
 	  low+=byte1;
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  //return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}else if( bytes==3 ){
 	  masktoutf8head3( byte3 );
           tmp=byte3; low=tmp<<8; tmp=low+byte2;
 	  low=tmp<<8; low+=byte1;
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}else if( bytes==4 ){
 	  masktoutf8head4( byte4 ); tmp=byte4; low=tmp<<8; tmp=low+byte3;
  	  low=tmp<<8; tmp=low+byte2; low=tmp<<8; low+=byte1;
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}else if( bytes==5 ){
 	  masktoutf8head5( byte5 ); tmp=byte4; low=tmp<<8; tmp=low+byte3;
 	  low=tmp<<8; tmp=low+byte2; low=tmp<<8; low+=byte1;
 	  high=byte5; 
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}else if( bytes==6 ){
 	  masktoutf8head5( byte6 ); tmp=byte4; low=tmp<<8; tmp=low+byte3;
 	  low=tmp<<8; tmp=low+byte2; low=tmp<<8; low+=byte1;
 	  tmp=byte6; high=tmp<<8; high+=byte5;
-	  return cb_put_utf8_ch(cbs, &low, &high, bytecount, storedbytes);
+	  return cb_put_utf8_ch( &(*cbs), &low, &high, &(*bytecount), &(*storedbytes) ); // 12.3.2017
 	}
 	return CBERRBYTECOUNT;
 }

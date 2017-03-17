@@ -383,7 +383,7 @@ int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clen
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content: parameter was null.");
 		return CBERRALLOC;
 	}
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content:" );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content:" );
 	err = cb_subfunction_get_current_content( &(*cbf), &ptr, &(*clength), maxlen, 1);
 	if( ptr!=NULL )
 	  *ucscontent = &(*ptr); // 11.7.2016
@@ -556,7 +556,7 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
  *           CBSUCCESS          	- May have been a JSON value.
  */
 int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
-        int err=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
+        int err=CBSUCCESS, readerr=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20, chprev2 = 0x20;
 	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0;
         int openpairs=1; char found=0, firstjsonbracket=1;
@@ -574,7 +574,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
-        for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && \
+        for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && readerr<CBNEGATION && \
 		 ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
                 chprev2 = chprev; chprev = chr;
 
@@ -585,15 +585,18 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		   	firstjsonbracket=1;
 		}
 
-                err = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
-		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n[%c] (err %i, index %li, messageoffset %li)", (char) chr, err, (*(**cbf).cb).index, (*(**cbf).cb).messageoffset ); // BEST
-		//if( err==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr CBMESSAGEEND."); }
-		//if( err==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr CBMESSAGEHEADEREND."); }
-		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_get_chr, error %i.", err); return err; }
-		if( err==CBSTREAM && (**cbf).cf.type==CBCFGSTREAM ) cb_remove_name_from_stream( &(*cbf) ); // 10.12.2016
-		//if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_get_chr, negation %i.", err); }
-	        if( (**cbf).cf.stopatmessageend==1 && err==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
-	        if( (**cbf).cf.stopatheaderend==1 && err==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
+                readerr = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
+		err = readerr;
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n[%c] (readerr %i, index %li, messageoffset %li)", (char) chr, readerr, (*(**cbf).cb).index, (*(**cbf).cb).messageoffset ); // BEST
+		//if( readerr==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr CBMESSAGEEND."); }
+		//if( readerr==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr CBMESSAGEHEADEREND."); }
+		if( readerr>=CBERROR ){ cb_clog( CBLOGERR, readerr, "\ncb_copy_content: cb_get_chr, error %i.", readerr); return readerr; }
+		if( readerr==CBSTREAM && (**cbf).cf.type==CBCFGSTREAM ) cb_remove_name_from_stream( &(*cbf) ); // 10.12.2016
+		//if( readerr>=CBNEGATION ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr, negation %i.", readerr); }
+	        if( (**cbf).cf.stopatmessageend==1 && readerr==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
+	        if( (**cbf).cf.stopatheaderend==1 && readerr==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
+		if( readerr==CBENDOFFILE || ( (**cbf).cf.stopateof==1 && chr==CEOF ) ){ if(readerr<CBNEGATION){ readerr=CBENDOFFILE;} continue; } // CBENDOFFILE should be returned from cb_get_chr. 17.3.2017
+		if( readerr==CBSTREAMEND ){ continue; }// actually stop, 17.3.2017
 
 		if( (**cbf).cf.json==1 ){
 		   if( chr=='[' && injsonquotes==0 ) // 9.11.2015, 10.11.2015
@@ -622,7 +625,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
                         found=1;
                         continue;
                 }
-                if( err<CBERROR ){
+                if( readerr<CBERROR ){
 			/* If JSON, Removes white space characters before content. */
 			if( (**cbf).cf.json==1 && atstart==1 && ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
 				continue; // 8.11.2015
@@ -791,4 +794,3 @@ int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int 
 		(*nmbr) = 0 - (*nmbr);
 	return CBSUCCESS;
 }
-
