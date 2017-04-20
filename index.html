@@ -174,12 +174,12 @@ int  cb_free_cbfile(CBFILE **cbs);
 
 <p>
   Data written and read are valuepairs. Value name may contain comments (between # and \n). 
-  Flow control characters are:
+  Control characters are:
 </p>
 
 <pre><code>'=' Separates data from it's name
 '&amp;' Separates pairs
-'\' Escapes next flow control character
+'\' Escapes next control character
 '#' Comment to next newline
 </code></pre>
 
@@ -202,7 +202,7 @@ name of last pair =last_p\&amp;air\\s_data&amp;
 
 <p>
   Last pairs value has control characters. cb_get_chr function reads 
-  characters without flow control. It's in the programmers responsibility 
+  characters without reacting to control characters. It's in the programmers responsibility 
   to implement bypass with '\' and read beyond "\&amp;" after reading the characters if it's necessary.
 </p>
 <p>
