@@ -383,7 +383,7 @@ int  cb_get_current_content( CBFILE **cbf, unsigned char **ucscontent, int *clen
 		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content: parameter was null.");
 		return CBERRALLOC;
 	}
-	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content:" );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_current_content:" );
 	err = cb_subfunction_get_current_content( &(*cbf), &ptr, &(*clength), maxlen, 1);
 	if( ptr!=NULL )
 	  *ucscontent = &(*ptr); // 11.7.2016

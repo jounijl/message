@@ -114,9 +114,9 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\nrstop:                       \t[%c]", (char) (**str).cf.rend );
 	cb_clog( priority, CBNEGATION, "\nsubrstart:                   \t[%c]", (char) (**str).cf.subrstart );
 	cb_clog( priority, CBNEGATION, "\nsubrstop:                    \t[%c]", (char) (**str).cf.subrend );
+	cb_clog( priority, CBNEGATION, "\nbypass:                      \t[%c]", (char) (**str).cf.bypass );
 	cb_clog( priority, CBNEGATION, "\ncstart:                      \t[%c, 0x%.2X]", (char) (**str).cf.cstart, (char) (**str).cf.cstart );
-	cb_clog( priority, CBNEGATION, "\ncstop:                       \t[%c, 0x%.2X]", (char) (**str).cf.cend, (char) (**str).cf.cend );
-	cb_clog( priority, CBNEGATION, "\ncbypass:                     \t[%c]\n", (char) (**str).cf.bypass );
+	cb_clog( priority, CBNEGATION, "\ncstop:                       \t[%c, 0x%.2X]\n", (char) (**str).cf.cend, (char) (**str).cf.cend );
 	return CBSUCCESS;
 }
 #ifdef CBBENCHMARK
@@ -922,6 +922,10 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){ 
 	if( cbf==NULL || *cbf==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_buffer_from_blk: cbf was null." );  return CBERRALLOC; }
 	if( blk==NULL || *blk==NULL ){
+	  if( blksize == 0 )
+	  	blksize = 2; // 25.4.2017, to be able to free the memory
+	  else if( blksize < 0 )
+		return CBERRALLOC;
 	  (**cbf).buf = (unsigned char *) malloc( sizeof(char)*( (unsigned int) blksize+1 ) );
 	  if( (**cbf).buf == NULL ){ 
 		cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_init_buffer_from_blk: malloc returned null." ); 
@@ -1375,18 +1379,24 @@ int  cb_flush(CBFILE **cbs){
 //int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset, int transferencoding, int transferextension){
 int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset ){
 	int err = CBSUCCESS; // err2=-1;
-	//if(cb==NULL || *cb==NULL){
 	if(cbf==NULL || *cbf==NULL || (**cbf).blk==NULL ){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_flush_cbfile_to_offset: cb was null." ); 
+	  return CBERRALLOC;
+	}
+        if( (*(**cbf).blk).buf==NULL ){
+	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: block buffer was null." );
 	  return CBERRALLOC;
 	}
 	if( (*(**cbf).blk).contentlen <= (*(**cbf).blk).buflen ){
 	  if( offset < 0 ){ // Append (usual)
 	    if( (**cbf).transferencoding==CBTRANSENCOCTETS ){
-		if( (**cbf).fd<0 ) // 1.8.2016
+		if( (**cbf).fd<0 ){ // 1.8.2016
 		    err = CBERRFILEOP;
-		else
-		    err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen);
+		}else{
+		    err = (int) write( (**cbf).fd, &(*(*(**cbf).blk).buf), (size_t) (*(**cbf).blk).contentlen );
+		    if( err<0 )
+			cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_cbfile_to_offset: write %i, errno %i '%s'", err, errno, strerror( errno ) );
+		}
 	    }else{
 		err = cb_transfer_write( &(*cbf) );
 	    }
