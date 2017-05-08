@@ -91,8 +91,9 @@ int  cb_copy_current_content( CBFILE **cbf, unsigned char **ucscontent, int *cle
  * 30.6.2015 Conversion to help in reading names from configuration files.
  */
 int  cb_allocate_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
-int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
 int  cb_convert_from_ucs_to_onebyte( unsigned char **name, int *namelen );
+int  cb_copy_ucsname_from_onebyte( unsigned char **ucsname, int *ucsnamelen, unsigned char **onebytename, int *onebytenamelen );
+int  cb_copy_ucsname_to_onebyte( unsigned char **ucsname, int ucsnamelen, unsigned char **onebytename, int *onebytenamelen, int onebytebuflen );
 
 /*
  * Hierarchical searches. These are at the moment all usable search methods.

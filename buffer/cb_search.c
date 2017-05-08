@@ -69,7 +69,8 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	int err = CBSUCCESS;
 	cb_name  copyname;
 	cb_name *copyptr = NULL;
-	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
+	//7.5.2017: if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || mctl==NULL){
+	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || name==NULL || *name==NULL || mctl==NULL || level==NULL ){ // 7.5.2017, 8.5.2017
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_set_to_leaf: allocation error."); return CBERRALLOC;
 	}
 	if( (*(**cbs).cb).list.rd.current_root!=NULL && (*(*(**cbs).cb).list.rd.current_root ).leaf!=NULL ){ // Do not search to the right
@@ -80,7 +81,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	  	*level = (*(**cbs).cb).list.rd.current_root_level; // previous before 21.2.2017
 	  }else{
 		/*
-		 * Search only the leafs of root. */
+		 * Search only the leaves of root. */
 	  	(*(**cbs).cb).list.currentleaf = &(*(* (*(**cbs).cb).list.rd.current_root ).leaf);
 	  	//*level = ( (*(**cbs).cb).list.rd.current_root_level + 1 );
 	  	*level = (*(**cbs).cb).list.rd.current_root_level ; // to be checked again, 21.2.2017
@@ -104,6 +105,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 		  	(*(**cbs).cb).list.currentleaf = &(*copyptr);
 		}else{
 			*level = 0;
+			copyptr = NULL;
 			return CBEMPTY;	
 		}
 	  }
@@ -117,6 +119,7 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 	    	(*(**cbs).cb).list.currentleaf = &(* (cb_name*) (*(*(**cbs).cb).list.current).leaf );
 	  }
 	}
+// 7.4.2017 NULL CHECK MISSING
 	err = cb_set_to_leaf_inner( &(*cbs), &(*name), namelen, openpairs, &(*level), &(*mctl)); // 11.3.2014
 	if( copyptr!=NULL ){
 		/*
@@ -131,7 +134,10 @@ int  cb_set_to_leaf(CBFILE **cbs, unsigned char **name, int namelen, int openpai
 }
 int  cb_set_root( CBFILE **cbs ){
 	if( cbs==NULL || *cbs==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
-	if( (*(**cbs).cb).list.rd.last_name!=NULL ) (*(**cbs).cb).list.rd.current_root = &(* (*(**cbs).cb).list.rd.last_name );
+	if( (*(**cbs).cb).list.rd.last_name!=NULL ) 
+		(*(**cbs).cb).list.rd.current_root = &(* (*(**cbs).cb).list.rd.last_name );
+	else
+		(*(**cbs).cb).list.rd.current_root = NULL; // 8.5.2017
 	if( (*(**cbs).cb).list.rd.last_level>=0) (*(**cbs).cb).list.rd.current_root_level = (*(**cbs).cb).list.rd.last_level;
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_root: setting current_root_level %i, current_root [", (*(**cbs).cb).list.rd.current_root_level );
 	//if( (*(**cbs).cb).list.rd.current_root!=NULL && (*(*(**cbs).cb).list.rd.current_root).namebuf!=NULL )

@@ -595,8 +595,15 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		//if( readerr>=CBNEGATION ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr, negation %i.", readerr); }
 	        if( (**cbf).cf.stopatmessageend==1 && readerr==CBMESSAGEEND ) continue; // actually stop, cf flag 8.4.2016
 	        if( (**cbf).cf.stopatheaderend==1 && readerr==CBMESSAGEHEADEREND ) continue; // actually stop, cf flag 8.4.2016
-		if( readerr==CBENDOFFILE || ( (**cbf).cf.stopateof==1 && chr==CEOF ) ){ if(readerr<CBNEGATION){ readerr=CBENDOFFILE;} continue; } // CBENDOFFILE should be returned from cb_get_chr. 17.3.2017
-		if( readerr==CBSTREAMEND ){ continue; }// actually stop, 17.3.2017
+		//if( chr == (**cbf).cf.rend ) cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: rend '&'" );
+		if( readerr==CBENDOFFILE || ( (**cbf).cf.stopateof==1 && chr==CEOF ) ){ 
+			if(readerr<CBNEGATION){ readerr=CBENDOFFILE;} 
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: CBENDOFFILE, last chr [%c, %.2X].", (unsigned char) chr, (unsigned char) chr );
+			continue; } // CBENDOFFILE should be returned from cb_get_chr. 17.3.2017
+		if( readerr==CBSTREAMEND ){ 
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: CBSTREAMEND, last chr [%c, %.2X].", (unsigned char) chr, (unsigned char) chr );
+			continue; 
+		}// actually stop, 17.3.2017
 
 		if( (**cbf).cf.json==1 ){
 		   if( chr=='[' && injsonquotes==0 ) // 9.11.2015, 10.11.2015
@@ -679,10 +686,12 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
                 (**cn).length = ucsbufindx/4;
         }
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content: content: [" );
-	//if( ucscontent!=NULL && *ucscontent!=NULL && clength!=NULL && (*clength)>0 )
-	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucscontent), (*clength), maxlength);
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "] injsonquotes: %i, injsonarray: %i.", injsonquotes, injsonarray );
+	/***
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content: content: [" );
+	if( ucscontent!=NULL && *ucscontent!=NULL && clength!=NULL && (*clength)>0 )
+	  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucscontent), (*clength), maxlength);
+	cb_clog( CBLOGDEBUG, CBNEGATION, "] injsonquotes: %i, injsonarray: %i.", injsonquotes, injsonarray );
+	 ***/
 
 	/*
 	 * If typecheck is needed without quotes. */
@@ -717,6 +726,29 @@ int  cb_convert_from_ucs_to_onebyte( unsigned char **name, int *namelen ){
 	(*name)[ onebindx ] = '\0';
 	*namelen = onebindx;
 	return CBSUCCESS;
+}
+/*
+ * Copy one-byte UCS characters to onebyte character text. 29.3.2017 */
+int  cb_copy_ucsname_to_onebyte( unsigned char **ucsname, int ucsnamelen, unsigned char **onebytename, int *onebytenamelen, int onebytebuflen ){
+	int err=CBSUCCESS, indx=0, ucsindx=0 ;
+	unsigned long int chr = 0x20;
+	if( ucsname==NULL || *ucsname==NULL || onebytename==NULL || *onebytename==NULL || onebytenamelen==NULL ){
+                cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_ucsname_to_onebyte: parameter was null or ucsname was not empty." );
+                return CBERRALLOC;
+        }
+	ucsindx=0;
+	for( indx=0; ucsindx<ucsnamelen && indx<onebytebuflen && err<CBNEGATION; ++indx ){
+		err = cb_get_ucs_chr( &chr, &(*ucsname), &ucsindx, ucsnamelen );
+		if( err>=CBNEGATION ){
+			if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_ucsname_to_onebyte: cb_get_ucs_chr, error %i.", err ); }
+			cb_clog( CBLOGDEBUG, err, "\ncb_copy_ucsname_to_onebyte: cb_get_ucs_chr, %i.", err );
+		}
+		if( err<CBNEGATION && chr!=CEOF ){
+		  (*onebytename)[indx] = (unsigned char) chr;
+		}
+	}
+	*onebytenamelen = indx;
+	return err;
 }
 /*
  * Ucsname is allocated, ucsnamelen is not allocated. ucsname has to be NULL or CBERRALLOC will result. */ 
