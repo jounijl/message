@@ -115,11 +115,18 @@ int main (int argc, char **argv) {
 
 	// Program
 	err = cb_get_chr(&in, &chr, &u, &y);
+	if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_chr: error %i.", err  ); }
+	else if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_get_chr: %i.", err  ); }
 	while( err!=CBSTREAMEND && err<CBERROR ){
 	  //fprintf(stderr,"[%c]", (int) chr);
 	  err = cb_put_chr(&out, chr, &u, &y);
-	  if( err==CBSUCCESS || err==CBSTREAM )
+	  if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_put_chr: error %i.", err  ); }
+	  else if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_put_chr: %i.", err  ); }
+	  if( err==CBSUCCESS || err==CBSTREAM ){
 	    err = cb_get_chr(&in, &chr, &u, &y);
+	    if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_chr: error %i.", err  ); }
+	    else if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_get_chr: %i.", err  ); }
+	  }
 	}
 
 	cb_flush(&out); // 30.6.2015

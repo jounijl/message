@@ -59,6 +59,10 @@ int  cb_log_set_cbfile( CBFILE **cbf ){
 	cblog = &( **cbf );
 	return CBSUCCESS;
 }
+int  cb_log_get_fd( void ){
+	if( cblog==NULL ) return -1;
+	return (*cblog).fd;
+}
 
 int  cb_log_get_logpriority( void ){
 	return logpriority;

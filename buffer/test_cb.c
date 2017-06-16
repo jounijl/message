@@ -74,6 +74,7 @@ void usage ( char *progname[]);
  *
  */
 
+
 int tmp_gdb_test_call(int num);
 int tmp_gdb_test_call(int num){
 	return num;
