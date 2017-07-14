@@ -211,12 +211,15 @@ int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namele
 		free(*ucsname);  // possibly a wrong place for free, 20.8.2016
 		*ucsname = NULL; // 11.12.2014
 	}
+
 	if( ret==CBSUCCESS || ret==CBSTREAM || ret==CBFILESTREAM){ // returns only CBSUCCESS or CBSTREAM or error
 	  if( allocate==1 ){
+
 	 	ret = cb_get_current_name( &(*cbs), &ptr, &(*namelength) ); // 11.7.2016
 		if( ptr!=NULL )
 		    *ucsname = &(*ptr); // 11.7.2016
 	  }else{
+
 		ret = cb_copy_current_name( &(*cbs), &(*ucsname), &(*namelength), namebuflength ); // 18.8.2016
 	  }
 	  //cb_clog( CBLOGDEBUG, ret, "\ncb_get_next_name_ucs: cb_get_current_name returned %i.", ret ); // 23.8.2016
@@ -509,7 +512,7 @@ int  cb_get_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int
 /*
  * The same as cb_copy_content with JSON value form check if cb_conf checkjson is set. */
 int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
-	int err = CBSUCCESS, from = 0;
+	int err = CBSUCCESS, errd = CBSUCCESS, from = 0;
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: cn was null."); return CBERRALLOC; }
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content: ucscontent was null."); return CBERRALLOC; }
@@ -532,10 +535,12 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 
 		/*
 		 * JSON format can't be used with this. Never use URL-encoding, 25.5.2016. */
-		err = cb_decode_url_encoded_bytes( &(*ucscontent), *clength, &(*ucscontent), &(*clength), maxlength );
-		if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_decode_url_encoded_bytes, error %i.", err ); }
+		errd = cb_decode_url_encoded_bytes( &(*ucscontent), *clength, &(*ucscontent), &(*clength), maxlength );
+		if( errd>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_decode_url_encoded_bytes, error %i.", errd ); }
 		//cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_decode_url_encoded_bytes retuned %i.", err );
 	}
+	if( errd>=CBNEGATION )
+		return errd;
 	if( err>=CBNEGATION || (**cbf).cf.jsonvaluecheck!=1 )
 		return err;
 	/*
@@ -558,9 +563,9 @@ int  cb_copy_content( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, in
 int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucscontent, int *clength, int maxlength ){
         int err=CBSUCCESS, readerr=CBSUCCESS, bsize=0, ssize=0, ucsbufindx=0;
         unsigned long int chr = 0x20, chprev = 0x20, chprev2 = 0x20;
-	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0;
+	char injsonquotes=0, atstart=1, jsonstring=1, injsonarray=0, jsonobject=0;
         int openpairs=1; char found=0, firstjsonbracket=1;
-        int maxlen = maxlength, lindx=0;
+        int maxlen = maxlength, lindx = 0;
         if( cbf==NULL || *cbf==NULL || clength==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: cbf or clength was null."); return CBERRALLOC; }
         if( cn==NULL || *cn==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: cn was null."); return CBERRALLOC; }
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
@@ -582,7 +587,7 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		   if( chr=='}' && firstjsonbracket==1 && injsonquotes!=1 )
 		   	firstjsonbracket=0;
 		   else if( injsonquotes!=1 && chr!='}' && ! ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
-		   	firstjsonbracket=1;
+		   	firstjsonbracket=1;			
 		}
 
                 readerr = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
@@ -610,6 +615,12 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 			injsonarray=1;
 		   else if( chr==']' && injsonarray==1 && ( injsonquotes==0 || injsonquotes>=2 ) ) // 10.11.2015
 			injsonarray=2;
+		   if( jsonobject==0 ){ // 14.7.2017
+			if( chr=='{' )
+				jsonobject=1; // is an object
+			else if( ! WSP( chr ) )
+				jsonobject=2; // not an object
+		   }
 		}
 
                 if( injsonquotes!=1 && chprev!=(**cbf).cf.bypass && ( chr==(**cbf).cf.rstart || chr==(**cbf).cf.subrstart ) ){ // 1.7.2015, 12.11.2015
@@ -649,22 +660,22 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 			}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( ( injsonquotes==1 || injsonarray==1 || jsonstring==0 ) ) ) ) { // 10.11.2015
 			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr, '\"' ); // BEST
+			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr ); // BEST
 				/*
 				 * Removes bypass characters from content. */
 				//if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && 
 				//    (**cbf).cf.json==1 && ! ( ( chprev=='\\' && chr=='"' ) || ( chprev=='\\' && chr=='\\' ) ) ) ){ // 2.3.2016
-				if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && \
+				if( jsonobject==1 && chr=='"' ){ // 14.7.2017
+	                           err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
+				}else if( (**cbf).cf.json!=1 || ( (**cbf).cf.jsonremovebypassfromcontent==1 && \
 				      ! ( ( chprev!='\\' && chr=='"' ) || \
 					  ( chprev!='\\' && chr=='\\' ) ) ) ){ // 2.3.2016, 11.12.2016
 				   if( ! ( chprev!='\\' && chr=='\\' ) )
 	                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
 				   else if( chprev=='\\' && chr=='\\' )
 	                        	   err = cb_put_ucs_chr( chr, &(*ucscontent), &ucsbufindx, *clength);
-				   //if( err==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_put_ucs_chr CBMESSAGEEND."); }
-				   //if( err==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_put_ucs_chr CBMESSAGEHEADEREND."); }
-				   if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
-				   //if(err>=CBNEGATION){ cb_clog( CBLOGDEBUG, err, "\ncb_copy_content: cb_put_ucs_chr, negation %i.", err); }
 				}
+			    	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_copy_content: cb_put_ucs_chr, error %i.", err); return err; }
 			}
 			if( (**cbf).cf.json==1 ){
 			  if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && jsonstring==1 ){ // value without quotes 2

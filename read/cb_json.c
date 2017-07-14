@@ -59,6 +59,9 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 	int err = CBSUCCESS, wsperr = CBSUCCESS; // 22.8.2016
 	unsigned long int chr=0x20;
 	if( from==NULL || cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_value: ucsvalue was null."); return CBERRALLOC; }
+	
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: ucsvaluelen %i, from %i.", ucsvaluelen, *from );
+
 	err = cb_check_json_value_subfunction( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 	/* 
 	 * Length. */
@@ -95,7 +98,7 @@ int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, in
 	unsigned char *chrposition = NULL;
 	if( from==NULL || cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_value_subfunction: ucsvalue was null."); return CBERRALLOC; }
 
-        //cb_clog( CBLOGDEBUG, CBNEGATION, "\n\ncb_check_json_value_subfunction: attribute ["); 
+        //cb_clog( CBLOGDEBUG, CBNEGATION, "\n\ncb_check_json_value_subfunction: attribute [");
         //cb_print_ucs_chrbuf( CBLOGEMERG, &(*ucsvalue), ucsvaluelen, ucsvaluelen );
         //cb_clog( CBLOGDEBUG, CBNEGATION, "], length %i, from %i.", ucsvaluelen, *from);
 
@@ -123,7 +126,7 @@ int  cb_check_json_value_subfunction( CBFILE **cfg, unsigned char **ucsvalue, in
 				return cb_check_json_object( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );			// ok, 12.11.2015
 			case 't':
 				if(*from>0) *from-=4;
-				//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_true()." );
+				////cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value_subfunction: return cb_check_json_true()." );
 				return cb_check_json_true( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from)  );
 			case 'n':
 				if(*from>0) *from-=4;
@@ -345,7 +348,7 @@ int  cb_check_json_object( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 			continue;
 		}else if( (unsigned char) chr == '{' && state!=EXPECTCOMMA && state!=EXPECTCOLON ){
 			/*
-			 * Read until '{'. 
+			 * Read until '{'.
 			 */
 			++openpairs;
 cb_check_json_object_read_name:
@@ -353,6 +356,7 @@ cb_check_json_object_read_name:
 			 * Reads name within the quotes and update *from. Quotes are bypassed. */
 			err = cb_check_json_substring( &(*cfg), &(*ucsvalue), ucsvaluelen, &(*from) );
 			// comment out the next:
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_object: cb_check_json_substring returned %i.", err );
 			if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_check_json_object: cb_check_json_substring, error %i.", err ); }
 			state = EXPECTCOLON;
 			continue;
@@ -427,9 +431,9 @@ int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from, c
         /*
          * Too short. */
         if(namelength<2){
-                cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
-                cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-                cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, name length was less than two (double quotes do not fit in), returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+                //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
+                //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+                //cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, name length was less than two (double quotes do not fit in), returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
                 return CBNOTJSONSTRING;
         }
         /*
@@ -437,9 +441,9 @@ int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from, c
         indx = *from;
         err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
         if( chr != (unsigned long int) '"' ){ // first quotation
-                cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
-                cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-                cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, first character was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+                //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: returning CBNOTJSONSTRING: [");
+                //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+                //cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, first character was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
                 return CBNOTJSONSTRING;
         }
         /*
@@ -447,9 +451,9 @@ int  cb_check_json_string( unsigned char **ucsname, int namelength, int *from, c
         indx = namelength-4;
         err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength );
         if( chr != (unsigned long int) '"' ){ // json bypass character 
-          cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: [");
-          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
-          cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, last was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
+          //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: [");
+          //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsname), namelength, namelength);
+          //cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i, last was not quotation, returning CBNOTJSONSTRING (%i).", namelength, CBNOTJSONSTRING );
           *from = indx;
           return CBNOTJSONSTRING; // second quotation
         }
@@ -462,6 +466,7 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
         char jsonfourhexadecimaldigits=-1;
         if( ucsname==NULL || *ucsname==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_string: string was null."); return CBERRALLOC; }
 
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content:");
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string_content: BYPASSISREMOVED %i.", bypassisremoved);
 
         /*
@@ -472,7 +477,7 @@ int  cb_check_json_string_content( unsigned char **ucsname, int namelength , int
                 err = cb_get_ucs_chr( &chr, &(*ucsname), &indx, namelength);
                 //cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (char) chr );
                 if( indx>(namelength-4) && ( chr=='"' && chprev=='\\' ) ){
-                        cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: trying to bypass last quotation.");
+                        //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_string: trying to bypass last quotation.");
                         *from = indx;
                         return CBNOTJSONSTRING;
                 }else if( jsonfourhexadecimaldigits>=0 && jsonfourhexadecimaldigits<4 ){
