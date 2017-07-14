@@ -73,9 +73,12 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	      }
 	    }
 	  }else if( scandit==1 ){
-		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis, ?to ?			continue;
-		}else if( ( chr1==0xC5 && chr2==0xE5 ) || ( chr2==0xC5 && chr1==0xE5 ) ){ // latin letter A with ring above, ?to ?			continue;
-	  	}else if( ( chr1==0xF6 && chr2==0xD6 ) || ( chr2==0xF6 && chr1==0xD6 ) ){ // latin letter O with diaresis, ?to ?			continue;
+		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis
+			continue;
+		}else if( ( chr1==0xC5 && chr2==0xE5 ) || ( chr2==0xC5 && chr1==0xE5 ) ){ // latin letter A with ring above
+			continue;
+	  	}else if( ( chr1==0xF6 && chr2==0xD6 ) || ( chr2==0xF6 && chr1==0xD6 ) ){ // latin letter O with diaresis
+			continue;
 		}
 	  }
 	  if( len1>(len2-from2) || ( len1==(len2-from2) && chr1<chr2 ) )
