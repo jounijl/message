@@ -864,6 +864,7 @@ int  cb_clog( int priority, int errtype, const char * restrict format, ... ) __a
 int  cb_flush_log( void );
 int  cb_log_set_cbfile( CBFILE **cbf ); // Sets a CBFILE to write the log. If not set, writes to stderr. 28.11.2016
 int  cb_log_get_fd( void ); // returns -1 or the log file descriptor
+int  cb_log_set_fd( int logfd ); 
 int  cb_log_set_logpriority( signed int logpr ); // 28.11.2016
 int  cb_log_get_logpriority( void ); // 29.1.2016
 

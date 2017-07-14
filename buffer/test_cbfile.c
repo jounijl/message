@@ -56,7 +56,8 @@ int main (int argc, char **argv) {
 	int co=0, vals=0, nams=0, valuesize=0, namesize=0, valueincrease=0, nameincrease=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, count=1;
 	char outputenc=CBENC1BYTE;
-	char *str_err, *value, flip2B5Bflop=0;
+	char *str_err, flip2B5Bflop=0;
+	const char *value = NULL;
 	CBFILE *out = NULL;
 	long unsigned int chr = ' ';
 	long unsigned int seed = (unsigned long) time(NULL);

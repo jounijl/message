@@ -18,7 +18,11 @@
  */
 
 #define PCRE2_CODE_UNIT_WIDTH 32
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
 #include <pcre2.h>	// to use matchctl -7 and -8 (cb_match has void* re and re_extra to leave these ctls optionally out if needed)
+#pragma clang diagnostic pop
 
 /*
  * Byte count of re subject block (one character is four bytes). */

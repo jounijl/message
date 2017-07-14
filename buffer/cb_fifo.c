@@ -25,7 +25,7 @@
 // Debug
 int  cb_fifo_print_buffer(cb_ring *cfi, int priority){
         int i=0, err=0, chrsize=0; unsigned long int chr = ' ';
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         for( i = (*cfi).ahead; i > 0; i-=4 ){
           err = cb_fifo_get_chr(&(*cfi), &chr, &chrsize);
@@ -36,7 +36,7 @@ int  cb_fifo_print_buffer(cb_ring *cfi, int priority){
 }
 // Debug
 int  cb_fifo_print_counters(cb_ring *cfi, int priority){
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         cb_clog( priority, CBSUCCESS, "\nahead:            %i", (*cfi).ahead );
         cb_clog( priority, CBSUCCESS, "\nbytesahead:       %i", (*cfi).bytesahead );
@@ -60,33 +60,33 @@ int  cb_fifo_init_counters(cb_ring *cfi){
         (*cfi).streamstart=-1;
         (*cfi).streamstop=-1;
 	(*cfi).currentindex = 0; // 30.6.2016
-        if((*cfi).buf==NULL){
+        //if( (*cfi).buf==NULL ){
 	  (*cfi).buflen=0;
-          err = CBERRALLOC;
-	}else{
+          //err = CBERRALLOC;
+	//}else{
 	  memset( &((*cfi).buf[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
 	  (*cfi).buf[CBREADAHEADSIZE]='\0';
 	  (*cfi).buflen=CBREADAHEADSIZE;
-	}
-        if((*cfi).storedsizes==NULL){
+	//}
+        //if((*cfi).storedsizes==NULL){
 	  (*cfi).sizeslen=0;
-          err = CBERRALLOC;
-	}else{
+          //err = CBERRALLOC;
+	//}else{
 	  memset( &((*cfi).storedsizes[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
 	  (*cfi).storedsizes[CBREADAHEADSIZE]='\0';
 	  (*cfi).sizeslen=CBREADAHEADSIZE;
-	}
+	//}
         return err;
 }
 int  cb_fifo_set_stream(cb_ring *cfi){
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).streamstart==-1)
 	  (*cfi).streamstart=(*cfi).ahead;
 	return CBSUCCESS;	
 }
 int  cb_fifo_set_endchr(cb_ring *cfi){
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).streamstop==-1)
 	  (*cfi).streamstop=(*cfi).ahead;
@@ -96,7 +96,7 @@ int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
         int err=CBSUCCESS; unsigned long int chrs=0;
 	int tmp1=0, tmp2=0;
 	unsigned char *ptr = NULL;
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).ahead>0){
 	  if( (*cfi).last<=3 && (*cfi).first>3)
@@ -129,7 +129,7 @@ int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
         int err=CBSUCCESS, tmp=0; unsigned long int chrs=0;
 	unsigned char *ptr = NULL;
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).ahead>0){
 	  tmp = (*cfi).first;
@@ -157,7 +157,7 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
         int err=CBSUCCESS, tmp=0;
 	unsigned char *ptr = NULL;
-        if(cfi==NULL || (*cfi).buf==NULL)
+        if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).ahead>=(*cfi).buflen-4)
           return CBBUFFULL;

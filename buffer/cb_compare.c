@@ -73,12 +73,9 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	      }
 	    }
 	  }else if( scandit==1 ){
-		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis, Ä to ä
-			continue;
-		}else if( ( chr1==0xC5 && chr2==0xE5 ) || ( chr2==0xC5 && chr1==0xE5 ) ){ // latin letter A with ring above, Å to å
-			continue;
-	  	}else if( ( chr1==0xF6 && chr2==0xD6 ) || ( chr2==0xF6 && chr1==0xD6 ) ){ // latin letter O with diaresis, Ö to ö
-			continue;
+		if( ( chr1==0xC4 && chr2==0xE4 ) || ( chr2==0xC4 && chr1==0xE4 ) ){ // latin letter A with diaresis, ?to ?			continue;
+		}else if( ( chr1==0xC5 && chr2==0xE5 ) || ( chr2==0xC5 && chr1==0xE5 ) ){ // latin letter A with ring above, ?to ?			continue;
+	  	}else if( ( chr1==0xF6 && chr2==0xD6 ) || ( chr2==0xF6 && chr1==0xD6 ) ){ // latin letter O with diaresis, ?to ?			continue;
 		}
 	  }
 	  if( len1>(len2-from2) || ( len1==(len2-from2) && chr1<chr2 ) )
@@ -442,9 +439,12 @@ divided by 2 or 4.
 
  **/
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
 	/*
 	 * Compile pattern to re. Default character tables. */
 	sptr = &(** (PCRE2_SPTR32*)  pattern);
+#pragma clang diagnostic pop
 	(*ctl).re = &(* (PSIZE) pcre2_compile_32( sptr, (PCRE2_SIZE) (patsize/4), (uint32_t) options, &errcode, &erroffset, NULL ) );
 
 	if( (*ctl).re==NULL ){
@@ -562,8 +562,12 @@ pcre_match_another:
 
 	/** pcre2: The length and starting offset are in code units (not characters).
 	    The length of the entire string. [http://www.regular-expressions.info/pcre2.html] **/
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
         pcrerc = pcre2_match_32( pcrecode, (* (PCRE2_SPTR32*) name2 ), (PCRE2_SIZE) (len2/4), \
 		(PCRE2_SIZE) startoffset, (uint32_t) opt, &(*match_data), NULL );
+#pragma clang diagnostic pop
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare_regexp_one_block: pcre2_exec_32 PCRERC %i.", pcrerc );
 	if( pcrerc<0 ){

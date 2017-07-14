@@ -54,7 +54,8 @@ int main (int argc, char **argv) {
 	unsigned int namearraylen=0, y=0;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
 	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0, inmem=0, sgroups=0;
-	char *str_err, *value, *namearray = NULL;
+	char *str_err = NULL;
+	const char *value = NULL, *namearray = NULL;
 	CBFILE *in = NULL;
 	unsigned char *name = NULL;
 	unsigned int chr = ' ', chprev = ' ';
@@ -301,7 +302,7 @@ int main (int argc, char **argv) {
 	}
 
 	// Debug:
-	cb_print_names(&in, CBLOGDEBUG);
+	//cb_print_names(&in, CBLOGDEBUG);
 
 	memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
 	name[namebuflen] = '\0';
@@ -466,23 +467,25 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
 	fprintf(stderr, "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );
 	fprintf(stderr, "\n Matchcount:   \t%li", (**nm).matchcount );
-	fprintf(stderr, "\n Content:      \t\"");
+	fprintf(stderr, "\n Content:      \t");
+	if( (**cbf).cf.json!=1 ) fprintf(stderr, "\"");
 
 	chrprev = chr;
-	//err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
-	// err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
 	err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
 
+/*** pre 11.7.2017
 	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
 	   ! ( (**cbf).cf.json==1 && chr!=(**cbf).cf.subrend ) && \
 	   ! ( (**cbf).cf.searchstate==CBSTATETREE && (**cbf).cf.doubledelim==1 && chr!=(**cbf).cf.subrend ) && \
 	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
 	     err<=CBNEGATION ){
+ ***/
 
-// was before 28.9.2015
-//	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
-//	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
-//	     err<=CBNEGATION ){
+	while( ( ( chr!=(**cbf).cf.rend || ( chrprev==(**cbf).cf.bypass && chr==(**cbf).cf.rend ) ) && \
+	   ( (**cbf).cf.json==1 && chr!=(**cbf).cf.subrend ) && \
+	   ( (**cbf).cf.searchstate==CBSTATETREE && (**cbf).cf.doubledelim==1 && chr!=(**cbf).cf.subrend ) && \
+	   ( (**cbf).cf.searchstate!=CBSTATETOPOLOGY || ( opennamepairs!=0 && (**cbf).cf.searchstate==CBSTATETOPOLOGY ) ) ) && \
+	     err<=CBNEGATION ){
 
 	  if(err==CBSTREAM)
 	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary
@@ -496,12 +499,13 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 	      opennamepairs = 0;
 	  }
 	  chrprev = chr;
-	  //err = cb_get_chr( &(*cbf), &chr, &bcount, &strbcount );
-	  // err = cb_get_chr_unfold( &(*cbf), &chr, &tmp );
 	  err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
+
 	}
+
 	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr_unfold: %i.", err); }
-	fprintf(stderr,"\"\n");
+	if( (**cbf).cf.json!=1 ) fprintf(stderr,"\"\n");
+	else fprintf(stderr,"\n");
 	return err;
 }
 

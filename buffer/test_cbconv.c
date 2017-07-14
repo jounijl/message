@@ -44,7 +44,8 @@ void usage ( char *progname[] );
 int main (int argc, char **argv) {
 	int i=-1, u=0, y=0, atoms=0, fromend=0, err=CBSUCCESS;
 	int bufsize=BUFSIZE, blksize=BLKSIZE, inputenc=CBENC4BYTE, outputenc=CBENCUTF8;
-	char *str_err, *value;
+	char *str_err=NULL; // , *value;
+	const char *value=NULL;
 	CBFILE *in = NULL;
 	CBFILE *out = NULL;
 	unsigned long int chr = 0x61;

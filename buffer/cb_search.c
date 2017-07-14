@@ -1232,7 +1232,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 
 	// Initialize memory characterbuffer and its counters
 	memset( &(charbuf[0]), (int) 0x20, (size_t) CBNAMEBUFLEN);
-	if(charbuf==NULL){  return CBERRALLOC; }
+	//if(charbuf==NULL){  return CBERRALLOC; }
 	charbuf[CBNAMEBUFLEN]='\0';
 	charbufptr = &charbuf[0];
 
