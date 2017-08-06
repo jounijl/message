@@ -1049,6 +1049,8 @@ int  cb_test_header_end( CBFILE **cbs ){
 	return ret;
 }
 
+#define json_value_first_letter( x )   ( WSP( x ) || x=='{' || x=='[' || x=='\"' || x=='t' || x=='f' || x=='n' || ( x>=0x30 && x<=0x39 ) )
+
 int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsname, int *namelength, int ocoffset, cb_match *mctl){ // 23.2.2014
 	int  err=CBSUCCESS, cis=CBSUCCESS, ret=CBNOTFOUND; // return values
 	int  buferr=CBSUCCESS, savenameerr=CBSUCCESS;
@@ -1375,11 +1377,6 @@ cb_set_cursor_reset_name_index:
 	      }
 	    }
 
-	    //if(       (    ( chr==(**cbs).cf.rstart && (**cbs).cf.json!=1 ) 
-	    //            || ( chr==(**cbs).cf.rstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) 
-	    //            || ( chr==(**cbs).cf.subrstart && rstartflipflop!=1 && (**cbs).cf.doubledelim==1 && (**cbs).cf.json!=1 ) 
-	    //            || ( chr==(**cbs).cf.subrstart && (**cbs).cf.json==1 && injsonquotes!=1 && injsonarray<=0 ) 
-	    //          ) && chprev!=(**cbs).cf.bypass ){ // count of rstarts can be greater than the count of rends
 
 	    // Second is JSON comma problem ("na:me") prevention in name 21.2.2015
 	    if(       (    ( cb_is_rstart( &(*cbs), chr ) && (**cbs).cf.json!=1 ) \
@@ -1417,7 +1414,54 @@ cb_set_cursor_reset_name_index:
 	        tovalue=1;
 	      }
 	      //cb_clog( CBLOGDEBUG, CBNEGATION, "\nopenpairs=%i (rstart, subrstart)", openpairs );
+	    }else if( (**cbs).cf.json==1 && (**cbs).cf.jsonsyntaxcheck==1 && \
+		chr!='\"' && chr!=':' && atvalue==0 && chr!=(**cbs).cf.rend && chr!=(**cbs).cf.subrend ){
+	    	  /*
+	    	   * Syntax error 14.7.2017. <rend> WSP, CR, LF "name": WSP, CR, LF, json_value_first_letter
+	    	   *
+	    	   * Part I and II, between rend and '"' and between rstart ':' and <value>.
+	     	   */
+	       	  if( WSP( chr ) || CR( chr ) || LF( chr ) ){
+		     ; // before value
+		  }else if( json_value_first_letter( chr ) && injsonquotes>=2 ){
+		     // ':' missing, start of value
+		     (*(**cbs).cb).list.rd.syntaxerrorreason = CBSYNTAXERRMISSINGCOLON;
+		     (*(**cbs).cb).list.rd.syntaxerrorindx = (*(**cbs).cb).index;
+		     //cb_clog( CBLOGDEBUG, CBNEGATION, "\nCBSYNTAXERRMISSINGCOLON [%c]", (unsigned char) chr );
+		     if( (**cbs).cf.stopatjsonsyntaxerr==1 ){
+		     	ret = CBSYNTAXERROR;
+		     	goto cb_set_cursor_ucs_return; 
+		     }
+	       	  }else if( injsonquotes>=2 || injsonquotes==0 ){
+		     if( chr==(**cbs).cf.bypass ){
+		 	(*(**cbs).cb).list.rd.syntaxerrorreason = CBSYNTAXERRBYPASSNOTALLOWEDHERE;
+		     	(*(**cbs).cb).list.rd.syntaxerrorindx = (*(**cbs).cb).index;
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\nCBSYNTAXERRBYPASSNOTALLOWEDHERE [%c]", (unsigned char) chr );
+		     	if( (**cbs).cf.stopatjsonsyntaxerr==1 ){
+			  ret = CBSYNTAXERROR;
+		          goto cb_set_cursor_ucs_return;
+			}
+		     }else if( chr=='#' || chr=='/'  ){
+		 	(*(**cbs).cb).list.rd.syntaxerrorreason = CBSYNTAXERRCOMMENTNOTALLOWEDHERE;
+		     	(*(**cbs).cb).list.rd.syntaxerrorindx = (*(**cbs).cb).index;
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\nCBSYNTAXERRCOMMENTNOTALLOWEDHERE [%c]", (unsigned char) chr );
+		     	if( (**cbs).cf.stopatjsonsyntaxerr==1 ){
+			  ret = CBSYNTAXERROR;
+		          goto cb_set_cursor_ucs_return;
+			}
+		     }else{ // any chr not quote or colon
+		 	(*(**cbs).cb).list.rd.syntaxerrorreason = CBSYNTAXERRCHARNOTALLOWEDHERE;
+		     	(*(**cbs).cb).list.rd.syntaxerrorindx = (*(**cbs).cb).index;
+			//cb_clog( CBLOGDEBUG, CBNEGATION, "\nCBSYNTAXERRCHARNOTALLOWEDHERE [%c]", (unsigned char) chr );
+		     	if( (**cbs).cf.stopatjsonsyntaxerr==1 ){
+			  ret = CBSYNTAXERROR;
+		          goto cb_set_cursor_ucs_return;
+			}
+		     }
+	       	  } // array should be checked at the value or in part rend -> name
 	    }
+ /***
+ ***/
 	  }else if( (**cbs).cf.searchstate==CBSTATEFUL ){
 	    if( ( chprev!=(**cbs).cf.bypass && cb_is_rstart( &(*cbs), chr ) ) && atvalue!=1 ) // '=', save name, 13.4.2013, do not save when = is in value
 	      tovalue=1;
@@ -1700,6 +1744,7 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 	       */
 
 	      chr=(**cbs).cf.bypass+1; // any char not '\'
+
 	  }else if(     ( \
 			  ( (**cbs).cf.json==0 && (openpairs<0 || openpairs<ocoffset ) && openpairs<previousopenpairs ) && \
 		          ( (**cbs).cf.searchstate==CBSTATETREE || (**cbs).cf.searchstate==CBSTATETOPOLOGY ) \

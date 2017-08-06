@@ -36,6 +36,7 @@ static int  cb_print_leaves_inner(cb_name **cbn, int priority);
 static int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long int offset );
 static int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
 static int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize);
+static int  cb_init_list_rd( cbuf **buf ); // 5.8.2017
 //int  cb_flush_cbfile_to_offset(cbuf **cb, int fd, signed long int offset, int transferencoding, int transferextension);
 static int  cb_flush_cbfile_to_offset(CBFILE **cbf, signed long int offset );
 static int  cb_set_search_method(CBFILE **cbf, unsigned char method);
@@ -80,6 +81,7 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\nstopatbyteeof:               \t0x%.2XH", (**str).cf.stopatbyteeof);
 	cb_clog( priority, CBNEGATION, "\nstopateof:                   \t0x%.2XH", (**str).cf.stopateof);
 	cb_clog( priority, CBNEGATION, "\nstopafterpartialread:        \t0x%.2XH", (**str).cf.stopafterpartialread);
+	cb_clog( priority, CBNEGATION, "\nstopatjsonsyntaxerr:         \t0x%.2XH", (**str).cf.stopatjsonsyntaxerr);
 	cb_clog( priority, CBNEGATION, "\nusesocket:                   \t0x%.2XH", (**str).cf.usesocket);
 	cb_clog( priority, CBNEGATION, "\nremovewsp:                   \t0x%.2XH", (**str).cf.removewsp);
 	cb_clog( priority, CBNEGATION, "\nremoveeof:                   \t0x%.2XH", (**str).cf.removeeof);
@@ -91,6 +93,7 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\njson:                        \t0x%.2XH", (**str).cf.json);
 	cb_clog( priority, CBNEGATION, "\njsonnamecheck:               \t0x%.2XH", (**str).cf.jsonnamecheck);
 	cb_clog( priority, CBNEGATION, "\njsonvaluecheck:              \t0x%.2XH", (**str).cf.jsonvaluecheck);
+	cb_clog( priority, CBNEGATION, "\njsonsyntaxcheck:             \t0x%.2XH", (**str).cf.jsonsyntaxcheck);
 	cb_clog( priority, CBNEGATION, "\njsonremovebypassfromcontent: \t0x%.2XH", (**str).cf.jsonremovebypassfromcontent);
 	cb_clog( priority, CBNEGATION, "\ndoubledelim:                 \t0x%.2XH", (**str).cf.doubledelim);
 	cb_clog( priority, CBNEGATION, "\nfindwords:                   \t0x%.2XH", (**str).cf.findwords);
@@ -228,13 +231,18 @@ int  cb_print_names(CBFILE **str, int priority){
 // Debug
 void cb_print_counters(CBFILE **cbf, int priority){
         if(cbf!=NULL && *cbf!=NULL){
-          cb_clog(   priority, CBNEGATION, "\nnamecount:%lli \t index:%li     \t contentlen:%li \tbuflen:%li       \treadlength:%li ", \
+          cb_clog(   priority, CBNEGATION, "\nnamecount:%lli \t index:%li       \tcontentlen:%li \tbuflen:%li       \treadlength:%li ", \
 	    (*(**cbf).cb).list.namecount, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).buflen, (*(**cbf).cb).readlength );
-	  cb_clog(   priority, CBNEGATION, "\ncontentlen:%li \t maxlength:%li \t headeroffset:%i\tmessageoffset:%li\tfd:%i\n", (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength, (*(**cbf).cb).headeroffset, (*(**cbf).cb).messageoffset, (**cbf).fd );
+	  cb_clog(   priority, CBNEGATION, "\ncontentlen:%li \t maxlength:%li   \theaderoffset:%i\tmessageoffset:%li\tfd:%i", (*(**cbf).cb).contentlen, (*(**cbf).cb).maxlength, (*(**cbf).cb).headeroffset, (*(**cbf).cb).messageoffset, (**cbf).fd );
+	  cb_clog(   priority, CBNEGATION, "\nlastchr: [%c] \t lastchroffset:%li\tlast_level:%i  \tcurrent_root_level:%i\n", \
+		(char)(*(**cbf).cb).list.rd.lastchr, (*(**cbf).cb).list.rd.lastchroffset, (*(**cbf).cb).list.rd.last_level, (*(**cbf).cb).list.rd.current_root_level );
+	  cb_clog(   priority, CBNEGATION, "lastreadchrendedtovalue:%i\n", (*(**cbf).cb).list.rd.lastreadchrendedtovalue );
 	  if( (*(**cbf).cb).list.name==NULL ){  cb_clog(   priority, CBNEGATION, "name was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "name was not null, \t"); }
 	  if( (*(**cbf).cb).list.last==NULL ){  cb_clog(   priority, CBNEGATION, "last was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "last was not null, \t"); }
 	  if( (*(**cbf).cb).list.current==NULL ){  cb_clog(   priority, CBNEGATION, "current was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "current was not null, \t"); }
 	  if( (*(**cbf).cb).list.currentleaf==NULL ){  cb_clog(   priority, CBNEGATION, "currentleaf was null, \t");  }else{  cb_clog(   priority, CBNEGATION, "currentleaf was not null, \t"); }
+	  if( (*(**cbf).cb).list.rd.current_root==NULL ){ cb_clog( priority, CBNEGATION, "\ncurrent_root was null, \t");  }else{ cb_clog( priority, CBNEGATION, "\ncurrent_root was not null, \t"); }
+	  if( (*(**cbf).cb).list.rd.last_name==NULL ){ cb_clog( priority, CBNEGATION, "last_name was null, \t");  }else{ cb_clog( priority, CBNEGATION, "last_name was not null, \t"); }
 	}
 }
 
@@ -276,6 +284,61 @@ int  cb_init_name( cb_name **cbn  ){ // 22.7.2016
         (**cbn).next=NULL;
         (**cbn).leaf=NULL;
         return CBSUCCESS;
+}
+
+int  cb_copy_conf( cb_conf *from, cb_conf *to ){
+/***
+# memcpy( &(* (void*) to), &(* (const void*) from), sizeof( cb_conf ) );
+for I in type searchmethod leafsearchmethod searchstate unfold leadnames findleaffromallnames doubledelim findwords findwordstworends findwordssql searchnameonly namelist searchrightfromroot removenamewsp asciicaseinsensitive scanditcaseinsensitive removewsp  removeeof removecrlf removesemicolon removecommentsinname urldecodevalue json jsonnamecheck jsonremovebypassfromcontent jsonvaluecheck jsonsyntaxcheck usesocket  nonblocking stopatbyteeof stopateof stopafterpartialread stopatheaderend stopatmessageend  stopatjsonsyntaxerr rstart rend bypass cstart  cend subrstart subrend
+  do
+     echo "        (*to).${I} = (*from).${I};"
+ done
+ ***/
+        if( from==NULL || to==NULL ) return CBERRALLOC;
+        (*to).type = (*from).type;
+        (*to).searchmethod = (*from).searchmethod;
+        (*to).leafsearchmethod = (*from).leafsearchmethod;
+        (*to).searchstate = (*from).searchstate;
+        (*to).unfold = (*from).unfold;
+        (*to).leadnames = (*from).leadnames;
+        (*to).findleaffromallnames = (*from).findleaffromallnames;
+        (*to).doubledelim = (*from).doubledelim;
+        (*to).findwords = (*from).findwords;
+        (*to).findwordstworends = (*from).findwordstworends;
+        (*to).findwordssql = (*from).findwordssql;
+        (*to).searchnameonly = (*from).searchnameonly;
+        (*to).namelist = (*from).namelist;
+        (*to).searchrightfromroot = (*from).searchrightfromroot;
+        (*to).removenamewsp = (*from).removenamewsp;
+        (*to).asciicaseinsensitive = (*from).asciicaseinsensitive;
+        (*to).scanditcaseinsensitive = (*from).scanditcaseinsensitive;
+        (*to).removewsp = (*from).removewsp;
+        (*to).removeeof = (*from).removeeof;
+        (*to).removecrlf = (*from).removecrlf;
+        (*to).removesemicolon = (*from).removesemicolon;
+        (*to).removecommentsinname = (*from).removecommentsinname;
+        (*to).urldecodevalue = (*from).urldecodevalue;
+        (*to).json = (*from).json;
+        (*to).jsonnamecheck = (*from).jsonnamecheck;
+        (*to).jsonremovebypassfromcontent = (*from).jsonremovebypassfromcontent;
+        (*to).jsonvaluecheck = (*from).jsonvaluecheck;
+        (*to).jsonsyntaxcheck = (*from).jsonsyntaxcheck;
+        (*to).usesocket = (*from).usesocket;
+        (*to).nonblocking = (*from).nonblocking;
+        (*to).stopatbyteeof = (*from).stopatbyteeof;
+        (*to).stopateof = (*from).stopateof;
+        (*to).stopafterpartialread = (*from).stopafterpartialread;
+        (*to).stopatheaderend = (*from).stopatheaderend;
+        (*to).stopatmessageend = (*from).stopatmessageend;
+        (*to).stopatjsonsyntaxerr = (*from).stopatjsonsyntaxerr;
+        (*to).rstart = (*from).rstart;
+        (*to).rend = (*from).rend;
+        (*to).bypass = (*from).bypass;
+        (*to).cstart = (*from).cstart;
+        (*to).cend = (*from).cend;
+        (*to).subrstart = (*from).subrstart;
+        (*to).subrend = (*from).subrend;
+	return CBSUCCESS;
 }
 
 int  cb_allocate_name(cb_name **cbn, int namelen){ 
@@ -571,6 +634,7 @@ int  cb_set_to_conf( CBFILE **str ){
         (**str).cf.removewsp=1;
         (**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+        (**str).cf.jsonsyntaxcheck=0;
 	(**str).cf.jsonremovebypassfromcontent=0; // 9.10.2016
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
@@ -611,6 +675,7 @@ int  cb_set_to_html_post( CBFILE **str ){
 	(**str).cf.searchnameonly=0;
         (**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+        (**str).cf.jsonsyntaxcheck=0;
 	(**str).cf.jsonremovebypassfromcontent=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
@@ -653,6 +718,7 @@ int  cb_set_to_message_format( CBFILE **str ){
 	(**str).cf.removenamewsp=0;
         (**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+        (**str).cf.jsonsyntaxcheck=0;
         (**str).cf.json=0;
         (**str).cf.leadnames=0;
 	(**str).cf.findwords=0;
@@ -675,6 +741,8 @@ int  cb_set_to_json( CBFILE **str ){
 	(**str).cf.json = 1;
 	(**str).cf.jsonnamecheck = 1; // check name before saving it to list or tree
         (**str).cf.jsonvaluecheck = 1; // additionally check the value if it is read with the functions from cb_read.c
+	(**str).cf.jsonsyntaxcheck = 0; // additionally check the spaces between the value and the name, 14.7.2017, 17.7.2017
+	(**str).cf.stopatjsonsyntaxerr = 0;
 	(**str).cf.jsonremovebypassfromcontent = 1;
 	(**str).cf.doubledelim = 1; 
 	/* JSON can't remove comments: JSON does not have comments and comments are attached to the array [ ] (8.11.2015)
@@ -740,6 +808,8 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.namelist=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.jsonvaluecheck=0;
+	(**str).cf.jsonsyntaxcheck=0;
+	(**str).cf.stopatjsonsyntaxerr=0;
 	(**str).cf.jsonnamecheck=0;
 	(**str).cf.urldecodevalue=0;
 	(**str).cf.removecrlf=0;
@@ -810,12 +880,16 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.json=0;
 	(**str).cf.jsonnamecheck=0;
         (**str).cf.jsonvaluecheck=0;
+        (**str).cf.jsonsyntaxcheck=0;
+	(**str).cf.stopatjsonsyntaxerr=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.removecommentsinname = 1;
 #ifdef CBSETJSON
 	(**str).cf.json=1;
 	(**str).cf.jsonnamecheck=1;
         (**str).cf.jsonvaluecheck=1;
+        (**str).cf.jsonsyntaxcheck=0;
+	(**str).cf.stopatjsonsyntaxerr=0;
 	(**str).cf.removecommentsinname = 0;
 #endif
 	//(**str).cf.leadnames=1; // test
@@ -902,11 +976,12 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	if( (**cbf).blk==NULL ){  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_reinit_cbfile_from_blk: block was null." );  return CBERRALLOC; } // 27.10.2016
 
 	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_reinit_cbfile_from_blk: size %i, content [", blksize );
-        //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize ); 
+        //cb_print_ucs_chrbuf( 0, &(*blk), blksize, blksize );
         //cb_clog( CBLOGDEBUG, CBSUCCESS, "]." );
 
 	/*
 	 * Zero counters. */
+	(*(**cbf).blk).buf = NULL; // 6.8.2017, has to be free'd elsewhere
 	err = cb_reinit_cbfile( &(*cbf) ); // 19.3.2016
 
 	/*
@@ -955,6 +1030,8 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.lastchr=0x20; // 7.10.2015, 2.5.2016
 	(**cbf).list.rd.lastchroffset=0; // 7.10.2015
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
+	(**cbf).list.rd.syntaxerrorindx=-1; // 17.7.2017
+	(**cbf).list.rd.syntaxerrorreason=-1; // 17.7.2017
 	/* To read with cb_set_to_name and cb_set_to_leaf */
 	(**cbf).list.rd.last_level = 0;
 	(**cbf).list.rd.last_name  = NULL;
@@ -998,6 +1075,8 @@ int  cb_reinit_cbfile(CBFILE **buf){
 
 	err = cb_fifo_init_counters( &(**buf).ahd ); // 19.3.2016
 	if(err>=CBERROR) cb_clog( CBLOGERR, err, "\ncb_reinit_cbfile: cb_fifo_init_counters, error %i.", err);
+
+	cb_init_list_rd( &(**buf).cb ); // 5.8.2017
 
 	//(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
 	//(**str).encoding=CBDEFAULTENCODING;
@@ -1118,16 +1197,40 @@ int  cb_reinit_buffer(cbuf **buf){ // free names and init
 	(**buf).list.toterminal=0; // 29.9.2015
 	//(**buf).list.openpairs=0; // 28.9.2015
 
-	// 30.6.2016
-        (**buf).list.rd.lastchr = 0x20;
-        (**buf).list.rd.lastreadchrendedtovalue = 0;
-        (**buf).list.rd.lastchroffset = 0;
-	//(**buf).list.rd.pad1=0;
-	//(**buf).list.rd.pad2=0;
-	//(**buf).list.rd.pad3=0;
+	(**buf).list.currentgroup = 0; // 5.8.2017
+	(**buf).list.groupcount = 0; // 5.8.2017
+
+	cb_init_list_rd( &(*buf) ); // 5.8.2017
+
+	if( (**buf).buf!=NULL ){ // 6.8.2017
+           memset( &(**buf).buf[0], 0x20, (size_t) (**buf).buflen ); // 5.8.2017
+ 	   (**buf).buf[(**buf).buflen] = '\0';
+	}
+
+        (**buf).eofoffset=-1; // 30.10.2016, 5.8.2017
+        (**buf).chunkmissingbytes=0; // 28.5.2016, 5.8.2017
+        (**buf).lastblockreadpartial=0; // 10.6.2016, 5.8.2017
 
 	return CBSUCCESS;
 }
+
+int  cb_init_list_rd( cbuf **buf ){ // 5.8.2017
+	if(buf==NULL || *buf==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_init_list_rd: buf was null." ); return CBERRALLOC; }
+        (**buf).list.rd.lastchr = 0x20;
+        (**buf).list.rd.lastreadchrendedtovalue = 0;
+        (**buf).list.rd.lastchroffset = 0;
+
+	(**buf).list.rd.last_level = 0; // new 5.8.2017
+	(**buf).list.rd.current_root_level = 0; // new 5.8.2017
+	(**buf).list.rd.syntaxerrorreason = -1; // new 5.8.2017
+	(**buf).list.rd.syntaxerrorindx = -1; // new 5.8.2017
+
+	(**buf).list.rd.current_root = NULL;
+	(**buf).list.rd.last_name = NULL;
+
+	return CBSUCCESS;
+}
+
 /*
  * Used only with CBCFGSEEKABLEFILE (seekable) to clear the block before 
  * writing in between with offset and after or reading from an offset. 
@@ -1263,10 +1366,12 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	cblk *blk = NULL; 
 	if( cbf==NULL || *cbf==NULL || ch==NULL || (**cbf).blk==NULL || (*(**cbf).blk).buf==NULL ){ // 28.5.2016
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_get_char_read_offset_block: parameter was null." );
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[FA:%c]", *ch );
 	  return CBERRALLOC;
 	}
 	if( offset > 0 && (**cbf).cf.type!=CBCFGSEEKABLEFILE ){
 	  cb_clog(   CBLOGERR, CBOPERATIONNOTALLOWED, "\ncb_get_char_read_offset_block: attempt to seek to offset of unwritable (unseekable) file (CBCFGSEEKABLEFILE is not set).");
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[FF:%c]", *ch );
 	  return CBOPERATIONNOTALLOWED;
 	}
 
@@ -1275,6 +1380,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	  if( ( (*blk).index < (*blk).contentlen ) && ( (*blk).contentlen <= (*blk).buflen ) ){
 	    // return char
 	    *ch = (*blk).buf[(*blk).index];
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[ch %c, index %li]", *ch, (*blk).index );
 	    ++(*blk).index;
 	  }else if( (**cbf).cf.type!=CBCFGBUFFER && (**cbf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
 	    // read a block and return char
@@ -1293,6 +1399,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 
 	    if( (**cbf).cf.stopafterpartialread==1 && (*(**cbf).cb).lastblockreadpartial==1 ){ // 10.6.2016
 	       (*(**cbf).cb).lastblockreadpartial=0;
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[F1:%c]", *ch );
 	       return CBSTREAMEND;
 	    }
 
@@ -1320,8 +1427,10 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
                    readlength = (*(**cbf).cb).messageoffset - (*(**cbf).cb).contentlen;
 
 		 if( (**cbf).cf.stopatmessageend==1 && (*(**cbf).cb).messageoffset>=0 && (*(**cbf).cb).messageoffset <= (*(**cbf).cb).contentlen ){
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[H1:%c]", *ch );
 		    return CBMESSAGEEND;
 		 }else if( (**cbf).cf.stopatheaderend==1 && (*(**cbf).cb).headeroffset>=0 && (*(**cbf).cb).headeroffset <= (*(**cbf).cb).contentlen ){
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[H2:%c]", *ch );
 		    return CBMESSAGEHEADEREND;
 		 }else{
 		    if( (**cbf).transferencoding==CBTRANSENCOCTETS )
@@ -1353,6 +1462,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 		   * If non-blocking was configured, further data may be available later, 20.5.2016. (Late addition, propably missing from most configurations.) */
 		  if( (**cbf).cf.nonblocking==0 ){
 			cb_clog( CBLOGDEBUG, CBSTREAMEAGAIN, "\ncb_get_ch: EAGAIN returned and CBFILE is not set to nonblock.");
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[F3:%c]", *ch );
 			return CBSTREAMEND; // 23.5.2016
 		  }
 		  return CBSTREAMEAGAIN; // 20.5.2016
@@ -1361,11 +1471,14 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 		}
 	      }
 	      //cb_clog( CBLOGDEBUG, CBSUCCESS, " CBSTREAMEND" );
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[F4:%c]", *ch );
 	      return CBSTREAMEND; // pre 20.5.2016
 	    }
 	  }else{ // use as block
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[F5:%c]", *ch );
 	    return CBSTREAMEND;
 	  }
+//cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", *ch );
 	  return CBSUCCESS;
 	}
 	return CBERRALLOC;
@@ -1533,7 +1646,8 @@ int  cb_get_ch(CBFILE **cbs, unsigned char *ch){ // Copy ch to buffer and return
 #endif
 	if( cbs!=NULL && *cbs!=NULL ){ 
 
-	  if( (*(**cbs).cb).index < (*(**cbs).cb).contentlen){
+	  //ORIG: 6.8.2017: if( (*(**cbs).cb).index < (*(**cbs).cb).contentlen){
+	  if( ( (*(**cbs).cb).index + 1 ) < (*(**cbs).cb).contentlen){ // TEST: first success, 6.8.2017, changed.
 	     ++(*(**cbs).cb).index;
 	     *ch = (*(**cbs).cb).buf[ (*(**cbs).cb).index ];
 	     return CBSUCCESS;

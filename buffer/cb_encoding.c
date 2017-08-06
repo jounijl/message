@@ -51,6 +51,8 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_stateless: err %i." , err );
+
 	/*
 	 * 8.5.2016. */
 	if( (**cbs).cf.stopatmessageend==1 ){
@@ -94,8 +96,10 @@ int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, 
 		/*
 		 * Special case. Reading from the end of buffer and ahead was not empty. Reading the one character
 		 * from the ahead leaving ahead buffer empty. 2.8.2015 */ /* Not tested yet, 3.8.2015. */
+
 		return cb_get_chr_unfold_sub( &(*cbs), &(**cbs).ahd,  &(*chr), &chroffset, &(*bytecount), &(*storedbytes) );
 	}
+
 	/*
 	 * Library never unfolds characters read elsewhere than cb_set_cursor_match_length_ucs_matchctl */
 	return cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
@@ -240,7 +244,8 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 		( (**cbs).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ) ; ++index ){ // 30.3.2016
 	  //err = cb_get_ch(cbs, &byte);
 	  err = cb_get_ch( &(*cbs), &byte); // 17.3.2017
-	  *ch+=(unsigned long int)byte;
+	  // 6.8.2017: here, += instead of =, is this correct: *ch+=(unsigned long int)byte;
+	  *ch = (unsigned long int) byte; // 6.8.2017
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
 	}
 	return err;
@@ -364,12 +369,14 @@ cb_put_utf8_ch_return_bytecount_error:
 int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes ){
 	int err=CBSUCCESS, state=0, indx=0; 
 	unsigned char byte='0';	
-	if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
+	if(cbs==NULL||*cbs==NULL||(**cbs).cb==NULL||(**cbs).blk==NULL){ return CBERRALLOC; }
 	*chr=0; *chr_high=0; *bytecount=0;
 
 	//err = cb_get_ch(cbs, &byte);
 	err = cb_get_ch( &(*cbs), &byte); // 17.3.2017
-	*chr=byte; *bytecount=1;
+	*chr = (unsigned long int) byte; *bytecount=1;
+
+//cb_clog( CBLOGDEBUG, CBNEGATION, "err %i (%c),", err, byte );
 
 	//
 	//if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
@@ -431,7 +438,8 @@ cb_get_utf8_ch_return_bom:
 int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
 	unsigned long int low=0, high=0, tmp1=0, tmp2=0, result=0;
 	int bytes=0, err=0; *chr=0; *bytecount=0;
-	err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, storedbytes);
+	err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, &(*storedbytes)); // 5.8.2017
+	//5.8.2017: err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, storedbytes);
 	//err = cb_get_utf8_ch(cbs, &low, &high, &bytes, storedbytes);
 
 	*chr=low;
@@ -663,7 +671,7 @@ cb_get_utf16_ch_get_next_chr:
 #ifndef BIGENDIAN 
         if( (**cbs).encoding==CBENCUTF16BE ) // moved here 6.12.2014
           *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
-#endif            
+#endif
         if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
         if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800 ; (msb)
           upper = *chr & 0x3FF;

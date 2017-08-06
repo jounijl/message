@@ -62,6 +62,7 @@
 #define CBREWASNULL            74
 #define CBSTREAMEAGAIN         75    // if file descriptor was configured to use non-blocking io, read returns CBSTREAMEAGAIN if data was not available and may be available later, 20.5.2016
 #define CBENDOFFILE            76
+#define CBSYNTAXERROR          77
 //#define CBNOTJSON              75
 //#define CBNOTJSONVALUE         76
 //#define CBNOTJSONSTRING        77
@@ -108,6 +109,12 @@
 
 #define CBDEFAULTLOGPRIORITY    8
 
+/*
+ * Syntax error reasons, 17.7.2017. */
+#define CBSYNTAXERRMISSINGCOLON           1
+#define CBSYNTAXERRBYPASSNOTALLOWEDHERE   2
+#define CBSYNTAXERRCHARNOTALLOWEDHERE     3
+#define CBSYNTAXERRCOMMENTNOTALLOWEDHERE  4
 
 /*
  * Default values (multiple of 4)
@@ -364,6 +371,8 @@ typedef struct cb_match {
         int matchctl; // If match function is not regexp match, next can be NULL
 	int resmcount; // Place to save the matchcount by cb_compare. If matchctl -9 or -10 is used, this value can be used to evaluate the result of the comparison.
         void *re; // cast to pcre2_code (void here to be able to compile the files without pcre)
+	int errcode; // possible error code is set to this to be used later id needed, 4.8.2017
+	int erroffset; // possible error offset is set to this to be used later id needed, 4.8.2017
 } cb_match;
 
 /*
@@ -423,13 +432,14 @@ typedef struct cb_conf {
 	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
+	unsigned char       jsonsyntaxcheck:1;             // Check the syntax rules.
 //
 	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
 
 	/* Log options */
 
 	/* Read methods */
-	unsigned char       usesocket:3;                   // Read only headeroffset and messageoffset length blocks
+	unsigned char       usesocket:2;                   // Read only headeroffset and messageoffset length blocks
 	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 
 	/* Stream end recognition */
@@ -439,8 +449,9 @@ typedef struct cb_conf {
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
+	unsigned char       stopatjsonsyntaxerr:8;
 
-	unsigned char       pad[1];                        // pad to next integer size (word length 32 or 64, now 64)
+//	unsigned char       pad[1];                        // pad to next integer size (word length 32 or 64, now 64)
 //
 
 	unsigned long int   rstart;          // Result start character
@@ -487,7 +498,11 @@ typedef struct cb_read {
 	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
 	long int           lastchroffset;
 	unsigned char      lastreadchrendedtovalue;
-	unsigned char      padto64bit[7];
+	/*
+	 * If syntax error was found, updates the position here, 17.7.2017. */
+	char               syntaxerrorreason;
+	unsigned char      padto64bit[6];
+	signed long int    syntaxerrorindx;
 	/*
 	 * Reading from the tree in memory (not from the end from stream), 1.1.2017.
 	 * Thsese are needed to determine the current level and to use cb_set_root( )
@@ -799,6 +814,9 @@ int  cb_set_to_message_format( CBFILE **str ); // Remove CR. Sets new line as re
 int  cb_set_to_word_search( CBFILE **str ); // Find a word list with words from $ ending with ',' or with the following special characters. Not usable with trees because words can end to SP, TAB, CR or LF.
 int  cb_set_to_name_list_search( CBFILE **str ); // Find names without values separated by rend (default is ','): name1, name2, name3, ...
 int  cb_set_to_search_one_name_only( CBFILE **str ); // Find one name only ending at SP, TAB, CR or LF and never save any names to a list or tree.
+
+/* Copy the configuration to restore it later, 18.7.2017. */
+int  cb_copy_conf( cb_conf *from, cb_conf *to );
 
 int  cb_set_message_end( CBFILE **str, long int contentoffset );
 int  cb_test_message_end( CBFILE **cbs );

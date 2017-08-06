@@ -160,10 +160,13 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	  if(name1==NULL){	cb_clog( CBLOGALERT, CBERRALLOC, "\nerror in cb_compare, -8: name1 was null.");  return CBERRALLOC; }
 
 	  err = cb_get_matchctl( &(*cbs), &(*name1), len1, 0, &newmctl, (*mctl).matchctl ); // 13.4.2014
-	  if(err!=CBSUCCESS){ cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); }
-	  err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
-	  if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
-	  (*mctl).resmcount = mcount; // 9.8.2015
+	  if(err!=CBSUCCESS){ 
+		cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_get_matchctl, %i.", err); 
+	  }else{
+	  	err = cb_compare_regexp( &(*name2), len2, &newmctl, &mcount);
+	  	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_compare, -8: error in cb_compare_regexp, %i.", err); }
+	  	(*mctl).resmcount = mcount; // 9.8.2015
+	  }
 	  pcre2_code_free_32( (pcre2_code_32*) newmctl.re ); // 15.11.2015, free just compiled re
 	}else if( (*mctl).matchctl==-7 || (*mctl).matchctl==-9 ){ // new 18.3.2014, not yet tested 18.3.2014
 	  /*
@@ -452,6 +455,8 @@ divided by 2 or 4.
 
 	if( (*ctl).re==NULL ){
           cb_clog( CBLOGERR, CBERRREGEXCOMP, "\ncb_compare_get_matchctl: error compiling re, re is null, offset %i, at re offset %i.", erroffset, errcode);
+	  (*ctl).errcode = errcode;
+	  (*ctl).erroffset = (int) erroffset;
           return CBERRREGEXCOMP;
         }
 
