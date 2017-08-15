@@ -1203,11 +1203,13 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    /*
 	     * Stream case CBCFGSTREAM. Used also in CBCFGFILE (unseekable). CBCFGBUFFER just in case. */
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: Found name but it's length is over the buffer length.\n");
+ /***
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: buflen %li, current length %i, current offset %li, name [", \
 		(*(**cbs).cb).buflen, (*(*(**cbs).cb).list.current).length, (*(*(**cbs).cb).list.current).offset );
 	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).buflen, CBNAMEBUFLEN );
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "], names:");
 	    cb_print_names( &(*cbs), CBLOGDEBUG );
+  ***/
 	    /*
 	     * 15.12.2014: matchcount prevents matching again. If seekable file is in use,
 	     * file can be seeked to old position. In this case, found names offset is returned
