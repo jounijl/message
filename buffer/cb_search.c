@@ -502,7 +502,7 @@ int  cb_put_leaf(CBFILE **str, cb_name **leaf, int openpairs, int previousopenpa
 	/*
 	 * Update previous leafs length */
 	err = cb_update_previous_length( &(*str), (**leaf).nameoffset, openpairs, previousopenpairs );
-	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_put_name: cb_update_previous_length, error %i.", err );  return err; }
+	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_put_leaf: cb_update_previous_length, error %i.", err );  return err; }
 
 	/*
 	 * Add to leaf or to next name in list. */
@@ -663,9 +663,14 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
 	  //if( (*(**str).cb).list.last!=NULL ) // 23.8.2015
 	  //  (*(*(**str).cb).list.last).serial = (*(**str).cb).list.nodecount; // 23.8.2015
 	  //if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
-	  if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE) // 20.12.2014
-            if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ) // 6.9.2013
-              (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
+	  if( (**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE){ // 20.12.2014
+            if( ( (*(**str).cb).contentlen - (**str).ahd.bytesahead ) >= (*(**str).cb).buflen ){ // 6.9.2013
+              //TEST: (*(*(**str).cb).list.current).length = (*(**str).cb).buflen; // Largest 'known' value
+              (*(*(**str).cb).list.current).length = -1; // TEST 15.8.2017, -1 'unknown', result: no effect (+ test execution time is the same )
+	      //cb_clog( CBLOGDEBUG, CBNEGATION, "\nSETTING ATTRIBUTE LENGTH TO BUFFER LENGTH, contentlen %li, ahd %i, buflen %li", 
+		//(*(**str).cb).contentlen, (**str).ahd.bytesahead, (*(**str).cb).buflen ); // TMP, 14.8.2017
+	    }
+	  }
         }else{
           err = cb_allocate_name( &(*(**str).cb).list.name, (**cbn).namelen ); if(err!=CBSUCCESS){ return err; } // 7.12.2013
           (*(**str).cb).list.last    = &(* (cb_name*) (*(**str).cb).list.name); // last
@@ -1198,6 +1203,11 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    /*
 	     * Stream case CBCFGSTREAM. Used also in CBCFGFILE (unseekable). CBCFGBUFFER just in case. */
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: Found name but it's length is over the buffer length.\n");
+	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: buflen %li, current length %i, current offset %li, name [", \
+		(*(**cbs).cb).buflen, (*(*(**cbs).cb).list.current).length, (*(*(**cbs).cb).list.current).offset );
+	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).buflen, CBNAMEBUFLEN );
+	    cb_clog( CBLOGDEBUG, CBNEGATION, "], names:");
+	    cb_print_names( &(*cbs), CBLOGDEBUG );
 	    /*
 	     * 15.12.2014: matchcount prevents matching again. If seekable file is in use,
 	     * file can be seeked to old position. In this case, found names offset is returned
@@ -1206,7 +1216,15 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    if( (**cbs).cf.type==CBCFGSEEKABLEFILE ){
 	       ret = CBSUCCESS;
 	       goto cb_set_cursor_ucs_return; // palautuva offset oli kuitenkin viela puskurin kokoinen
-	    }                                 // returning offset was still the size of a buffer
+	                                      // returning offset was still the size of a buffer
+	    }else if( (**cbs).cf.type==CBCFGFILE ){ // && (*(*(**cbs).cb).list.current).offset <= (*(**cbs).cb).buflen ){
+	       /*
+	        * 14.8.2017, if name was found from buffer, return normally. Previous comments were:
+	        * "CBCFGBUFFER just in case.". These lines added 15.8.2017. */
+		ret = CBSUCCESS;
+		goto cb_set_cursor_ucs_return;
+		// Return name position even if the content may be out of buffer, possibly cb_put_name error here, 14.8.2017
+	    }
 	  }
 	}else if(err==CBNAMEOUTOFBUF){
 	  //cb_clog( CBLOGDEBUG, CBNAMEOUTOFBUF, "\ncb_set_cursor: Found old name out of cache and stream is allready passed by,\n");
