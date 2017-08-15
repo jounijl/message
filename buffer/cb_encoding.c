@@ -607,10 +607,36 @@ int  cb_write_bom(CBFILE **cbs){
         int err=CBNOENCODING; int e=0, y=0;
         if(cbs==NULL || *cbs==NULL)
           return CBERRALLOC;
-        if( (**cbs).encoding==CBENCUTF8 || (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || \
-            (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE){
-          err = cb_put_chr(&(*cbs), (unsigned long int) 0xFEFF, &e, &y);
-        }
+	if( cb_test_cpu_endianness()==CBBIGENDIAN ){ // network byte order
+// Added 15.8.2017, not tested
+	  if( (**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE ){
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) cb_reverse_char8_bits( (unsigned char) 0xFE ) );
+	  }
+	  if( (**cbs).encoding==CBENCUTF32LE ){
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  }else if( (**cbs).encoding!=CBENCUTF16LE && (**cbs).encoding!=CBENCPOSSIBLEUTF16LE ){
+		err = cb_put_chr( &(*cbs), (unsigned long int) 0xFEFF, &e, &y);
+	  }
+	}else{
+	  if( (**cbs).encoding==CBENCUTF32BE ){
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFE );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  }else if( (**cbs).encoding==CBENCUTF32LE ){
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0x00 );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFE );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
+	  }else if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE ){
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) (unsigned char) 0xFE );
+	  }else if( (**cbs).encoding!=CBENCUTF32LE ){
+		err = cb_put_chr( &(*cbs), (unsigned long int) 0xFEFF, &e, &y);
+	  }
+	}
         return err;
 }
 /* 
