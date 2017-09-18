@@ -30,6 +30,28 @@ static int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char 
 static int  cb_get_current_name_subfunction(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflength, char leaf, char allocate );
 static int  cb_get_next_name_ucs_sub(CBFILE **cbs, unsigned char **ucsname, int *namelength, int namebuflength, char allocate );
 
+#define cbispecials( x )  ( x==(**cbf).cf.rstart || x==(**cbf).cf.rend || x==(**cbf).cf.bypass || x==(**cbf).cf.subrstart || x==(**cbf).cf.subrend )
+#define cbicomment( x )   ( x==(**cbf).cf.cstart || x==(**cbf).cf.cend )
+int  cbi_get_chr( CBFILE **cbf, unsigned long int *chr ){
+	int bc=0, sb=0;
+	if( cbf==NULL || *cbf==NULL || chr==NULL ) return CBERRALLOC;
+	return cb_get_chr( &(*cbf), &(*chr), &bc, &sb );
+}
+int  cbi_put_chr( CBFILE **cbf, unsigned long int chr ){
+        int err = CBSUCCESS, bc=0, sb=0;
+        if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
+        if( cbispecials( chr ) || cbicomment( chr ) ){
+                err = cb_put_chr( &(*cbf), (**cbf).cf.bypass, &bc, &sb );
+                if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncbi_put_chr: cb_put_chr, error %i.", err ); }
+        }
+        if( err<CBNEGATION ){
+                err = cb_put_chr( &(*cbf), chr, &bc, &sb );
+                if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncbi_put_chr: cb_put_chr, error %i.", err ); }
+        }
+        return err;
+}
+
+
 /*
  * 1 or 4 -byte functions.
  */
@@ -571,14 +593,17 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: (clength %i, maxlength %i, cn.length %i) name [", *clength, maxlength, (**cn).length );
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(**cn).namebuf, (**cn).namelen, (**cn).buflen );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "]: ");
+	/**
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: (clength %i, maxlength %i, cn.length %i) name [", *clength, maxlength, (**cn).length );
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(**cn).namebuf, (**cn).namelen, (**cn).buflen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "], index %li, contentlen %li: ", (*(**cbf).cb).index, (*(**cbf).cb).contentlen );
+	 **/
 
         /*
          * Copy contents and update length. */
         ucsbufindx=0;
         chprev = (**cbf).cf.bypass-1; chr = (**cbf).cf.bypass+1;
+
         for(lindx=0 ; lindx<*clength && lindx<maxlen && lindx<maxlength && err<CBNEGATION && ucsbufindx<maxlength && readerr<CBNEGATION && \
 		 ( (**cbf).cf.stopatmessageend==0 || err!=CBMESSAGEEND ) && ( (**cbf).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ); ++lindx ){
                 chprev2 = chprev; chprev = chr;
@@ -592,7 +617,8 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 
                 readerr = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
 		err = readerr;
-		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n[%c] (readerr %i, index %li, messageoffset %li)", (char) chr, readerr, (*(**cbf).cb).index, (*(**cbf).cb).messageoffset ); // BEST
+	        //cb_clog( CBLOGDEBUG, CBNEGATION, "{%c}", (char) chr );
+		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n[%c] (readerr %i, index %li, contentlen %li, messageoffset %li)", (char) chr, readerr, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).messageoffset ); // BEST
 		//if( readerr==CBMESSAGEEND ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr CBMESSAGEEND."); }
 		//if( readerr==CBMESSAGEHEADEREND ){ cb_clog( CBLOGDEBUG, readerr, "\ncb_copy_content: cb_get_chr CBMESSAGEHEADEREND."); }
 		if( readerr>=CBERROR ){ cb_clog( CBLOGERR, readerr, "\ncb_copy_content: cb_get_chr, error %i.", readerr); return readerr; }
@@ -657,6 +683,16 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
                 	  	injsonquotes=2; // ready to save the name (or after value)
 			  }else if(jsonstring==1)
 				jsonstring=0;
+// 17.9.2017
+			  if( chprev!=(**cbf).cf.bypass && chr==(unsigned long int)'\"' && ( jsonobject>=1 && jsonstring<1 ) ){ 
+              		    if( injsonquotes==1 ) // second quote
+                	  	injsonquotes=0;
+			    else if(injsonquotes==0)
+                	  	injsonquotes=1;
+			    else 
+                	  	injsonquotes=0;
+			  }
+// /17.9.2017
 			}
 			if( (**cbf).cf.json!=1 || ( (**cbf).cf.json==1 && ( ( injsonquotes==1 || injsonarray==1 || jsonstring==0 ) ) ) ) { // 10.11.2015
 			 	//cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.2X]", (char) chr, '\"' ); // BEST

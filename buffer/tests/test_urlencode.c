@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 	int            ucstextlen = 0;
 	unsigned long int chr = 0;
 	char to_url_encoded = 0;
-	char *value = NULL;
+	const char *value = NULL;
 	CBFILE *in  = NULL;
 	CBFILE *out = NULL;
 	ucstextdata[INBLOCKSIZE] = '\0';

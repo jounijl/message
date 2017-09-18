@@ -632,7 +632,7 @@ int  cb_write_bom(CBFILE **cbs){
 	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
 	  }else if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE ){
 	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFF );
-	  	err = cb_put_ch( &(*cbs), (unsigned char) (unsigned char) 0xFE );
+	  	err = cb_put_ch( &(*cbs), (unsigned char) 0xFE );
 	  }else if( (**cbs).encoding!=CBENCUTF32LE ){
 		err = cb_put_chr( &(*cbs), (unsigned long int) 0xFEFF, &e, &y);
 	  }

@@ -371,8 +371,8 @@ typedef struct cb_match {
         int matchctl; // If match function is not regexp match, next can be NULL
 	int resmcount; // Place to save the matchcount by cb_compare. If matchctl -9 or -10 is used, this value can be used to evaluate the result of the comparison.
         void *re; // cast to pcre2_code (void here to be able to compile the files without pcre)
-	int errcode; // possible error code is set to this to be used later id needed, 4.8.2017
-	int erroffset; // possible error offset is set to this to be used later id needed, 4.8.2017
+	int errcode; // possible error code is set to this to be used later if needed, 4.8.2017
+	int erroffset; // possible error offset is set to this to be used later if needed, 4.8.2017
 } cb_match;
 
 /*
@@ -449,7 +449,8 @@ typedef struct cb_conf {
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
-	unsigned char       stopatjsonsyntaxerr:8;
+	unsigned char       stopatjsonsyntaxerr:4;
+	unsigned char       rememberstopped:4;             // Remember if CBSTREAMEND or CBENDOFFILE was already read (cb_clear_stopped() should reset this)
 
 //	unsigned char       pad[1];                        // pad to next integer size (word length 32 or 64, now 64)
 //
@@ -498,10 +499,17 @@ typedef struct cb_read {
 	unsigned long int  lastchr; // If value is read, it is read to the last rend. This is needed only in CBSTATETREE, not in other searches.
 	long int           lastchroffset;
 	unsigned char      lastreadchrendedtovalue;
+
+	/*
+	 * If for some reason (one reason is stopateof==1 and EOF was read),
+	 * the reading has ended, this flag is set to know to not to start blocking
+	 * another read from the input, 15.8.2017. */
+	unsigned char      stopped; 
+
 	/*
 	 * If syntax error was found, updates the position here, 17.7.2017. */
 	char               syntaxerrorreason;
-	unsigned char      padto64bit[6];
+	unsigned char      padto64bit[5];
 	signed long int    syntaxerrorindx;
 	/*
 	 * Reading from the tree in memory (not from the end from stream), 1.1.2017.
@@ -888,7 +896,7 @@ int  cb_log_get_logpriority( void ); // 29.1.2016
 
 // Returns byte order marks encoding from two, three or four first bytes (bom is allways the first character)
 int  cb_bom_encoding(CBFILE **cbs); // 26.7.2013
-int  cb_write_bom(CBFILE **cbs); // 12.8.2013
+int  cb_write_bom(CBFILE **cbs); // 12.8.2013, remark 15.8.2017: BOM FEFF is written with cb_put_chr. If the machine endianness is different, correct BOM should be written tailored with dprintf or cb_put_ch() for example
 
 // New encodings 10.8.2013, chr is in UCS-encoding
 int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes );

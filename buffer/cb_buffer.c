@@ -331,6 +331,7 @@ for I in type searchmethod leafsearchmethod searchstate unfold leadnames findlea
         (*to).stopatheaderend = (*from).stopatheaderend;
         (*to).stopatmessageend = (*from).stopatmessageend;
         (*to).stopatjsonsyntaxerr = (*from).stopatjsonsyntaxerr;
+	(*to).rememberstopped = (*from).rememberstopped;
         (*to).rstart = (*from).rstart;
         (*to).rend = (*from).rend;
         (*to).bypass = (*from).bypass;
@@ -853,6 +854,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.rstart=CBRESULTSTART;
 	(**str).cf.rend=CBRESULTEND;
 #endif
+	(**str).cf.rememberstopped=0;
 	(**str).cf.removenamewsp=0;
 	(**str).cf.bypass=CBBYPASS;
 	(**str).cf.cstart=CBCOMMENTSTART;
@@ -1037,6 +1039,7 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.last_name  = NULL;
 	(**cbf).list.rd.current_root_level = 0;
 	(**cbf).list.rd.current_root = NULL;
+	(**cbf).list.rd.stopped = 0;
 	//(**cbf).list.rd.pad1=0;
 	//(**cbf).list.rd.pad2=0;
 	//(**cbf).list.rd.pad3=0;
@@ -1382,7 +1385,8 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 	    *ch = (*blk).buf[(*blk).index];
 //cb_clog( CBLOGDEBUG, CBNEGATION, "[ch %c, index %li]", *ch, (*blk).index );
 	    ++(*blk).index;
-	  }else if( (**cbf).cf.type!=CBCFGBUFFER && (**cbf).cf.type!=CBCFGBOUNDLESSBUFFER ){ // 20.8.2013, 28.2.2016
+	  }else if( (**cbf).cf.type!=CBCFGBUFFER && (**cbf).cf.type!=CBCFGBOUNDLESSBUFFER && \
+	             ! ( (**cbf).cf.rememberstopped==1 && (*(**cbf).cb).list.rd.stopped==1 ) ){ // 20.8.2013, 28.2.2016, 15.7.2017 rd.stopped
 	    // read a block and return char
 	    /*
 	     * If write-operations are wanted in between file, the next is
@@ -1402,7 +1406,6 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
 //cb_clog( CBLOGDEBUG, CBNEGATION, "[F1:%c]", *ch );
 	       return CBSTREAMEND;
 	    }
-
 	    if( (**cbf).cf.type==CBCFGSEEKABLEFILE && offset>0 ){ // offset from seekable file
 	       /* Internal use only. Block has to be emptied after use. File pointer is not updated in the following: */
 	       if( (**cbf).transferencoding!=CBTRANSENCOCTETS )
@@ -1441,7 +1444,7 @@ int  cb_get_char_read_offset_block(CBFILE **cbf, unsigned char *ch, signed long 
                }
 	       //cb_clog( CBLOGDEBUG, CBSUCCESS, "\nblock read: %i (%i)", sz, (**cbf).fd );
 	    }
-
+// HERE
 	    if( (long int) sz < readlength ) // 10.5.2016
 	       (*(**cbf).cb).lastblockreadpartial=1;
 	    else

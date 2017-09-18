@@ -433,7 +433,9 @@ int main (int argc, char *argv[]) {
 			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
                 
 		} // while (encodings)
-		err2 = cb_free_names_from( &name_list.name, &freecount ); // 25.2.2015
+		err2 = CBSUCCESS;
+		if( name_list.name!=NULL ) // 15.8.2017
+			err2 = cb_free_names_from( &name_list.name, &freecount ); // 25.2.2015
 		if(err2>=CBNEGATION){ cb_clog( CBLOGWARNING, err2, "\ntest_cb: cb_free_buffer(&name_list) returned %i.", err2 );  }
 	} // for (files)
 

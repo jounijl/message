@@ -122,3 +122,7 @@ int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb);
 int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb); // sets written hexdatalen, bytecount bc and stored bytes sb
 int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, unsigned char **ucsdata, int *ucsdatalen, int ucsbuflen );
 
+/*
+ * Write with bypassing all the special characters, 16.8.2017. */
+int  cbi_put_chr( CBFILE **cbf, unsigned long int chr );
+int  cbi_get_chr( CBFILE **cbf, unsigned long int *chr ); // Normal get without removing special characters, 16.8.2017

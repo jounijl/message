@@ -564,7 +564,7 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 	     // NAME
 	     if( (*(**str).cb).list.last!=NULL ){
 	       if( (*(**str).cb).list.last==NULL ) return CBERRALLOC; 
-	         (*(*(**str).cb).list.last).length = nameoffset - (*(*(**str).cb).list.last).offset - 2; // last is allways a name? (2: '=' and '&')
+	       (*(*(**str).cb).list.last).length = nameoffset - (*(*(**str).cb).list.last).offset - 2; // last is allways a name? (2: '=' and '&')
 	     }
 	  }
 	}
@@ -590,7 +590,7 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 }
 
 int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpairs){ // ocoffset late, 12/2014
-        int err=0; 
+        int err=0;
 
         if(cbn==NULL || *cbn==NULL || str==NULL || *str==NULL || (**str).cb==NULL )
 	  return CBERRALLOC;
@@ -612,7 +612,7 @@ int  cb_put_name(CBFILE **str, cb_name **cbn, int openpairs, int previousopenpai
          */
         //if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE)
         if((**str).cf.type!=CBCFGFILE && (**str).cf.type!=CBCFGSEEKABLEFILE && (**str).cf.type!=CBCFGBOUNDLESSBUFFER) // 28.2.2016
-          if( (**cbn).offset >= ( (*(**str).cb).buflen-1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen-1 ) ) 
+          if( (**cbn).offset >= ( (*(**str).cb).buflen-1 ) || ( (**cbn).offset + (**cbn).length ) >= ( (*(**str).cb).buflen-1 ) )
             return CBNAMEOUTOFBUF;
 
         if((*(**str).cb).list.name!=NULL){
@@ -909,9 +909,13 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	if( (**cbs).cf.stopateof==1 && *chr==(unsigned long int)0x00FF ){ // Unicode EOF 0x00FF chart U0080, 31.10.2016
 		if( err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND ){
 			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
+			(*(**cbs).cb).list.rd.stopped = 1;
 			return CBENDOFFILE;
 		}
 	}
+
+	if( err==CBSTREAMEND ) (*(**cbs).cb).list.rd.stopped = 1; // 15.8.2017
+
 	return err;
 }
 
@@ -1202,13 +1206,13 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    /* Found name but it's length is over the buffer length. */
 	    /*
 	     * Stream case CBCFGSTREAM. Used also in CBCFGFILE (unseekable). CBCFGBUFFER just in case. */
-	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: Found name but it's length is over the buffer length.\n");
- /***
-	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: buflen %li, current length %i, current offset %li, name [", \
+	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: Found name but it's length is over the buffer length."); // \n");
+	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: type %i, buflen %li, current length %i, current offset %li, name [", (**cbs).cf.type, \
 		(*(**cbs).cb).buflen, (*(*(**cbs).cb).list.current).length, (*(*(**cbs).cb).list.current).offset );
 	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).buflen, CBNAMEBUFLEN );
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "], names:");
 	    cb_print_names( &(*cbs), CBLOGDEBUG );
+ /***
   ***/
 	    /*
 	     * 15.12.2014: matchcount prevents matching again. If seekable file is in use,
@@ -1220,6 +1224,9 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	       goto cb_set_cursor_ucs_return; // palautuva offset oli kuitenkin viela puskurin kokoinen
 	                                      // returning offset was still the size of a buffer
 	    }else if( (**cbs).cf.type==CBCFGFILE ){ // && (*(*(**cbs).cb).list.current).offset <= (*(**cbs).cb).buflen ){
+
+cb_clog( CBLOGDEBUG, CBNEGATION, "\n\n\tCBCFGFILE\n");
+
 	       /*
 	        * 14.8.2017, if name was found from buffer, return normally. Previous comments were:
 	        * "CBCFGBUFFER just in case.". These lines added 15.8.2017. */
@@ -1270,6 +1277,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 				cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_ucs: EOF offset %li was over the index %li, returning CBENDOFFILE.", (*(**cbs).cb).eofoffset, (*(**cbs).cb).index );
 			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
 			ret = CBENDOFFILE;
+			(*(**cbs).cb).list.rd.stopped = 1;
                		goto cb_set_cursor_ucs_return;
 			//19.12.2016: return CBENDOFFILE;
 		}
@@ -1891,6 +1899,7 @@ cb_set_cursor_ucs_return:
 	if( (**cbs).cf.stopateof==1 ){ // 31.10.2016
 		if( ( ret>=CBNEGATION && ret!=CBVALUEEND && ret!=CBMESSAGEEND && ret!=CBMESSAGEHEADEREND ) && err==CBENDOFFILE ){
 			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
+			(*(**cbs).cb).list.rd.stopped = 1;
 			ret = CBENDOFFILE;
 		}
 	}
@@ -2025,6 +2034,7 @@ int  cb_automatic_encoding_detection(CBFILE **cbs){
 int  cb_remove_name_from_stream(CBFILE **cbs){
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || (*(**cbs).cb).list.current==NULL )
 	  return CBERRALLOC;
+cb_clog( CBLOGDEBUG, CBNEGATION, "\nCALLING REMOVE_NAME_FROM_STREAM" );
 	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE )
 		(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
 	return CBSUCCESS;
