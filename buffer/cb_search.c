@@ -1207,12 +1207,12 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	    /*
 	     * Stream case CBCFGSTREAM. Used also in CBCFGFILE (unseekable). CBCFGBUFFER just in case. */
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: Found name but it's length is over the buffer length."); // \n");
+ /***
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor: type %i, buflen %li, current length %i, current offset %li, name [", (**cbs).cf.type, \
 		(*(**cbs).cb).buflen, (*(*(**cbs).cb).list.current).length, (*(*(**cbs).cb).list.current).offset );
 	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*(*(**cbs).cb).list.current).namebuf, (*(*(**cbs).cb).list.current).buflen, CBNAMEBUFLEN );
 	    cb_clog( CBLOGDEBUG, CBNEGATION, "], names:");
 	    cb_print_names( &(*cbs), CBLOGDEBUG );
- /***
   ***/
 	    /*
 	     * 15.12.2014: matchcount prevents matching again. If seekable file is in use,
@@ -1225,7 +1225,7 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	                                      // returning offset was still the size of a buffer
 	    }else if( (**cbs).cf.type==CBCFGFILE ){ // && (*(*(**cbs).cb).list.current).offset <= (*(**cbs).cb).buflen ){
 
-cb_clog( CBLOGDEBUG, CBNEGATION, "\n\n\tCBCFGFILE\n");
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\n\n\tCBCFGFILE\n");
 
 	       /*
 	        * 14.8.2017, if name was found from buffer, return normally. Previous comments were:
@@ -2034,7 +2034,7 @@ int  cb_automatic_encoding_detection(CBFILE **cbs){
 int  cb_remove_name_from_stream(CBFILE **cbs){
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || (*(**cbs).cb).list.current==NULL )
 	  return CBERRALLOC;
-cb_clog( CBLOGDEBUG, CBNEGATION, "\nCALLING REMOVE_NAME_FROM_STREAM" );
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\nCALLING REMOVE_NAME_FROM_STREAM" );
 	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE )
 		(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
 	return CBSUCCESS;
