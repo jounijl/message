@@ -18,20 +18,21 @@
  */
 
 #define CBSUCCESS               0
-#define CBSTREAM                1
-#define CBFILESTREAM            2    // Buffer end has been reached but file is seekable
-#define CBMATCH                 3    // Matched and the lengths are the same
-#define CBUSEDASBUFFER          4
-#define CBUTFBOM                5
-#define CBMESSAGEHEADEREND      6
-#define CBMESSAGEEND            7
-#define CBMATCHLENGTH           8    // Matched the given length
-#define CBADDEDNAME             9
-#define CBADDEDLEAF            10
-#define CBADDEDNEXTTOLEAF      11
-#define CBMATCHMULTIPLE        12    // regexp multiple occurences 03/2014
-#define CBMATCHGROUP           13    // regexp group 03/2014
-#define CBSUCCESSLEAVESEXIST   14
+#define CBSUCCESSLEAVESEXIST    1
+#define CBSTREAM                2
+#define CBFILESTREAM            3    // Buffer end has been reached but file is seekable
+#define CBUTFBOM                4
+#define CBMATCH                 5    // Matched and the lengths are the same
+#define CBMATCHLENGTH           6    // Matched the given length
+#define CBMATCHMULTIPLE         7    // regexp multiple occurences 03/2014
+#define CBMATCHGROUP            8    // regexp group 03/2014
+#define CBUSEDASBUFFER          9
+#define CBINFORMATION          10
+#define CBADDEDNAME            11
+#define CBADDEDLEAF            12
+#define CBADDEDNEXTTOLEAF      13
+#define CBMESSAGEHEADEREND     14
+#define CBMESSAGEEND           15
 //cb_json.h 27.5.2016 #define CBSUCCESSJSONQUOTES    15    // cb_read cb_copy_content returns this if JSON string, quotes removed
 //cb_json.h 27.5.2016 #define CBSUCCESSJSONARRAY     16    // cb_read cb_copy_content returns this if JSON array
 
@@ -412,6 +413,7 @@ typedef struct cb_conf {
 	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 //
 	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
+	unsigned char       wordlist:1;                    // Tested: Setting to save the last name of namelist at the end of the buffer: "$name1, $name2, $name3", see cb_set_to_name_list_search
 	unsigned char       searchrightfromroot:1;         // Additionally search to the next from set root (cb_set_root), not only from the leaf of the root, 23.2.2017
 	/* Name parsing options */
 	unsigned char       removenamewsp:1;               // Remove white space characters inside name
@@ -428,7 +430,7 @@ typedef struct cb_conf {
 	unsigned char       urldecodevalue:1;              // If set, cb_read.c decodes key-value pairs value in cb_copy_content (all read functions).
 
 	/* JSON options */
-	unsigned char       json:2;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
+	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
 	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
@@ -511,6 +513,13 @@ typedef struct cb_read {
 	char               syntaxerrorreason;
 	unsigned char      padto64bit[5];
 	signed long int    syntaxerrorindx;
+
+	/*
+	 * If one character was in a not regognized encoding, 28.9.2017. 
+	 * Only the first error is saved here. Reset is at the beginning 
+	 * of the set_cursor -function. */
+	int                encodingerroroccurred;
+
 	/*
 	 * Reading from the tree in memory (not from the end from stream), 1.1.2017.
 	 * Thsese are needed to determine the current level and to use cb_set_root( )

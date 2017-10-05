@@ -906,6 +906,11 @@ int  cb_search_get_chr( CBFILE **cbs, unsigned long int *chr, long int *chroffse
 	      *chroffset = (*(**cbs).cb).readlength - 1;
 	  (*(**cbs).cb).list.rd.lastreadchrendedtovalue=0; // 7.10.2015, lastreadchrwasfromoutside=0; // 29.9.2015
 	}
+
+	/* 28.9.2017. */
+	if( err>=CBNEGATION && err<CBERROR && (*(**cbs).cb).list.rd.encodingerroroccurred<CBNEGATION )
+		(*(**cbs).cb).list.rd.encodingerroroccurred = err;
+
 	if( (**cbs).cf.stopateof==1 && *chr==(unsigned long int)0x00FF ){ // Unicode EOF 0x00FF chart U0080, 31.10.2016
 		if( err<CBNEGATION && err!=CBMESSAGEEND && err!=CBMESSAGEHEADEREND ){
 			//cb_clog( 22, CBSUCCESS, "\nEOF CBENDOFFILE" );
@@ -1095,6 +1100,8 @@ int  cb_set_cursor_match_length_ucs_matchctl(CBFILE **cbs, unsigned char **ucsna
 	  atvalue=1; // TEST 20.3.2016
 	}
 
+	/* 28.9.2017. */
+	(*(**cbs).cb).list.rd.encodingerroroccurred = CBSUCCESS;
 
 /**
 	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: ocoffset %i, matchctl %i", ocoffset, (*mctl).matchctl );
@@ -1886,7 +1893,18 @@ cb_set_cursor_ucs_return:
 
 	// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: returning %i (err %i).", ret, err );
 
-	if( (**cbs).cf.namelist==1 && atvalue==0 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) && lastinnamelist==0 ){
+//if( (**cbs).cf.namelist==1 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) )
+// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_set_cursor_match_length_ucs_matchctl: CALLING NAMELIST %i ATVALUE %i ERR %i LASTINNAMELIST %i.", (**cbs).cf.namelist, atvalue, err, lastinnamelist );
+
+	//TEST 5.10.2017: if( (**cbs).cf.namelist==1 && ( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) && lastinnamelist==0 ){
+	// Result: solved the case, caused other problems, must be fixed elsewhere ("name1, name2, name3" <- problem at end, name3 is not saved in the list)
+	if( (**cbs).cf.namelist==1 && lastinnamelist==0 && \
+		( atvalue==0 || ( atvalue==1 && (**cbs).cf.wordlist==0 ) ) && \
+			( err==CBSTREAMEND || err==CBMESSAGEEND || err==CBMESSAGEHEADEREND ) ){
+
+		/* 7.10.2017: cf.wordlist was added by testing: "name1, name2, name3" | tests/test_cblist
+		 *            and: "\$name1, \$name2, \$name3" | tests/test_cbwords  */
+
 		/*
 		 * As mentioned before, wordlist (rstart and rend are backwards) works only with CBSTATEFUL.
 		 * This includes additionally the variable atvalue (in test 29.9.2016). 

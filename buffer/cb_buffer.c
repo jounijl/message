@@ -99,6 +99,8 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\nfindwords:                   \t0x%.2XH", (**str).cf.findwords);
 	cb_clog( priority, CBNEGATION, "\nfindwordstworends:           \t0x%.2XH", (**str).cf.findwordstworends);
 	cb_clog( priority, CBNEGATION, "\nfindwordssql:                \t0x%.2XH", (**str).cf.findwordssql);
+	cb_clog( priority, CBNEGATION, "\nnamelist:                    \t0x%.2XH", (**str).cf.namelist);
+	cb_clog( priority, CBNEGATION, "\nwordlist:                    \t0x%.2XH", (**str).cf.wordlist); // 5.10.2017
 	cb_clog( priority, CBNEGATION, "\nsearchnameonly:              \t0x%.2XH", (**str).cf.searchnameonly);
 	cb_clog( priority, CBNEGATION, "\nsearchrightfromroot:         \t0x%.2XH", (**str).cf.searchrightfromroot);
 	if( (**str).cb!=NULL )
@@ -308,6 +310,7 @@ for I in type searchmethod leafsearchmethod searchstate unfold leadnames findlea
         (*to).findwordssql = (*from).findwordssql;
         (*to).searchnameonly = (*from).searchnameonly;
         (*to).namelist = (*from).namelist;
+        (*to).wordlist = (*from).wordlist; // 5.10.2017
         (*to).searchrightfromroot = (*from).searchrightfromroot;
         (*to).removenamewsp = (*from).removenamewsp;
         (*to).asciicaseinsensitive = (*from).asciicaseinsensitive;
@@ -554,6 +557,7 @@ int  cb_set_to_name_list_search( CBFILE **str ){
         (**str).cf.findwords = 0;
         (**str).cf.leadnames = 1;
 	(**str).cf.namelist  = 1; // add name at the end of stream
+	(**str).cf.wordlist  = 0; // add name at the end of stream, even if atvalue was 1 (not: $name, instead: name, )
         cb_set_search_state( &(*str), CBSTATELESS );   
         cb_set_rend( &(*str), (unsigned long int) ',');
         // rstart is not needed and should not be written in the text
@@ -572,6 +576,7 @@ int  cb_set_to_word_search( CBFILE **str ){
 	if(str==NULL || *str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_set_to_word_search: str was null." ); return CBERRALLOC; }
 	(**str).cf.findwords=1;
 	(**str).cf.namelist=1; // add name at the end of stream, 23.8.2016
+	(**str).cf.wordlist=1; // add name at the end of stream if the cursor was at attribute name, 7.10.2017
 	(**str).cf.doubledelim=0;
 	(**str).cf.json=0;
 	(**str).cf.removewsp=1;
@@ -807,6 +812,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.findwordssql=0;
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	(**str).cf.namelist=0;
+	(**str).cf.wordlist=0;
 	(**str).cf.jsonremovebypassfromcontent=1;
 	(**str).cf.jsonvaluecheck=0;
 	(**str).cf.jsonsyntaxcheck=0;
@@ -1034,6 +1040,7 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.lastreadchrendedtovalue=0; // 7.10.2015
 	(**cbf).list.rd.syntaxerrorindx=-1; // 17.7.2017
 	(**cbf).list.rd.syntaxerrorreason=-1; // 17.7.2017
+	(**cbf).list.rd.encodingerroroccurred = CBSUCCESS; // 28.9.2017
 	/* To read with cb_set_to_name and cb_set_to_leaf */
 	(**cbf).list.rd.last_level = 0;
 	(**cbf).list.rd.last_name  = NULL;
