@@ -935,10 +935,13 @@ inline int  cb_is_rstart(CBFILE **cbs, unsigned long int chr){
 	  if( WSP( chr ) || CR( chr ) || LF( chr ) )
 	    return true;
 	}
-	if( (**cbs).cf.findwordssql==1 && sqlrstartchr( chr ) && chr!=(**cbs).cf.rend && chr!=(**cbs).cf.subrend ) // 4.12.2016
-	  return true; // 4.12.2016
+	if( (**cbs).cf.findwordssql==1 && sqlrstartchr( chr ) && chr!=(**cbs).cf.rend && chr!=(**cbs).cf.subrend ) // 4.12.2016, 9.11.2017
+	  return true; // 4.12.2016, 9.11.2017
+	if( (**cbs).cf.findwordssqlplusbypass==1 && ( chr==(**cbs).cf.bypass || sqlrstartchr( chr ) ) && chr!=(**cbs).cf.rend && chr!=(**cbs).cf.subrend ) // 9.11.2017
+	  return true; // 9.11.2017
 	return false;
 }
+
 inline int  cb_is_rend(CBFILE **cbs, unsigned long int chr){
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
 	if( chr==(**cbs).cf.rend ) // '$', record end, name start

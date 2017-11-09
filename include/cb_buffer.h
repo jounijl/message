@@ -410,8 +410,9 @@ typedef struct cb_conf {
 	unsigned char       findwords:1;                   // <rend>word<rstart>imaginary record<rend> ... . Compare WSP, CR, NL and rstart characters and not only rstart characters in order to find a word starting with a rend character. Only CBSTATEFUL should be used because every SP or TAB would alter the height information of the tree. (This time the word only is used and not the value or the record.) 
 	unsigned char       findwordstworends:1;           // wordlist with two rend-characters.
 	unsigned char       findwordssql:1;                // wordlist with SQL syntax rstart characters ( +),0x20-/*... )
-	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
+	unsigned char       findwordssqlplusbypass:1;      // Like SQL but include the bypass in the special characters, 9.11.2017
 //
+	unsigned char       searchnameonly:1;              // Find only one named name. Do not save the names in the tree or list. Return if found. 4.2.2016
 	unsigned char       namelist:1;                    // Setting to save the last name of namelist at the end of the buffer: "name1, name2, name3", see cb_set_to_name_list_search
 	unsigned char       wordlist:1;                    // Tested: Setting to save the last name of namelist at the end of the buffer: "$name1, $name2, $name3", see cb_set_to_name_list_search
 	unsigned char       searchrightfromroot:1;         // Additionally search to the next from set root (cb_set_root), not only from the leaf of the root, 23.2.2017
@@ -421,6 +422,7 @@ typedef struct cb_conf {
         unsigned char       asciicaseinsensitive:1;        // Names are case insensitive, ABNF "name" "Name" "nAme" "naMe" ..., RFC 2822
         unsigned char       scanditcaseinsensitive:1;      // Names are case insensitive, ABNF "nämä" "Nämä" "nÄmä" "näMä" ..., RFC 2822 + scandinavic letters
         unsigned char       removewsp:1;                   // Remove linear white space characters (space and htab) between value and name (not RFC 2822 compatible)
+//
         unsigned char       removeeof:1;                   // Remove EOF from name, 26.8.2016
         unsigned char       removecrlf:1;                  // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
 //
@@ -433,6 +435,7 @@ typedef struct cb_conf {
 	unsigned char       json:1;                        // When using CBSTATETREE, form of data is JSON compatible (without '"':s and '[':s in values), also doubledelim must be set
 	unsigned char       jsonnamecheck:1;               // Check the form of the name of the JSON attribute (in cb_search.c).
         unsigned char       jsonremovebypassfromcontent:1; // Normal allways, removes '\' in front of '"' and '\"
+//
 	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
 	unsigned char       jsonsyntaxcheck:1;             // Check the syntax rules.
 //
@@ -442,7 +445,7 @@ typedef struct cb_conf {
 
 	/* Read methods */
 	unsigned char       usesocket:2;                   // Read only headeroffset and messageoffset length blocks
-	unsigned char       nonblocking:3;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
+	unsigned char       nonblocking:2;                 // (do not use) fd is set to O_NONBLOCK and the reading is set similarly, O_NONBLOCKING not tested yet, 23.5.2016 - reading may stop in between key-value -pair, do not use O_NONBLOCK.
 
 	/* Stream end recognition */
 	unsigned char       stopatbyteeof:2;               // Recognize CBSTREAMEND at EOF character. Default is 1. Every octet disregarding the character code.
@@ -556,6 +559,7 @@ typedef struct cbuf{
 	signed long int          chunkmissingbytes;    // Bytes missing from previous read of chunk, 28.5.2016.
 	signed long int          eofoffset;            // Cursor offset of first EOF in UCS 32-bit format to test if bytes are left to read, 30.10.2016
 	char                     lastblockreadpartial; // If the previous reading of a block was not full (excepting the end of stream after this block)
+	//8.10.2017: char                     staticblockwasused;   // If blk.buf was from cb_reinit_cbfile_from_blk and the blk.buf was statically allocated (not able to free the memory), 6.10.2017
 	char                     padto64bit[7];
 } cbuf;
 

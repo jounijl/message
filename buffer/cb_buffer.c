@@ -99,6 +99,7 @@ int cb_print_conf(CBFILE **str, int priority){
 	cb_clog( priority, CBNEGATION, "\nfindwords:                   \t0x%.2XH", (**str).cf.findwords);
 	cb_clog( priority, CBNEGATION, "\nfindwordstworends:           \t0x%.2XH", (**str).cf.findwordstworends);
 	cb_clog( priority, CBNEGATION, "\nfindwordssql:                \t0x%.2XH", (**str).cf.findwordssql);
+	cb_clog( priority, CBNEGATION, "\nfindwordssqlplusbypass:      \t0x%.2XH", (**str).cf.findwordssqlplusbypass);
 	cb_clog( priority, CBNEGATION, "\nnamelist:                    \t0x%.2XH", (**str).cf.namelist);
 	cb_clog( priority, CBNEGATION, "\nwordlist:                    \t0x%.2XH", (**str).cf.wordlist); // 5.10.2017
 	cb_clog( priority, CBNEGATION, "\nsearchnameonly:              \t0x%.2XH", (**str).cf.searchnameonly);
@@ -291,7 +292,7 @@ int  cb_init_name( cb_name **cbn  ){ // 22.7.2016
 int  cb_copy_conf( cb_conf *from, cb_conf *to ){
 /***
 # memcpy( &(* (void*) to), &(* (const void*) from), sizeof( cb_conf ) );
-for I in type searchmethod leafsearchmethod searchstate unfold leadnames findleaffromallnames doubledelim findwords findwordstworends findwordssql searchnameonly namelist searchrightfromroot removenamewsp asciicaseinsensitive scanditcaseinsensitive removewsp  removeeof removecrlf removesemicolon removecommentsinname urldecodevalue json jsonnamecheck jsonremovebypassfromcontent jsonvaluecheck jsonsyntaxcheck usesocket  nonblocking stopatbyteeof stopateof stopafterpartialread stopatheaderend stopatmessageend  stopatjsonsyntaxerr rstart rend bypass cstart  cend subrstart subrend
+for I in type searchmethod leafsearchmethod searchstate unfold leadnames findleaffromallnames doubledelim findwords findwordstworends findwordssql searchnameonly namelist searchrightfromroot removenamewsp asciicaseinsensitive scanditcaseinsensitive removewsp  removeeof removecrlf removesemicolon removecommentsinname urldecodevalue json jsonnamecheck jsonremovebypassfromcontent jsonvaluecheck jsonsyntaxcheck usesocket  nonblocking stopatbyteeof stopateof stopafterpartialread stopatheaderend stopatmessageend  stopatjsonsyntaxerr rstart rend bypass cstart  cend subrstart subrend findwordssqlplusbypass
   do
      echo "        (*to).${I} = (*from).${I};"
  done
@@ -308,6 +309,7 @@ for I in type searchmethod leafsearchmethod searchstate unfold leadnames findlea
         (*to).findwords = (*from).findwords;
         (*to).findwordstworends = (*from).findwordstworends;
         (*to).findwordssql = (*from).findwordssql;
+        (*to).findwordssqlplusbypass = (*from).findwordssqlplusbypass;
         (*to).searchnameonly = (*from).searchnameonly;
         (*to).namelist = (*from).namelist;
         (*to).wordlist = (*from).wordlist; // 5.10.2017
@@ -810,6 +812,7 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).cf.findwords=0; // do not find words in list, instead be ready to use trees
 	(**str).cf.findwordstworends=0; // use two rends (rend and subrend) with findwords
 	(**str).cf.findwordssql=0;
+	(**str).cf.findwordssqlplusbypass=0;
 	(**str).cf.searchnameonly=0; // Find and save every name in list or tree
 	(**str).cf.namelist=0;
 	(**str).cf.wordlist=0;
@@ -958,6 +961,7 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	//if( *cbf==NULL ) // TEST 29.11.2016
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if( *cbf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: allocation error, malloc (%i).", CBERRALLOC ); return CBERRALLOC; } // 13.11.2015
+	//8.10.2017: (**cbf).staticblockwasused = 0; // 6.10.2017
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
 }
 /*
@@ -998,6 +1002,7 @@ int  cb_reinit_cbfile_from_blk( CBFILE **cbf, unsigned char **blk, int blksize )
 	  (*(**cbf).blk).buf = &(**blk);
 	  (*(**cbf).blk).buflen = blksize;
 	  (*(**cbf).blk).contentlen = blksize; // 19.3.2016
+ 	  //8.10.2017: (*(**cbf).blk).staticblockwasused = 1; // 6.10.2017
 	}else{
 	  cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reinit_cbfile_from_blk: parameter blk was null." );
 	}
@@ -1123,6 +1128,7 @@ int  cb_free_cbfile(CBFILE **buf){
 	      memset( &(*(*(**buf).blk).buf), 0x20, (size_t) (*(**buf).blk).buflen ); // write something to overwrite nulls, 15.7.2016, 5.8.2016
 	      (*(**buf).blk).buf[ (*(**buf).blk).buflen ] = '\0'; // 17.7.2016
 	    }
+	    //8.10.2017: if( (*(**buf).blk).staticblockwasused!=1 ) // 6.10.2017, blk.buf has to be freed otherwice
             free( (*(**buf).blk).buf ); // free block data
 	  }
 	  (*(**buf).blk).buf = NULL;
@@ -1250,17 +1256,21 @@ int  cb_init_list_rd( cbuf **buf ){ // 5.8.2017
  *
  */
 int  cb_empty_block(CBFILE **buf, char reading ){
-	if(buf==NULL || *buf==NULL || (**buf).blk==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_empty_block: buf was null." ); return CBERRALLOC; }
+	int err = CBSUCCESS;
 	off_t lerr=0;
-	if( (**buf).cf.type!=CBCFGSEEKABLEFILE )
-		return CBOPERATIONNOTALLOWED;
-	if( reading==1 && (*(**buf).blk).contentlen > 0 ) // rewind
+	if( buf==NULL || *buf==NULL || (**buf).blk==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_empty_block: buf was null." ); return CBERRALLOC; }
+	if( (**buf).cf.type!=CBCFGSEEKABLEFILE ){ 	return CBOPERATIONNOTALLOWED; }
+	if( reading==1 && (*(**buf).blk).contentlen > 0 ){ // rewind
 		lerr = lseek( (**buf).fd, (off_t) 0-(*(**buf).blk).contentlen, SEEK_CUR );
-	if( reading==0 && (*(**buf).blk).contentlen > 0 ) // flush last, append
-		cb_flush( &(*buf) );
+	}else if( reading==0 && (*(**buf).blk).contentlen > 0 ){ // flush last, append
+		err = cb_flush( &(*buf) );
+		cb_clog( CBLOGALERT, CBERROR, "\ncb_empty_read_block: cb_flush, error %i.", err );
+	}
 	(*(**buf).blk).contentlen = 0;
 	(*(**buf).blk).index = 0;
 	if( lerr==-1 ){
+	  // Extra logging 8.11.2017
+	  cb_clog(  CBLOGALERT, CBERROR, "\nLSEEK ERROR: FD %i, CONTENTLEN %li", (**buf).fd, (*(**buf).blk).contentlen );
 	  cb_clog(  CBLOGALERT, CBERROR, "\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
 	  return CBERRFILEOP;
 	}
