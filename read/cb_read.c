@@ -446,7 +446,11 @@ int  cb_subfunction_get_current_content( CBFILE **cbf, unsigned char **ucsconten
 }
 int  cb_copy_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *clength, int maxlen ){
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || ucscontent==NULL || *ucscontent==NULL || clength==NULL ){ 
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_currentleaf_content: parameter was null.");
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_currentleaf_content: parameter was null");
+		if( cbf==NULL || *cbf==NULL ) cb_clog( CBLOGDEBUG, CBNEGATION, " (cbf)");
+		if( ucscontent==NULL || *ucscontent ) cb_clog( CBLOGDEBUG, CBNEGATION, " (ucscontent)");
+		if( clength==NULL ) cb_clog( CBLOGDEBUG, CBNEGATION, " (clength)");
+		cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 		return CBERRALLOC; 
 	}
 	return cb_subfunction_get_currentleaf_content( &(*cbf), &(*ucscontent), &(*clength), 0, maxlen );
@@ -455,7 +459,11 @@ int  cb_get_currentleaf_content( CBFILE **cbf, unsigned char **ucscontent, int *
 	unsigned char *ptr = NULL;
 	int err = CBSUCCESS;
         if( cbf==NULL || *cbf==NULL || (**cbf).cb==NULL || ucscontent==NULL || clength==NULL ){
-		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: parameter was null.");
+		cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_currentleaf_content: parameter was null");
+		if( cbf==NULL || *cbf==NULL ) cb_clog( CBLOGDEBUG, CBNEGATION, " (cbf)");
+		if( ucscontent==NULL || *ucscontent ) cb_clog( CBLOGDEBUG, CBNEGATION, " (ucscontent)");
+		if( clength==NULL ) cb_clog( CBLOGDEBUG, CBNEGATION, " (clength)");
+		cb_clog( CBLOGDEBUG, CBNEGATION, ".");
 		return CBERRALLOC;
 	}
 
@@ -593,11 +601,16 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 	if( ucscontent==NULL || *ucscontent==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: ucscontent was null."); return CBERRALLOC; }
 	if( (**cn).namebuf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_copy_content_internal: (**cn).namebuf was null."); return CBERRALLOC; }
 
+// cb_get_chr palautusarvot 27.9.2017
+
 	/**
 	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_copy_content_internal: (clength %i, maxlength %i, cn.length %i) name [", *clength, maxlength, (**cn).length );
 	cb_print_ucs_chrbuf( CBLOGDEBUG, &(**cn).namebuf, (**cn).namelen, (**cn).buflen );
 	cb_clog( CBLOGDEBUG, CBNEGATION, "], index %li, contentlen %li: ", (*(**cbf).cb).index, (*(**cbf).cb).contentlen );
 	 **/
+
+	/* 28.9.2017, clear the previous error. */
+        (*(**cbf).cb).list.rd.encodingerroroccurred = CBSUCCESS;
 
         /*
          * Copy contents and update length. */
@@ -612,10 +625,12 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		   if( chr=='}' && firstjsonbracket==1 && injsonquotes!=1 )
 		   	firstjsonbracket=0;
 		   else if( injsonquotes!=1 && chr!='}' && ! ( WSP( chr ) || CR( chr ) || LF( chr ) ) )
-		   	firstjsonbracket=1;			
+		   	firstjsonbracket=1;
 		}
 
                 readerr = cb_get_chr( &(*cbf), &chr, &bsize, &ssize); // returns CBSTREAMEND if EOF
+		if( readerr>=CBNEGATION && readerr<CBERROR && \
+			(*(**cbf).cb).list.rd.encodingerroroccurred<CBNEGATION ) (*(**cbf).cb).list.rd.encodingerroroccurred = readerr;
 		err = readerr;
 	        //cb_clog( CBLOGDEBUG, CBNEGATION, "{%c}", (char) chr );
 		//cb_clog( CBLOGDEBUG, CBNEGATION, "\n[%c] (readerr %i, index %li, contentlen %li, messageoffset %li)", (char) chr, readerr, (*(**cbf).cb).index, (*(**cbf).cb).contentlen, (*(**cbf).cb).messageoffset ); // BEST
@@ -749,9 +764,13 @@ int  cb_copy_content_internal( CBFILE **cbf, cb_name **cn, unsigned char **ucsco
 		//cb_clog( CBLOGDEBUG, CBSUCCESSJSONQUOTES, " return CBSUCCESSJSONARRAY." );
 		return CBSUCCESSJSONARRAY;
 	}else if(err<CBNEGATION){ // 30.3.2016
+	  if( (*(**cbf).cb).list.rd.encodingerroroccurred>=CBNEGATION ) // If not any other information, return the first negation from any character read if any
+		return (*(**cbf).cb).list.rd.encodingerroroccurred; // 28.9.2017
  	  //cb_clog( CBLOGDEBUG, CBSUCCESSJSONQUOTES, " return CBSUCCESS (err %i).", err );
           return CBSUCCESS;
 	}
+	if( (*(**cbf).cb).list.rd.encodingerroroccurred>=CBNEGATION ) // If not any other information, return the negation from any character
+		return (*(**cbf).cb).list.rd.encodingerroroccurred; // 28.9.2017
  	//cb_clog( CBLOGDEBUG, CBSUCCESSJSONQUOTES, " return %i.", err );
 	return err;
 }
@@ -856,17 +875,19 @@ int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int 
 		++maxcounter; // minus sign plus characters 4294967295, together 11, without minus, 10
 		err = cb_get_ucs_chr( &nm, &(*ucsnumber), &indx, ucsnumlen);
 		if(err<CBNEGATION){ // 16 bits largest number 655536
-			if(first==0){
-				*nmbr = (*nmbr)*10;
-			}else{
-				if( nm == (signed long int) '-' ){ // negative
-					++maxcounter;
-					minus = 1;
-				}else
-					first = 0;
+			if( nm == (signed long int) '-' || ( nm>=0x30 && nm<=0x39 ) ){ // 25.11.2017
+				if(first==0){
+					*nmbr = (*nmbr)*10;
+				}else{
+					if( nm == (signed long int) '-' ){ // negative
+						++maxcounter;
+						minus = 1;
+					}else
+						first = 0;
+				}
+				if( nm != (signed long int) '-' )
+					(*nmbr) += (nm-0x30);
 			}
-			if( nm != (signed long int) '-' )
-				(*nmbr) += (nm-0x30);
 		}
 	}
 	if( minus==1 )

@@ -73,7 +73,8 @@
 #define CBTRANSENCCHUNKS            1   // Write and read length information and corresponding chunks as in RFC-2616 3.6.1 Chunked Transer Coding
 					// Note that the block size has to be more than the biggest possible chunk.
 
-#define CBTRANSENCODINGCHUNKSIZE    256
+//#define CBTRANSENCODINGCHUNKSIZE    256
+#define CBTRANSENCODINGCHUNKSIZE    1024
 
 /*
  * Optional transfer encoding extensions. 
