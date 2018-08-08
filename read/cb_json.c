@@ -91,6 +91,9 @@ int  cb_check_json_value( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 	}else if( *from==ucsvaluelen )
 		return err; // 22.8.2016
 		//return CBSUCCESS;
+cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_check_json_value: RETURNING CBNOTJSONVALUE, ERR %i.", err );
+	//10.12.2017: if( err>=CBNEGATION ) // 2.12.2017
+	//10.12.2017: 	return err; // 2.12.2017
 	return CBNOTJSONVALUE;
 }
 /*
@@ -198,7 +201,7 @@ cb_check_json_array_value:
 int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
 	int err=CBSUCCESS, indx=0;
 	unsigned long int chr=0x20;
-	char state=0, dotcount=0, ecount=0, minuscount=0, firstzero=0, expsigncount=0, atend=0;
+	char state=0, dotcount=0, ecount=0, minuscount=0, firstzero=0, expsigncount=0, atend=0, wasnumber=0;
 	if( from==NULL || ucsvalue==NULL || *ucsvalue==NULL || cfg==NULL || *cfg==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_number: ucsvalue was null."); return CBERRALLOC; }
 
 	indx = *from;
@@ -207,6 +210,10 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 	while( indx<ucsvaluelen && indx<CBNAMEBUFLEN && err<CBNEGATION ){
  	   *from = indx;
 	   err = cb_get_ucs_chr( &chr, &(*ucsvalue), &indx, ucsvaluelen);
+	   if( wasnumber==0 && ( WSP( chr ) || CR( chr ) || LF( chr ) ) ) // Remove WSP:s before the value, 30.11.2017
+		continue;
+	   else
+		wasnumber=1; // or any other character
 	   //cb_clog( CBLOGDEBUG, CBNEGATION, "<%c>", (unsigned char) chr );
 	   if(atend==0){
 		if( chr=='-' && minuscount==0 && state==0 ){ minuscount=1; state=EXPECTDIGIT; firstzero=0; continue; }
@@ -230,7 +237,8 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 		}
 		if( ( chr=='+' || chr=='-' )  && state==EXPECTEXP ){ expsigncount=1; state=EXPECTEND; continue; }
 		if( WSP( chr ) || CR( chr ) || LF( chr ) ){ atend=1; continue; }
-		if( chr==',' && state!=EXPECTDIGITBEFOREEXP && state!=EXPECTEXP && state!=EXPECTDIGIT ){ 
+		//if( chr==',' && state!=EXPECTDIGITBEFOREEXP && state!=EXPECTEXP && state!=EXPECTDIGIT ){ 
+		if( ( chr==',' || chr=='}' ) && state!=EXPECTDIGITBEFOREEXP && state!=EXPECTEXP && state!=EXPECTDIGIT ){ // 30.11.2017
 			//return CBSUCCESS;
 //cb_clog( CBLOGDEBUG, CBNEGATION, "\n return CBSUCCESSJSONNUMBER (1)");
 			return CBSUCCESSJSONNUMBER; // 22.8.2016
@@ -245,7 +253,8 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 	   }else{
 		if( WSP( chr ) || CR( chr ) || LF( chr ) ) // 2.9.2017, stop if WSP
 			return CBSUCCESSJSONNUMBER; // 2.9.2017, at end
-		if( ! WSP( chr ) && ! CR( chr ) && ! LF( chr ) && chr!=']' && chr!=',' ){
+		//if( ! WSP( chr ) && ! CR( chr ) && ! LF( chr ) && chr!=']' && chr!=',' ){
+		if( ! WSP( chr ) && ! CR( chr ) && ! LF( chr ) && chr!=']' && chr!=',' && chr!='}' ){ // 30.11.2017
 //cb_clog( CBLOGDEBUG, CBNEGATION, "\n return CBNOTJSONNUMBER (3)");
 			return CBNOTJSONNUMBER;
 		}

@@ -767,6 +767,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
 /* 
  * Reverse 32 bits.
  */
+/*** moved to cb_endian.c 
 unsigned int  cb_reverse_int32_bits(unsigned int from){
 	unsigned int upper=0, lower=0, new=0;
 	upper = from>>16; // 16 upper bits
@@ -777,9 +778,11 @@ unsigned int  cb_reverse_int32_bits(unsigned int from){
 	new = new | upper;
 	return new;
 }
+ ***/
 /* 
  * Reverse integers last 16 bits. First 16 bits are meaningless.
  */
+/*** moved to cb_endian.c, 8.8.2018
 unsigned int  cb_reverse_int16_bits(unsigned int from){
 	unsigned int  new=0;
 	unsigned char upper=0, lower=0;
@@ -794,11 +797,13 @@ unsigned int  cb_reverse_int16_bits(unsigned int from){
 	new = new | upper;
 	return new;
 }
+ ***/
 /*
  * Reverse 8 bits.
  * 1. 2. 3. 4. 5. 6. 7. 8.
  * 1  2  4  8  16 32 64 128
  */
+/*** moved to cb_endian.c, 8.8.2018
 unsigned char  cb_reverse_char8_bits(unsigned char from){
 	unsigned int new = 0x0000, ifrom = (unsigned int) from;
 	new = new | (ifrom & 0x01)<<7;
@@ -812,6 +817,8 @@ unsigned char  cb_reverse_char8_bits(unsigned char from){
 	new = new | (ifrom & 0x80)>>7; // 128
 	return (unsigned char) new;
 }
+ ***/
+/*** moved to cb_endian.c, 8.8.2018
 unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	unsigned int upper=0, lower=0, new=0;
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_four_bytes: from 0x%.4x to: ", from );
@@ -826,6 +833,8 @@ unsigned int  cb_reverse_four_bytes(unsigned int  from){
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_four_bytes: return 0x%.4x.", new );
 	return new;
 }
+ ***/
+/*** moved to cb_endian.c, 8.8.2018
 unsigned int  cb_reverse_two_bytes(unsigned int  from){
 	unsigned int  new=0;
 	unsigned char upper=0, lower=0;
@@ -835,15 +844,18 @@ unsigned int  cb_reverse_two_bytes(unsigned int  from){
 	new = new | upper;
 	return new;
 }
-
+ ***/
 /*
  * OSI Representation layer:  Host byte order conversion if needed 
  * ----------------------------------------------------------------------
  * OSI Session layer:         4-byte UCS in application or in stored form
  */
+/*** moved to cb_endian.c, 8.8.2018
 unsigned int  cb_from_host_byte_order_to_ucs( unsigned int chr ){
         return cb_from_ucs_to_host_byte_order( chr );
 }
+ ***/
+/*** moved to cb_endian.c, 8.8.2018
 unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
 	int test = cb_test_cpu_endianness();
         if( test == CBBIGENDIAN ){ 
@@ -854,6 +866,8 @@ unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
         }
         return chr;
 }
+ ***/
+/*** moved to cb_endian.c, 8.8.2018
 int  cb_test_cpu_endianness(){
         static union {
           unsigned short  two;
@@ -867,6 +881,7 @@ int  cb_test_cpu_endianness(){
         }
 	return CBUNKNOWNENDIANNESS;
 }
+ ***/
 
 int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset){
         int bytecount=0, storedbytes=0;

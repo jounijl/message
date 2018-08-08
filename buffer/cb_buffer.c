@@ -1270,7 +1270,7 @@ int  cb_empty_block(CBFILE **buf, char reading ){
 	(*(**buf).blk).index = 0;
 	if( lerr==-1 ){
 	  // Extra logging 8.11.2017
-	  cb_clog(  CBLOGALERT, CBERROR, "\nLSEEK ERROR: FD %i, CONTENTLEN %li", (**buf).fd, (*(**buf).blk).contentlen );
+	  //cb_clog(  CBLOGALERT, CBERROR, "\nLSEEK ERROR: FD %i, CONTENTLEN %li", (**buf).fd, (*(**buf).blk).contentlen );
 	  cb_clog(  CBLOGALERT, CBERROR, "\ncb_empty_read_block: lseek returned -1 errno %i .", errno);
 	  return CBERRFILEOP;
 	}

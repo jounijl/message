@@ -882,15 +882,18 @@ int  cb_get_long_int( unsigned char **ucsnumber, int ucsnumlen, signed long int 
 					if( nm == (signed long int) '-' ){ // negative
 						++maxcounter;
 						minus = 1;
-					}else
+					}else{
 						first = 0;
+					}
 				}
-				if( nm != (signed long int) '-' )
+				if( nm != (signed long int) '-' ){
 					(*nmbr) += (nm-0x30);
+				}
 			}
 		}
 	}
-	if( minus==1 )
+	if( minus==1 ){
 		(*nmbr) = 0 - (*nmbr);
+	}
 	return CBSUCCESS;
 }
