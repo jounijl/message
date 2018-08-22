@@ -20,7 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "../include/cb_endian.h"
+//removed 20180822 #include "../include/cb_endian.h"
+#include "../include/cb_buffer.h"
 
 /* 
  * Reverse 32 bits.

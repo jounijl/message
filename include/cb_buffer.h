@@ -75,23 +75,24 @@
 
 #define CBERROR	              200
 #define CBERRALLOC            201
-#define CBERRFD               202
-#define CBERRFILEOP           203
-#define CBERRFILEWRITE        204
-#define CBERRBYTECOUNT        205
-#define CBARRAYOUTOFBOUNDS    206
-#define CBINDEXOUTOFBOUNDS    207
-#define CBLEAFCOUNTERROR      208
-#define CBERRREGEXCOMP        209    // regexp pattern compile error 03/2014
-#define CBERRREGEXEC          210    // regexp exec error 03/2014
-#define CBBIGENDIAN           211
-#define CBLITTLEENDIAN        212
-#define CBUNKNOWNENDIANNESS   213
-#define CBOVERFLOW            214
-#define CBOVERMAXNAMES        215    // 19.10.2015
-#define CBOVERMAXLEAVES       216    // 19.10.2015
-//#define CBINVALIDTRANSENC     217    // 28.5.2016
-//#define CBINVALIDTRANSEXT     218    // 28.5.2016
+#define CBERRALLOCTHR         202   // the same without the occacional abort
+#define CBERRFD               203
+#define CBERRFILEOP           204
+#define CBERRFILEWRITE        205
+#define CBERRBYTECOUNT        206
+#define CBARRAYOUTOFBOUNDS    207
+#define CBINDEXOUTOFBOUNDS    208
+#define CBLEAFCOUNTERROR      209
+#define CBERRREGEXCOMP        210    // regexp pattern compile error 03/2014
+#define CBERRREGEXEC          211    // regexp exec error 03/2014
+#define CBBIGENDIAN           212
+#define CBLITTLEENDIAN        213
+#define CBUNKNOWNENDIANNESS   214
+#define CBOVERFLOW            215
+#define CBOVERMAXNAMES        216    // 19.10.2015
+#define CBOVERMAXLEAVES       217    // 19.10.2015
+//#define CBINVALIDTRANSENC     218    // 28.5.2016
+//#define CBINVALIDTRANSEXT     219    // 28.5.2016
 
 /*
  * Log priorities (log verbosity).
