@@ -88,10 +88,14 @@ unsigned int  cb_reverse_four_bytes(unsigned int  from){
 unsigned int  cb_reverse_two_bytes(unsigned int  from){
 	unsigned int  new=0;
 	unsigned char upper=0, lower=0;
-	upper = (unsigned char) from>>8; // 8 upper bits
-	lower = (unsigned char) 0xFF & from; // 8 lower bits
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_two_bytes: from 0x%.4x to: ", from );
+	upper = (unsigned char) ( from >> 8 ); // 8 upper bits
+	//cb_clog( CBLOGDEBUG, CBNEGATION, " 0x%.4x ", upper );
+	lower = (unsigned char) ( 0xFF & from ); // 8 lower bits
+	//cb_clog( CBLOGDEBUG, CBNEGATION, " 0x%.4x ", lower );
 	new = lower; new = new<<8;
 	new = new | upper;
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_reverse_two_bytes: return 0x%.4x.", new );
 	return new;
 }
 

@@ -3,7 +3,7 @@
 CC="/usr/bin/cc"
 LD="/usr/bin/clang"
 
-FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o"
+FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o ../cb_endian.o "
 FOBJS="${FOBJS} ../cb_urlencode.o ../cb_json.o ../cb_transfer.o "
 
 FLAGS=" -Weverything -g -O0 -I/usr/local/include -I. -I/usr/include -I../../include -I../../read "
@@ -42,9 +42,9 @@ LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -
 #$LD $LDFLAGS test_byte_reversion.o $FOBJS -o test_byte_reversion
 #rm test_byte_reversion.o
 
-#$CC $FLAGS -c loop.c &&
-#$LD $LDFLAGS loop.o $FOBJS -o loop
-#rm loop.o
+$CC $FLAGS -c loop.c &&
+$LD $LDFLAGS loop.o $FOBJS -o loop
+rm loop.o
 
 #$CC $FLAGS -c test_cbprint.c  &&
 #$LD $LDFLAGS test_cbprint.o $FOBJS ../get_option.o -o cbprint
@@ -73,4 +73,13 @@ rm test_cbwordlist.o
 $CC $FLAGS -c test_urlencode.c &&
 $LD $LDFLAGS test_urlencode.o $FOBJS ../get_option.o -o urlencode
 rm test_urlencode.o
+
+$CC $FLAGS -c test_cpuendianness.c &&
+$LD $LDFLAGS test_cpuendianness.o $FOBJS -o ./cpu
+rm test_cpuendianness.o
+
+$CC $FLAGS -c echo_eof.c &&
+$LD $LDFLAGS echo_eof.o -o echoeof &&
+chmod u+rx echoeof
+rm echo_eof.o
 
