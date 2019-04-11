@@ -358,6 +358,9 @@ int  cb_allocate_name(cb_name **cbn, int namelen){
 	  cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_name: malloc error, CBERRALLOC.");
 	  return CBERRALLOC;
 	}
+	// 29.10.2018, prevent extra NULL:s appearing in the middle, just some character
+	//30.10.2018: memset( &(**cbn), 0x20, (size_t) ( sizeof(cb_name) - 1 ) ); // 29.10.2018
+
 /**
 	(**cbn).offset=0; 
 	(**cbn).nameoffset=0;
@@ -792,6 +795,9 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	*str = (CBFILE*) malloc(sizeof(CBFILE));
 	if(*str==NULL){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_allocate_empty_cbfile: malloc returned null." ); return CBERRALLOC; }
 
+	// Avoid extra NULL:s in between, 29.10.2018
+	//30.10.2018: memset( &(**str), 0x20, (size_t) ( sizeof(CBFILE) - 1 ) ); // 29.10.2018
+
 	(**str).cb = NULL; (**str).blk = NULL;
         (**str).cf.type=CBCFGSTREAM; // default
         //(**str).cf.type=CBCFGFILE; // first test was ok
@@ -913,12 +919,17 @@ int  cb_allocate_empty_cbfile(CBFILE **str, int fd){
 	(**str).fd = fd; // 30.6.2016
 	if((**str).fd == -1){ err = CBERRFILEOP; (**str).cf.type=CBCFGBUFFER; } // 20.8.2013
 
+	cb_fifo_allocate_buffers( &(**str).ahd ); // 11.4.2019
 	cb_fifo_init_counters( &(**str).ahd );
 
 #ifdef CBBENCHMARK
         (**str).bm.reads=0;
         (**str).bm.bytereads=0;
 #endif
+
+	(**str).ahd.emptypad = 0; // 16.11.2018	
+	(**str).cf.emptypad = 0; // 16.11.2018	
+	(**str).emptypad2 = 0; // 16.11.2018	
 
 	return err;
 }
@@ -961,6 +972,9 @@ int  cb_allocate_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	//if( *cbf==NULL ) // TEST 29.11.2016
 	*cbf = (cbuf *) malloc(sizeof(cbuf));
 	if( *cbf==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_allocate_buffer: allocation error, malloc (%i).", CBERRALLOC ); return CBERRALLOC; } // 13.11.2015
+	// Avoid extra NULL:s in between, write any character, 29.10.2018
+	//30.10.2018: memset( &(**cbf), 0x20, (size_t) ( sizeof(cbuf) - 1 ) ); // 29.10.2018
+
 	//8.10.2017: (**cbf).staticblockwasused = 0; // 6.10.2017
 	return cb_init_buffer_from_blk( &(*cbf), &(*blk), blksize );
 }
@@ -1052,9 +1066,11 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.rd.current_root_level = 0;
 	(**cbf).list.rd.current_root = NULL;
 	(**cbf).list.rd.stopped = 0;
-	//(**cbf).list.rd.pad1=0;
-	//(**cbf).list.rd.pad2=0;
-	//(**cbf).list.rd.pad3=0;
+
+	//29.10.2018: padbytes( (**cbf).list.rd.pad4to64, 4 ); // 26.10.2018
+	//29.10.2018: padbytes( (**cbf).list.rd.pad5to64, 5 ); // 26.10.2018
+	//29.10.2018: padbytes( (**cbf).list.pad4to64, 4 ); // 26.10.2018
+
 	(**cbf).index=0;
 	(**cbf).readlength=0; // 21.2.2015
 	(**cbf).maxlength=0; // 21.2.2015
@@ -1069,6 +1085,10 @@ int  cb_init_buffer_from_blk(cbuf **cbf, unsigned char **blk, int blksize){
 	(**cbf).list.current=NULL;
 	(**cbf).list.last=NULL;
 	(**cbf).list.currentleaf=NULL; // 11.12.2013
+
+	(**cbf).list.rd.emptypad = 0; // 16.11.2018	
+	(**cbf).list.emptypad = 0; // 16.11.2018	
+	(**cbf).emptypad = 0; // 16.11.2018
 
 	return CBSUCCESS;
 }
@@ -1093,7 +1113,7 @@ int  cb_reinit_cbfile(CBFILE **buf){
 
 	cb_init_list_rd( &(**buf).cb ); // 5.8.2017
 
-	//(**str).encodingbytes=CBDEFAULTENCODINGBYTES;
+	//(**cbf).encodingbytes=CBDEFAULTENCODINGBYTES;
 	//(**str).encoding=CBDEFAULTENCODING;
 	//(**str).transferencoding=CBTRANSENCOCTETS;
 	//(**str).transferextension=CBNOEXTENSIONS;
@@ -1733,8 +1753,8 @@ int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, in
 	(*blk) = &(*(**cbf).blk).buf[0];
 	(*(**cbf).blk).buf = NULL;
 	(*(**cbf).blk).buflen = 0; // 30.6.2016
-	*contentlen = (*(**cbf).blk).contentlen;
-	*blklen = (*(**cbf).blk).buflen;
+	*contentlen = (int) (*(**cbf).blk).contentlen; // 24.10.2018
+	*blklen = (int) (*(**cbf).blk).buflen; // 24.10.2018
 	return cb_free_cbfile( cbf );
 }
 

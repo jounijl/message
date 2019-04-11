@@ -26,6 +26,32 @@
 //static int  cb_compare_print_fullinfo(cb_match *mctl);
 static int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
 
+/*
+ * Returns most likely ASCII bytes. Returns -1 on error,
+ * length of error text if succeeded, 15.11.2018. */
+int  cb_compare_get_regexp_error_text( int errorcode, unsigned char **textbuffer, int textbufferlen ){
+        unsigned char unrecognized[26] = { 'U', 'n', 'r', 'e', 'c', 'o', 'g', 'n', 'i', 'z', 'e', 'd', ' ', 'e', 'r', 'r', 'o', 'r', ' ', 'c', 'o', 'd', 'e', '.', '\0' };
+        int unrecognizedlen = 25;
+        int err = CBSUCCESS;
+        if( textbuffer==NULL || *textbuffer==NULL ) return -1;
+        err = pcre2_get_error_message( errorcode, &(* (PCRE2_UCHAR*) textbuffer), (PCRE2_SIZE) textbufferlen);
+cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare_get_regexp_error_text: error text length %i.", err );
+cb_flush_log();
+        if( err==PCRE2_ERROR_NOMEMORY ){ // buffer too small
+                return textbufferlen; // Not tested, 15.11.2018
+        }else if( err==PCRE2_ERROR_BADDATA ){
+                for( err=0; err<unrecognizedlen && err<textbufferlen; ++err )
+                        (*textbuffer)[ err ] = unrecognized[ err ];
+                if( textbufferlen > unrecognizedlen )
+                        (*textbuffer)[ unrecognizedlen ] = '\0';
+                else
+                        return -1;
+                return unrecognizedlen;
+        }
+        return err;
+}
+
+
 int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
 	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_rfc2822: parameter was null." );
@@ -318,8 +344,8 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 	    //err=CBNOTFOUND; // 17.8.2015
 	    err=CBMISMATCH; // 17.8.2015, 20.10.2015
 
-            cmp = (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name1)[indx1] );  // 31.7.2014
-            cmp -= (signed int) cb_from_ucs_to_host_byte_order( (unsigned long int) (*name2)[indx2] ); // 31.7.2014
+            cmp = (signed int) cb_from_ucs_to_host_byte_order( (unsigned int) (*name1)[indx1] );  // 31.7.2014, 24.10.2018
+            cmp -= (signed int) cb_from_ucs_to_host_byte_order( (unsigned int) (*name2)[indx2] ); // 31.7.2014, 24.10.2018
 
 	    if( len1 > (len2-from2) || ( len1==(len2-from2) && cmp>0 ) )
 	      err = CBGREATERTHAN; 	// 31.7.2014
@@ -394,7 +420,7 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int 
 	  if(err>=CBERROR){ cb_clog( CBLOGDEBUG, err, "\ncb_compare_get_matchctl: cb_get_ucs_chr, error %i.", err); }
           err = cb_get_ucs_chr( &chr, &(*pattern), &indx, patsize );
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "[%c]", (unsigned char) chr );
-          chr = cb_from_ucs_to_host_byte_order( chr );
+          chr = cb_from_ucs_to_host_byte_order( (unsigned int) chr );
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "[0x%.4lx]", chr );
           if( chr != 0xFEFF && chr != 0xFFFE ) // bom
             err2 = cb_put_ucs_chr( chr, &hbpat, &bufindx, patsize);
@@ -454,7 +480,7 @@ divided by 2 or 4.
 	(*ctl).re = &(* (PSIZE) pcre2_compile_32( sptr, (PCRE2_SIZE) (patsize/4), (uint32_t) options, &errcode, &erroffset, NULL ) );
 
 	if( (*ctl).re==NULL ){
-          cb_clog( CBLOGERR, CBERRREGEXCOMP, "\ncb_compare_get_matchctl: error compiling re, re is null, offset %i, at re offset %i.", erroffset, errcode);
+          cb_clog( CBLOGERR, CBERRREGEXCOMP, "\ncb_compare_get_matchctl: error compiling re, re is null, offset %zu, at re offset %i.", erroffset, errcode);
 	  (*ctl).errcode = errcode;
 	  (*ctl).erroffset = (int) erroffset;
           return CBERRREGEXCOMP;

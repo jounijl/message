@@ -355,6 +355,9 @@
  * of the % operator shall have integer type." */
 #define intiseven( x )        ( ( x )%2 == 0 )
 
+/* 26.10.2018, 64-bit align. */
+//#define padbytes( x , y )    memset( &(* (void*) x ), 0x20, y )
+
 #include "./cb_encoding.h"	// Encoding macros
 
 /* Pointer size */
@@ -370,9 +373,9 @@ typedef struct cb_benchmark {
 /*
  * Compare ctl */
 typedef struct cb_match {
+        void *re; // cast to pcre2_code (void here to be able to compile the files without pcre)
         int matchctl; // If match function is not regexp match, next can be NULL
 	int resmcount; // Place to save the matchcount by cb_compare. If matchctl -9 or -10 is used, this value can be used to evaluate the result of the comparison.
-        void *re; // cast to pcre2_code (void here to be able to compile the files without pcre)
 	int errcode; // possible error code is set to this to be used later if needed, 4.8.2017
 	int erroffset; // possible error offset is set to this to be used later if needed, 4.8.2017
 } cb_match;
@@ -380,9 +383,6 @@ typedef struct cb_match {
 /*
  * Fifo ring structure */
 typedef struct cb_ring {
-	char padto64bit[6];        // compiler warnings, pad to next storage size (32 bit)
-        unsigned char buf[CBREADAHEADSIZE+1];
-        unsigned char storedsizes[CBREADAHEADSIZE+1];
 	signed long int currentindex;     // 28.7.2015, place of last read character to remember it the next time
         int buflen;
         int sizeslen;
@@ -392,9 +392,25 @@ typedef struct cb_ring {
         int last;
 	int streamstart;      // id of first character from stream
 	int streamstop;       // id of stop character
+        //11.4.2019: unsigned char buf[CBREADAHEADSIZE+1];
+        unsigned char *buf; // CBREADAHEADSIZE+1
+        //11.4.2019: unsigned char storedsizes[CBREADAHEADSIZE+1];
+        unsigned char *storedsizes; // CBREADAHEADSIZE+1
+	long int emptypad; // extra empty space
 } cb_ring;
 
 typedef struct cb_conf {
+
+	/* Delimiters */
+	unsigned long int   rstart;          // Result start character
+	unsigned long int   rend;            // Result end character
+	unsigned long int   bypass;          // Bypass character, bypasses next special characters function
+	unsigned long int   cstart;          // Comment start character (comment can appear from rend to rstart)
+	unsigned long int   cend;            // Comment end character
+
+	unsigned long int   subrstart;       // If CBSTATETREE and doubledelim is set, rstart of every other openpairs (odd), subtrees delimiters
+	unsigned long int   subrend;         // If CBSTATETREE and doubledelim is set, rend of every other openpairs (odd), subtrees delimiters 
+
 	/* File type */
         unsigned char       type:4;                        // stream (default), file (large namelist), only buffer (fd is not in use) or seekable file (large namelist and offset operations), buffer with boundless namelist size
 	/* Search settings */
@@ -426,7 +442,7 @@ typedef struct cb_conf {
 //
         unsigned char       removeeof:1;                   // Remove EOF from name, 26.8.2016
         unsigned char       removecrlf:1;                  // Remove every CR:s and LF:s between value and name (not RFC 2822 compatible) and in name
-//
+
         unsigned char       removesemicolon:1;             // Remove semicolon between value and name (not RFC 2822 compatible) 
 	unsigned char       removecommentsinname:1;        // Remove comments inside names (JSON can't do this, it does not have comments)
 	/* Value parsing options */
@@ -439,7 +455,7 @@ typedef struct cb_conf {
 //
 	unsigned char       jsonvaluecheck:1;              // When reading (with cb_read.h), check the form of the JSON values, 10.2.2016.
 	unsigned char       jsonsyntaxcheck:1;             // Check the syntax rules.
-//
+
 	//unsigned char       jsonallownlhtcr:1;             // Allow JSON control characters \t \n \r in text as they are and remove them from content, 24.10.2016
 
 	/* Log options */
@@ -455,38 +471,28 @@ typedef struct cb_conf {
 	unsigned char       stopafterpartialread:2;        // If reading a block only part was returned, returns CBSTREAMEND and the next time before reading the next block. This one can be used if the reading would block and if the source is known, for example a file with 0xFF -characters.
         unsigned char       stopatheaderend:2;             // Stop after RFC 2822 header end (<cr><lf><cr><lf>)
         unsigned char       stopatmessageend:2;            // Stop after RFC 2822 message end (<cr><lf><cr><lf>), the end has to be set with a function (currently 10.6.2016: only messageoffset is used, not <cr><lf><cr><lf> sequence)
+//
 	unsigned char       stopatjsonsyntaxerr:4;
 	unsigned char       rememberstopped:4;             // Remember if CBSTREAMEND or CBENDOFFILE was already read (cb_clear_stopped() should reset this)
 
-//	unsigned char       pad[1];                        // pad to next integer size (word length 32 or 64, now 64)
-//
-
-	unsigned long int   rstart;          // Result start character
-	unsigned long int   rend;            // Result end character
-	unsigned long int   bypass;          // Bypass character, bypasses next special characters function
-	unsigned long int   cstart;          // Comment start character (comment can appear from rend to rstart)
-	unsigned long int   cend;            // Comment end character
-
-	unsigned long int   subrstart;       // If CBSTATETREE and doubledelim is set, rstart of every other openpairs (odd), subtrees delimiters
-	unsigned long int   subrend;         // If CBSTATETREE and doubledelim is set, rend of every other openpairs (odd), subtrees delimiters 
+	long int emptypad;  // empty space
 } cb_conf; 
 
 // signed to detect overflow
 
-typedef struct cb_name{
+typedef struct cb_name{ // 64-bit checked 26.10.2018
+        signed long int       offset;         // offset from the beginning of data (to '=')
+        signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
+        signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when mathed, zero only if name is not searched yet
+        void                 *next;           // Last is NULL {1}{2}{3}{4}
+	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
+	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
+	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
         unsigned char        *namebuf;        // name
 	int                   buflen;         // name+excess namebuffer space
         int                   namelen;        // name length
-        signed long int       offset;         // offset from the beginning of data (to '=')
-        signed long int       nameoffset;     // offset of the beginning of last data (after reading '&'), 6.12.2014
         int                   length;         // character count, length of namepairs area, from previous '&' to next '&', unknown (almost allways -1), possibly empty, set after it's known
-	char                  pad[4];
-        signed long int       matchcount;     // if CBSEARCHNEXT, increases by one when mathed, zero only if name is not searched yet
 	int                   group;          // May be set from outside if needed. A group id to mark attributes to belong together.
-        void                 *next;           // Last is NULL {1}{2}{3}{4}
-	signed long int       firsttimefound; // Time in seconds the name was first found and/or used (set by set_cursor)
-	signed long int       lasttimeused;   // Time in seconds the name was last searched or used (set by set_cursor)
-	void                 *leaf;           // { {1}{2} { {3}{4} } } , last is NULL
 } cb_name;
 
 
@@ -516,7 +522,7 @@ typedef struct cb_read {
 	/*
 	 * If syntax error was found, updates the position here, 17.7.2017. */
 	char               syntaxerrorreason;
-	unsigned char      padto64bit[5];
+	unsigned char      pad5to64[5];
 	signed long int    syntaxerrorindx;
 
 	/*
@@ -525,29 +531,32 @@ typedef struct cb_read {
 	 * of the set_cursor -function. */
 	int                encodingerroroccurred;
 
+
 	/*
 	 * Reading from the tree in memory (not from the end from stream), 1.1.2017.
 	 * Thsese are needed to determine the current level and to use cb_set_root( )
 	 * -function. */
 	int                last_level;         // Reset by match in cb_set_to_name and updated by match in cb_set_to_leaf
 	cb_name           *last_name;          // Either current from previous match in cb_set_to_name or previous currentleaf match from cb_set_to_leaf
-	int                current_root_level; // cb_set_root( ) copies valid level from last_leaf_level (used in cb_set_to_... functions )
 	cb_name           *current_root;       // cb_set_root( ) copies valid reference from last_leaf (used in cb_set_to_... functions )
-	char               pad[4];
+	int                current_root_level; // cb_set_root( ) copies valid level from last_leaf_level (used in cb_set_to_... functions )
+	char               pad4to64[4];        // remember _init memset 0x00 4
+	long int           emptypad;  // empty space
 } cb_read;
 
 typedef struct cb_namelist{
         cb_name              *name;
 	cb_name              *current;
 	cb_name              *last;
+	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
 	signed long long int  namecount;        // names
 	signed long long int  nodecount;        // names and leaves, 28.10.2015
 	int                   currentgroup;     // number of the group currently in use
 	int                   groupcount;       // number of the last group
-	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeroes this.
 	cb_read               rd;
-	cb_name              *currentleaf;      // 9.12.2013, sets as null every time 'current' is updated
-	char                  pad[4];
+	signed int            toterminal;       // 29.9.2015. Number of closing brackets after the last leaf. Addition of a new name or leaf zeroes this.
+	char                  pad4to64[4];      // 24.10.2018
+	long int              emptypad;         // empty space
 } cb_namelist;
 
 typedef struct cbuf{
@@ -557,34 +566,33 @@ typedef struct cbuf{
 	signed long int          contentlen;           // Bytecount in numbers (first starts from 1), comment: 7.11.2009
 	signed long int          readlength; 	       // CBSEEKABLEFILE: Read position in bytes (from filestream), 15.12.2014 Late addition: useful with seekable files (useless when appending or reading).
 	signed long int          maxlength;            // CBSEEKABLEFILE: Overall read length in bytes (from filestream), 15.12.2014 Late addition: useful with seekable files (useless when appending or reading).
-	cb_namelist              list;
-        int                      headeroffset;         // offset of RFC-2822 header end with end characters (offset set at last new line character)
-	char                     pad[4];
         signed long int          messageoffset;        // offset of RFC-2822 message end from "Content-Length:". This has to be set from outside after reading the value, cb_set_message_end.
 	signed long int          chunkmissingbytes;    // Bytes missing from previous read of chunk, 28.5.2016.
 	signed long int          eofoffset;            // Cursor offset of first EOF in UCS 32-bit format to test if bytes are left to read, 30.10.2016
+	cb_namelist              list;
+        int                      headeroffset;         // offset of RFC-2822 header end with end characters (offset set at last new line character)
 	char                     lastblockreadpartial; // If the previous reading of a block was not full (excepting the end of stream after this block)
-	//8.10.2017: char                     staticblockwasused;   // If blk.buf was from cb_reinit_cbfile_from_blk and the blk.buf was statically allocated (not able to free the memory), 6.10.2017
-	char                     padto64bit[7];
+	char                     pad3to64[3];
+	long int                 emptypad;             // empty space
 } cbuf;
 
 typedef struct cbuf cblk;
 
 typedef struct CBFILE{
-	int                 fd;		   // Stream file descriptor
-	//int                 secondaryfd;   // Second stream file descriptor to use after CBSTREAMEND if usesecondaryfd was set
 	cbuf               *cb;		   // Data in valuepairs (preferably in applications order)
 	cblk               *blk;	   // Input read or output write -block 
+	int                 fd;		   // Stream file descriptor
+	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
 	cb_ring             ahd;	   // Ring buffer to save data read ahead
         cb_conf             cf;            // All configurations, 20.8.2013
-	int                 encodingbytes; // Maximum bytecount for one character, 0 is any count, 4 is utf low 6 utf normal, 1 any one byte characterset
 	int                 encoding;      // list of encodings is in file cb_encoding.h 
 	int                 transferencoding; // Transferencoding
 	int                 transferextension; // Optional transfer encoding extension
+	int                 emptypad;      // 16.1.2018
 #ifdef CBBENCHMARK
 	cb_benchmark        bm;
 #endif
-	char                pad[4];
+	long int            emptypad2;      // empty space
 } CBFILE;
 
 /*
@@ -882,6 +890,7 @@ int  cb_print_ucs_chrbuf(int priority, unsigned char **chrbuf, int namelen, int 
 int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int chrcount ); // copies chrcount or less characters to use as a new 4-byte block
 
 // 4-byte fifo, without buffer or it's size
+int  cb_fifo_allocate_buffers(cb_ring *cfi);
 int  cb_fifo_init_counters(cb_ring *cfi);
 int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *size);
 int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int size);

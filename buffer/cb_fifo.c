@@ -48,11 +48,17 @@ int  cb_fifo_print_counters(cb_ring *cfi, int priority){
         cb_clog( priority, CBSUCCESS, "\nstreamstop:       %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
-
+int  cb_fifo_allocate_buffers(cb_ring *cfi){
+	if( cfi==NULL ) return CBERRALLOC;
+	(*cfi).buf = (unsigned char*) malloc( sizeof(unsigned char)*(CBREADAHEADSIZE+1) );
+	(*cfi).buflen = CBREADAHEADSIZE;
+	(*cfi).storedsizes = (unsigned char*) malloc( sizeof(unsigned char)*(CBREADAHEADSIZE+1) );
+	(*cfi).sizeslen=CBREADAHEADSIZE;
+	if( (*cfi).buf==NULL || (*cfi).storedsizes==NULL ) return CBERRALLOC;
+}
 int  cb_fifo_init_counters(cb_ring *cfi){
 	int err = CBSUCCESS;
-        if( cfi==NULL )
-          return CBERRALLOC;
+        if( cfi==NULL ) return CBERRALLOC;
         (*cfi).ahead=0;
         (*cfi).bytesahead=0;
         (*cfi).first=0;
@@ -60,22 +66,13 @@ int  cb_fifo_init_counters(cb_ring *cfi){
         (*cfi).streamstart=-1;
         (*cfi).streamstop=-1;
 	(*cfi).currentindex = 0; // 30.6.2016
-        //if( (*cfi).buf==NULL ){
-	  (*cfi).buflen=0;
-          //err = CBERRALLOC;
-	//}else{
-	  memset( &((*cfi).buf[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
-	  (*cfi).buf[CBREADAHEADSIZE]='\0';
-	  (*cfi).buflen=CBREADAHEADSIZE;
-	//}
-        //if((*cfi).storedsizes==NULL){
-	  (*cfi).sizeslen=0;
-          //err = CBERRALLOC;
-	//}else{
-	  memset( &((*cfi).storedsizes[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
-	  (*cfi).storedsizes[CBREADAHEADSIZE]='\0';
-	  (*cfi).sizeslen=CBREADAHEADSIZE;
-	//}
+	memset( &((*cfi).buf[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
+	(*cfi).buf[CBREADAHEADSIZE]='\0';
+	(*cfi).buflen=CBREADAHEADSIZE;
+	memset( &((*cfi).storedsizes[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
+	(*cfi).storedsizes[CBREADAHEADSIZE]='\0';
+	(*cfi).sizeslen=CBREADAHEADSIZE;
+
         return err;
 }
 int  cb_fifo_set_stream(cb_ring *cfi){

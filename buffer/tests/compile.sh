@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CC="/usr/bin/cc"
+CC="/usr/bin/clang"
 LD="/usr/bin/clang"
 
 FOBJS="../cb_fifo.o ../cb_search.o ../cb_buffer.o ../cb_encoding.o ../cb_compare.o ../cb_log.o ../cb_read.o ../cb_endian.o "
@@ -38,9 +38,9 @@ LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -
 #$LD $LDFLAGS test_bit_reversion.o $FOBJS -o test_bit_reversion
 #rm test_bit_reversion.o
 
-#$CC $FLAGS -c test_byte_reversion.c &&
-#$LD $LDFLAGS test_byte_reversion.o $FOBJS -o test_byte_reversion
-#rm test_byte_reversion.o
+$CC $FLAGS -c test_byte_reversion.c &&
+$LD $LDFLAGS test_byte_reversion.o $FOBJS -o test_byte_reversion
+rm test_byte_reversion.o
 
 $CC $FLAGS -c loop.c &&
 $LD $LDFLAGS loop.o $FOBJS -o loop

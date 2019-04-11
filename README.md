@@ -1,4 +1,4 @@
-#####Buffer to read and write streams.
+##### Buffer to read and write streams.
 
 Reader reads valuepairs location in a buffer to a linked list. At least four differend methods are used. Methods can be compiled with macro defines in different object files or by configuring (in structure cb_conf) during runtime.
 

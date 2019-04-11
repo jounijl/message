@@ -59,3 +59,8 @@ int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffse
 /*
  * Match ASCII and additionally scandinavic letters if 'scandit' is set to 1. */
 int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, char scandit );
+
+/*
+ * Error text given by pcre2 ( if err was CBERRREGEXCOMP or CBERRREGEXEC ). */
+int  cb_compare_get_regexp_error_text( int errorcode, unsigned char **textbuffer, int textbufferlen ); // 15.11.2018
+
