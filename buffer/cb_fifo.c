@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <string.h> // memset
+#include <stdlib.h> // malloc
 
 #include "../include/cb_buffer.h"
 
@@ -55,6 +56,7 @@ int  cb_fifo_allocate_buffers(cb_ring *cfi){
 	(*cfi).storedsizes = (unsigned char*) malloc( sizeof(unsigned char)*(CBREADAHEADSIZE+1) );
 	(*cfi).sizeslen=CBREADAHEADSIZE;
 	if( (*cfi).buf==NULL || (*cfi).storedsizes==NULL ) return CBERRALLOC;
+	return CBSUCCESS;
 }
 int  cb_fifo_init_counters(cb_ring *cfi){
 	int err = CBSUCCESS;

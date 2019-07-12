@@ -61,7 +61,7 @@ int main (int argc, char **argv) {
 	CBFILE *out = NULL;
 	long unsigned int chr = ' ';
 	long unsigned int seed = (unsigned long) time(NULL);
-	srandom(seed); 
+	srandom( (unsigned int) seed ); 
 
 /*	fprintf(stderr,"main: argc=%i", argc );
 	for(u=0;u<argc;++u)

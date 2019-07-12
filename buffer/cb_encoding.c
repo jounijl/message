@@ -122,9 +122,9 @@ int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *s
 #ifdef BIGENDIAN
          // In stream allways in little endian form if LE machine or if BIGENDIAN is defined in BE machines
          if( (**cbs).encoding==CBENC4BYTE )
-           *chr = cb_reverse_four_bytes(*chr);
+           *chr = cb_reverse_four_bytes( (unsigned int) *chr);
          if( (**cbs).encoding==CBENC2BYTE )
-           *chr = cb_reverse_two_bytes(*chr);
+           *chr = cb_reverse_two_bytes( (unsigned int) *chr);
 #endif
          ret = err;
        }else if((**cbs).encoding==CBENCUTF32LE || (**cbs).encoding==CBENCUTF32BE) // utf-32
@@ -154,9 +154,9 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *stored
 #ifdef BIGENDIAN
           // In stream allways in little endian order if LE machine or if BIGENDIAN is defined in BE machines
           if( (**cbs).encoding==CBENC4BYTE )
-            schr = cb_reverse_four_bytes(chr);
+            schr = cb_reverse_four_bytes( (unsigned int) chr);
           if( (**cbs).encoding==CBENC2BYTE )
-            schr = cb_reverse_two_bytes(chr);
+            schr = cb_reverse_two_bytes( (unsigned int) chr);
 #endif
           //err = cb_put_multibyte_ch( cbs, schr );
           err = cb_put_multibyte_ch( &(*cbs), schr ); // 17.3.2017
@@ -661,7 +661,7 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
           if( (**cbs).encoding==CBENCUTF16BE )
             return cb_put_multibyte_ch(&(*cbs), *chr);
           if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // 1.9.2013
-            return cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(*chr) );            
+            return cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes( (unsigned int) *chr) );            
         // }else if(*chr<=0xFFFFF){
         }else if(*chr<=0x10FFFF){ // 6.12.2014
 	  // surrogate pairs from U+10000 to U+10FFFF: pairs of 16-bit code units [6.12.2014 Unicode Specification]
@@ -674,8 +674,8 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
             err = cb_put_multibyte_ch(&(*cbs), lower );
           }
           if( (**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE ){
-            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(upper) );
-            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes(lower) );
+            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes( (unsigned int) upper) );
+            err = cb_put_multibyte_ch(&(*cbs), cb_reverse_two_bytes( (unsigned int) lower) );
           }
           return err;
         }else{
@@ -696,7 +696,7 @@ cb_get_utf16_ch_get_next_chr:
 	*storedbytes+=2; // 6.12.2014
 #ifndef BIGENDIAN 
         if( (**cbs).encoding==CBENCUTF16BE ) // moved here 6.12.2014
-          *chr = cb_reverse_two_bytes(*chr); // to UCS from BE
+          *chr = cb_reverse_two_bytes( (unsigned int) *chr); // to UCS from BE
 #endif
         if(err>CBERROR){ cb_clog( CBLOGERR, err, "\ncb_get_utf16_ch: error in cb_get_multibyte_ch, err=%i.", err); };
         if( ( *chr & 0xFC00 ) == 0xD800 ){ // 1111110000000000 = 0xFC00 ; 110110 0000 000000 = 0xD800 ; (msb)
@@ -730,7 +730,7 @@ int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         }
         if((**cbs).encoding==CBENCUTF32BE){
           *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
-          return cb_put_multibyte_ch( &(*cbs), cb_reverse_four_bytes(*chr) );          
+          return cb_put_multibyte_ch( &(*cbs), cb_reverse_four_bytes( (unsigned int) *chr) );          
         }
         return CBWRONGENCODINGCALL;
 }
@@ -755,7 +755,7 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
           *bytecount=4; *storedbytes=4; // allways four bytes in UTF-32
           err = cb_get_multibyte_ch(&(*cbs), &rev);
 	  if(err<CBERROR){
-             *chr = cb_reverse_four_bytes(rev);
+             *chr = cb_reverse_four_bytes( (unsigned int) rev);
           }else{
              cb_clog( CBLOGERR, err, "cb_get_utf32_ch: error in reading from cb_get_multibyte_ch, err=%i.\n", err);
           }

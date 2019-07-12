@@ -40,7 +40,8 @@
 
 typedef struct name {
         unsigned char *name;
-        int namelen;
+        int  namelen;
+	char pad64[4];
 } name ;
 
 
@@ -267,7 +268,7 @@ int  cb_check_json_number( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluel
 int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
         int err=CBSUCCESS;
         unsigned char *chrposition = NULL;
-        name istrue = (name) { (unsigned char *) "\0\0\0t\0\0\0r\0\0\0u\0\0\0e", (int) 16 };
+        name istrue = (name) { (unsigned char *) "\0\0\0t\0\0\0r\0\0\0u\0\0\0e", (int) 16, { '\0', '\0', '\0', '\0' } };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2; // match length without the trailing white spaces
         if( cfg==NULL || *cfg==NULL || from==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_true: ucsvalue was null."); return CBERRALLOC; }
         //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
@@ -293,7 +294,7 @@ int  cb_check_json_true( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen
 int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
         int err=CBSUCCESS;
         unsigned char *chrposition = NULL;
-        name isfalse = (name) { (unsigned char *) "\0\0\0f\0\0\0a\0\0\0l\0\0\0s\0\0\0e", (int) 20 };
+        name isfalse = (name) { (unsigned char *) "\0\0\0f\0\0\0a\0\0\0l\0\0\0s\0\0\0e", (int) 20, { '\0', '\0', '\0', '\0' } };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_false: ucsvalue was null."); return CBERRALLOC; }
         //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;
@@ -311,7 +312,7 @@ int  cb_check_json_false( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluele
 int  cb_check_json_null( CBFILE **cfg, unsigned char **ucsvalue, int ucsvaluelen, int *from ){
         int err=CBSUCCESS;
         unsigned char *chrposition = NULL;
-        name isnull = (name) { (unsigned char *) "\0\0\0n\0\0\0u\0\0\0l\0\0\0l", (int) 16 };
+        name isnull = (name) { (unsigned char *) "\0\0\0n\0\0\0u\0\0\0l\0\0\0l", (int) 16, { '\0', '\0', '\0', '\0' } };
         cb_match mctl; mctl.re=NULL; mctl.matchctl=-2;
         if( cfg==NULL || *cfg==NULL || ucsvalue==NULL || *ucsvalue==NULL ){ cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_check_json_null: ucsvalue was null."); return CBERRALLOC; }
         //if( *from>=ucsvaluelen ) return CBINDEXOUTOFBOUNDS;

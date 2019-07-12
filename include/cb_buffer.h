@@ -93,6 +93,7 @@
 #define CBOVERMAXLEAVES       217    // 19.10.2015
 //#define CBINVALIDTRANSENC     218    // 28.5.2016
 //#define CBINVALIDTRANSEXT     219    // 28.5.2016
+#define CBERRPRINT            218    // 12.7.2019
 
 /*
  * Log priorities (log verbosity).
@@ -952,3 +953,8 @@ int  cb_get_buffer(cbuf *cbs, unsigned char **buf, long int *size); // these can
 int  cb_get_buffer_range(cbuf *cbs, unsigned char **buf, long int *size, long int *from, long int *to); 
 int  cb_free_cbfile_get_block(CBFILE **cbf, unsigned char **blk, int *blklen, int *contentlen);
 
+/*
+ * 'stdio.h' dprintf (or fprintf) replacement where needed, 12.7.2019.
+ * For example 'fprintf( stderr,' -> 'cprint( STDERR_FILENO,'. */
+#define CBDPRINTBUFLEN 1024
+int  cprint( int fd, const char* restrict fmt, ... );

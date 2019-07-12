@@ -564,7 +564,10 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 	     // NAME
 	     if( (*(**str).cb).list.last!=NULL ){
 	       if( (*(**str).cb).list.last==NULL ) return CBERRALLOC; 
-	       (*(*(**str).cb).list.last).length = nameoffset - (*(*(**str).cb).list.last).offset - 2; // last is allways a name? (2: '=' and '&')
+	       //24.10.2018: (*(*(**str).cb).list.last).length = nameoffset - (*(*(**str).cb).list.last).offset - 2; // last is allways a name? (2: '=' and '&')
+	       (*(*(**str).cb).list.last).length = (int) ( nameoffset - (*(*(**str).cb).list.last).offset - 2 ); // last is allways a name? (2: '=' and '&'), 24.10.2018
+	       if( (*(*(**str).cb).list.last).length<0 ) // 24.10.2018
+			(*(*(**str).cb).list.last).length = 0; // 2147483647; // 24.10.2018
 	     }
 	  }
 	}
@@ -578,12 +581,12 @@ int  cb_update_previous_length(CBFILE **str, long int nameoffset, int openpairs,
 	    if( (*(**str).cb).list.last==NULL ) return CBERRALLOC; 
 	    if( (*(*(**str).cb).list.currentleaf).offset >= (*(*(**str).cb).list.last).offset ) // is lasts leaf
 	      if( nameoffset >= ( (*(*(**str).cb).list.currentleaf).offset + 2 ) ) // leaf is after this leaf
-	        (*(*(**str).cb).list.currentleaf).length = nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2; // 2: '=' and '&'
+	        (*(*(**str).cb).list.currentleaf).length = (int) ( nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2 ); // 2: '=' and '&'
 	      // since read pointer is allways at read position, leaf can be added without knowing if one leaf is missing in between
           }else if( previousopenpairs>openpairs ){  // from leaf to it's name in list (second time, name previously) or from leaf to a lower leaf
 	    // LEAF
 	    if( (*(**str).cb).list.currentleaf==NULL ) return CBERRALLOC; 
-              (*(*(**str).cb).list.currentleaf).length = nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2; // 2: '=' and '&'
+              (*(*(**str).cb).list.currentleaf).length = (int) ( nameoffset - (*(*(**str).cb).list.currentleaf).offset - 2 ); // 2: '=' and '&'
 	  }
 	}
 	return CBSUCCESS;
@@ -1333,7 +1336,8 @@ cb_set_cursor_reset_name_index:
           if( ch3prev==0x0D && ch2prev==0x0A && chprev==0x0D && chr==0x0A ){ // cr lf x 2
             if( (*(**cbs).cb).headeroffset < 0 ){
 	      if( chroffset < 0x7FFFFFFF){ // integer size - 1 
-                (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character, 26.3.2016
+                (*(**cbs).cb).headeroffset = (int) chroffset; // 1.9.2013, offset set at last new line character, 26.3.2016, 24.10.2018
+                //24.10.2018: (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character, 26.3.2016
 	      }
 	    }
 	    ret = CBMESSAGEHEADEREND;
@@ -1833,7 +1837,7 @@ cb_set_cursor_match_length_ucs_matchctl_save_name:
 	      //cb_clog( CBLOGDEBUG, CBNEGATION, "\n[ ***\n  *** HTTP HEADERS END ***\n*** ]"); // 0x%.2x]", (unsigned int) ch3prev, (unsigned int) ch2prev, (unsigned int) chprev, (unsigned int) chr );
               if( (*(**cbs).cb).headeroffset < 0 ) // 26.3.2016
 	        if( chroffset < 0x7FFFFFFF) // integer size - 1 
-                  (*(**cbs).cb).headeroffset = chroffset; // 1.9.2013, offset set at last new line character
+                  (*(**cbs).cb).headeroffset = (int) chroffset; // 1.9.2013, offset set at last new line character, 24.10.2018
 	      ret = CBMESSAGEHEADEREND;
 	      cb_update_previous_length( &(*cbs), chroffset, openpairs, previousopenpairs); // 19.7.2016 STILL IN TEST (branch 'transfer')
 	      goto cb_set_cursor_ucs_return;
@@ -2056,7 +2060,12 @@ int  cb_remove_name_from_stream(CBFILE **cbs){
 	if(cbs==NULL || *cbs==NULL || (**cbs).cb==NULL || (*(**cbs).cb).list.current==NULL )
 	  return CBERRALLOC;
 //cb_clog( CBLOGDEBUG, CBNEGATION, "\nCALLING REMOVE_NAME_FROM_STREAM" );
-	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE )
-		(*(*(**cbs).cb).list.current).length =  (*(**cbs).cb).buflen;
+	if( (**cbs).cf.type!=CBCFGSEEKABLEFILE && (**cbs).cf.type!=CBCFGFILE ){
+		if( (*(**cbs).cb).buflen<2147483647 ) // 24.10.2018
+			(*(*(**cbs).cb).list.current).length = (int) (*(**cbs).cb).buflen;
+		else
+			(*(*(**cbs).cb).list.current).length = 2147483647; // 24.10.2018, integer maximum size
+		//24.10.2018: (*(*(**cbs).cb).list.current).length = (*(**cbs).cb).buflen;
+	}
 	return CBSUCCESS;
 }

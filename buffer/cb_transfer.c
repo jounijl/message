@@ -104,7 +104,7 @@ int  cb_terminate_transfer( CBFILE **cbf ){
 			// nothing wrote = write( (**cbf).fd, &octettermination[0], (size_t) octetterminationlen );
 			break;
                 case CBTRANSENCCHUNKS:
-			wrote = write( (**cbf).fd, &chunkedtermination[0], (size_t) chunkedterminationlen );
+			wrote = (int) write( (**cbf).fd, &chunkedtermination[0], (size_t) chunkedterminationlen );
 			// cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_flush_chunks: WROTE TERMINATING CHUNK [" );
                         // write( 2, &chunkedtermination[0], (size_t) chunkedterminationlen ); // TMP DEBUG
 			// cb_clog( CBLOGDEBUG, CBNEGATION, "] length %i.", chunkedterminationlen );
@@ -138,15 +138,15 @@ int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, s
 		/* Read rest of the bytes from the previous read. */
 		if(*missingbytes<buflen)
 			buflen = *missingbytes;
-		wasread = read( fd, &(*buf), (size_t) buflen );
+		wasread = (int) read( fd, &(*buf), (size_t) buflen );
 		if(wasread>0) rd += wasread;
 	}else{
 		/* Remove folding characters. */
 		while( ( WSP( ch ) || LF( ch ) || CR( ch ) ) && wasread>0 )
-			wasread = read( fd, &ch, (size_t) 1 );
+			wasread = (int) read( fd, &ch, (size_t) 1 );
 		/* Read length of the next chunk. */
 		for( indx=0; indx<numbuflen && wasread>0 && ! ( WSP( ch ) || LF( ch ) || CR( ch ) ) ;++indx ){
-			wasread = read( fd, &ch, (size_t) 1 );
+			wasread = (int) read( fd, &ch, (size_t) 1 );
 			if( wasread>0 && ch>0x2F && ch<0x3A){ // [0-9]
 				numbuf[ numindx ] = ch;
 				++numindx;
@@ -155,7 +155,7 @@ int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, s
 		/* Read extension until CRLF removing WSP:s and ';' -characters (only chunk-ext-name=chunk-ext-val is saved) */
 		indx=0;
 		while( stop < 2 && wasread>0 ){
-			wasread = read( fd, &ch, (size_t) 1 );
+			wasread = (int) read( fd, &ch, (size_t) 1 );
 			if( WSP( ch ) || ch==0x3B ){ continue; }
 			if( CR( ch ) && stop==0 ){ ++stop; continue; }
 			if( LF( ch ) && stop==1 ){ ++stop; continue; }
@@ -165,9 +165,9 @@ int  cb_read_chunk( signed long int *missingbytes, int fd, unsigned char *buf, s
 		}
 		ptr = &( (const char*) extensionbuf)[0];
 		chunksize = strtol( &(*ptr), NULL, 16 );
-		if( chunksize<0 ){ cb_clog( CBLOGERR, CBNEGATION, "\ncb_read_chunk: strtol, error %li.", chunksize ); return chunksize; }
+		if( chunksize<0 ){ cb_clog( CBLOGERR, CBNEGATION, "\ncb_read_chunk: strtol, error %li.", chunksize ); return  (int) chunksize; }
 		/* Read the next chunk. */
-		wasread = read( fd, &(*buf), (size_t) chunksize );;
+		wasread = (int) read( fd, &(*buf), (size_t) chunksize );;
 		if( wasread>0 ) rd += wasread;
 		if( wasread<0 ){ cb_clog( CBLOGERR, CBNEGATION, "\ncb_read_chunk: read, error %i.", wasread ); return rd; }
 		/* Update the missing bytes information. */
@@ -193,7 +193,7 @@ int  cb_flush_chunks( int fd, unsigned char *buf, signed long int contentlen ){ 
         bufptr = &buf[ bufpos ];
         while( bufpos < (int) contentlen && written>0 && bufpos>=0 ){
                 if( (contentlen-bufpos) < CBTRANSENCODINGCHUNKSIZE )
-                        chunksize = (contentlen-bufpos);
+                        chunksize = (int) ( ( (int) contentlen )-bufpos);
                 else
                         chunksize = CBTRANSENCODINGCHUNKSIZE;
 		if(chunksize<=0) break;

@@ -92,7 +92,8 @@ int main (int argc, char **argv) {
 	  name[ namelen*4 ] = '\0';
 	  u = 0;
 	  for(i=0; i<namelen && u<namebuflen; ++i){
-	    chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
+	    //24.10.2018: chr = (unsigned long int) argv[fromend][i]; chr = chr & 0x000000FF;
+	    chr = (unsigned int) argv[fromend][i]; chr = chr & 0x000000FF;
 	    err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	  }
 	  if( namebuflen > u )
@@ -285,7 +286,8 @@ int main (int argc, char **argv) {
 	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
 	      for(y=0; y<namearraylen && y<10000; ++y ){ // (if first char in name is sp, possibly prints "null name")
 	        chprev = chr;
-	        chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
+	        //24.10.2018: chr = (unsigned long int) namearray[y]; chr = chr & 0x000000FF;
+	        chr = (unsigned int) namearray[y]; chr = chr & 0x000000FF;
 	        if( ! WSP( chr ) ){
 	          err = cb_put_ucs_chr( chr, &name, &u, namebuflen);
 	       	  namelen = u;

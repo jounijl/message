@@ -79,6 +79,25 @@ int  cb_log_set_logpriority( signed int logpr ){
 }
 
 /*
+ * 'stdio.h' replacement (where needed). */
+int  cprint( int fd, const char* restrict fmt, ... ){
+        int err = CBSUCCESS;
+        char snbuf[CBDPRINTBUFLEN+1];
+        int  sncontentlen = 0;
+        va_list argptr;
+        snbuf[CBDPRINTBUFLEN] = '\0';
+        va_start( argptr, fmt );
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+        sncontentlen = vsnprintf( &snbuf[0], CBDPRINTBUFLEN, fmt, argptr );
+#pragma clang diagnostic pop
+        va_end( argptr );
+        err = (int) write( fd, &snbuf[0], (size_t) sncontentlen );
+        if(err<0){ return CBERRPRINT; }
+        return CBSUCCESS;
+}
+
+/*
  * Log. */
 int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
 	int err = CBSUCCESS, indx=0, bc=0, sb=0;
@@ -96,23 +115,22 @@ int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
 		 * Log if the loglevel>CBLOGMULTIPLE and CBLOGMULTIPLE<loglevel<CBLOGINDIVIDUAL or loglevel<CBLOGMULTIPLE */
 
 		va_start( argptr, format );
-		//vfprintf( stderr, format, argptr );
 		sncontentlen = vsnprintf( &snbuf[0], CBLOGLINELENGTH, format, argptr ); // 28.11.2016
 		va_end( argptr );
 		if( cblog!=NULL && (*cblog).blk!=NULL && snb!=NULL ){
 			for(indx=0; indx<sncontentlen && err<CBERROR; ++indx)
 				err = cb_put_chr( &cblog, (unsigned long int) snb[ indx ], &sb, &bc ); // all character encodings
 			//err = cb_write( &cblog, &(*snb), (long int) sncontentlen ); // byte by byte
-			if(err>=CBERROR){ fprintf( stderr, "\ncb_log: cb_write, error %i.", err ); }
+			if(err>=CBERROR){ cprint( STDERR_FILENO, "\ncb_log: cb_write, error %i.", err ); }
 			//27.2.2017: cb_flush( &cblog ); // 22.12.2016
 		}else{
-			err = write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
-			if(err<0){ fprintf( stderr, "\ncb_log: write, error %i.", err ); }
+			err = (int) write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
+			if(err<0){ cprint( STDERR_FILENO, "\ncb_log: write, error %i.", err ); }
 		}
 	}
 	if( errtype==CBERRALLOC ){
 		if( cblog==NULL )
-			fflush( stderr ); // write has already been done, fflush is wrong command here
+			; // fflush( stderr ); // write has already been done, fflush is wrong command here
 		else
 			cb_flush( &cblog );
 		if( priority==CBLOGDEBUG )

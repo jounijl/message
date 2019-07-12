@@ -47,7 +47,9 @@ cb_flush_log();
                 else
                         return -1;
                 return unrecognizedlen;
-        }
+        }else if( err==PCRE2_ERROR_UTF32_ERR1 || err==PCRE2_ERROR_UTF32_ERR2 ){ // -27 or -28
+		err = snprintf( &(* (char**) textbuffer)[0], (size_t) 80, "Unrecognized error in regular expression (PCRE2 error %i, UTF validity).", err );
+	}
         return err;
 }
 
