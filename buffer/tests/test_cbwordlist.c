@@ -42,7 +42,7 @@ int main(void) {
 	CBFILE *in = NULL;
 
 	err = cb_allocate_cbfile(&in, 0, 2048, 512);
-        if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
 	//cb_set_to_word_search( &in );
 	//(*in).cf.findwords = 0;
@@ -56,15 +56,15 @@ int main(void) {
 
 	err = cb_find_every_name(&in);
 	if( err==CBVALUEEND ){
-		fprintf(stderr,"\n Returning VALUEEND (method %i)", (*in).cf.searchmethod );
+		cprint( STDERR_FILENO, "\n Returning VALUEEND (method %i)", (*in).cf.searchmethod );
 		if( (*in).cf.searchmethod==CBSTATETOPOLOGY || (*in).cf.searchmethod==CBSTATETREE ){
-			fprintf(stderr,", possible start and endchar mismatch.");
+			cprint( STDERR_FILENO, ", possible start and endchar mismatch.");
 		}
 	}
 	if(err>=CBNEGATION && err!=CBNOTFOUND)
-	  fprintf(stderr,"\ntest_words: cb_find_every_name, err=%i.", err);
+	  cprint( STDERR_FILENO, "\ntest_words: cb_find_every_name, err=%i.", err);
 
-	fprintf(stderr,"\ntest_words: cb_find_every_name, err=%i.", err);
+	cprint( STDERR_FILENO, "\ntest_words: cb_find_every_name, err=%i.", err);
 
 	cb_print_names(&in, CBLOGDEBUG);
 

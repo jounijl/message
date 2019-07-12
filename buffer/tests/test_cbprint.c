@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 	CBFILE *in = NULL;
 
 	err = cb_allocate_cbfile(&in, 0, 2048, 512);
-        if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 	//cb_set_search_state( &in, CBSTATELESS );
 	cb_set_search_state( &in, CBSTATEFUL );
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
           }
 	}
 	if(valueincrease<0 || nameincrease<0 ){
-	    fprintf(stderr,"\nValueincrease and nameincrease have to be positive values.");
+	    cprint( STDERR_FILENO, "\nValueincrease and nameincrease have to be positive values.");
 	    usage(&(argv[0]));
 	    exit(ERRUSAGE);
 	}
@@ -121,9 +121,9 @@ int main(int argc, char **argv) {
 	do{
 	  err = cb_get_next_name_ucs(&in, &name, &namelen, 0);
 	  if( err>=CBNEGATION && err!=CBNOTFOUND )
-	    fprintf(stderr,"\ncb_get_next_name_ucs: err=%i.", err);
+	    cprint( STDERR_FILENO, "\ncb_get_next_name_ucs: err=%i.", err);
 	  if( err==CBSTREAM || err==CBSUCCESS ){
-            fprintf( stderr, "\n" );
+            cprint( STDERR_FILENO, "\n" );
 	    //
 	    // Print name
 /*	    for(indx=0; indx<ninc; ++indx){ // Length increase
@@ -131,46 +131,46 @@ int main(int argc, char **argv) {
 	         i = 0; chr = (long unsigned int) 'A';
 	         u = cb_get_ucs_chr( &chr, &name, &i, namelen);
 	         if(u>=CBNEGATION)
-	           fprintf( stderr, "\ncb_get_ucs_chr: err %i.", u );
-	         fprintf( stderr, "%lc", chr );
+	           cprint( STDERR_FILENO, "\ncb_get_ucs_chr: err %i.", u );
+	         cprint( STDERR_FILENO, "%lc", chr );
 	      }
 	    }
 */
 	    ninc += nameincrease;
-            //fprintf( stderr, "[0]", chr );
+            //cprint( STDERR_FILENO, "[0]", chr );
 	    cb_print_ucs_chrbuf( CBLOGINFO, &name, namelen, namelen); // Name
-            fprintf( stderr, "%lc", (*in).cf.rstart );
+            cprint( STDERR_FILENO, "%lc", (*in).cf.rstart );
 	    err2==CBSUCCESS; linecounter=0;
-            //fprintf( stderr, "[1]", chr );
+            //cprint( STDERR_FILENO, "[1]", chr );
 	    while( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ) ){
-              //fprintf( stderr, "[loop 2]", chr );
+              //cprint( STDERR_FILENO, "[loop 2]", chr );
 	      chprev = chr;
 	      err2 = cb_search_get_chr(&in, &chr, &offset );
 	      if(err2==CBSTREAM) // This is required here, 10.11.2013
 	        cb_remove_name_from_stream( &in );
-              //fprintf( stderr, "[loop 3]", chr );
+              //cprint( STDERR_FILENO, "[loop 3]", chr );
 	      //
 	      // Print value
 
 	      if( ( err2==CBSTREAM || err2==CBSUCCESS ) && ! ( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ) ){
 //	        for(indx=0; indx<vinc; ++indx) // Length increase
-                  fprintf( stderr, "%lc", chr );
+                  cprint( STDERR_FILENO, "%lc", chr );
 	      }else if( chr==(*in).cf.rend && chprev!=(*in).cf.bypass ){
-	        fprintf( stderr, "%lc", (*in).cf.rend );
+	        cprint( STDERR_FILENO, "%lc", (*in).cf.rend );
 	        vinc += valueincrease;
 	      }	      
 	      chr=(*in).cf.rend-1;
-              //fprintf( stderr, "[loop 4]", chr );
+              //cprint( STDERR_FILENO, "[loop 4]", chr );
 	      //
 	      // Decrease line length to read the result in text editors
 	      ++linecounter;
 	      if(linecounter==LINEWIDTH){
-	        fprintf( stderr, "\n");
+	        cprint( STDERR_FILENO, "\n");
 	        linecounter=0;
 	      }
 	    }
 	    free(name); name=NULL; // name=NULL pois, virheviesti
-            //fprintf( stderr, "[5]", chr );
+            //cprint( STDERR_FILENO, "[5]", chr );
 	  }
 	//}while( err!=CBSTREAMEND && err<CBERROR ); // looptest
 	}while( err!=CBNOTFOUND && err!=CBSTREAMEND && err<CBERROR ); 
@@ -181,10 +181,10 @@ int main(int argc, char **argv) {
 }
 
 void usage (char *progname[]){
-        fprintf(stderr,"Usage:\n");
-        fprintf(stderr,"\t%s [-V <value gradual increase> ] [-N <name gradual increase> ] \n\n", progname[0]);
-        fprintf(stderr,"\tOutputs inputs name-value pairs. Every character is printed\n");
-        fprintf(stderr,"\t<value gradual increase> times in value and <name gradual increase> .\n");
-        fprintf(stderr,"\tin name.\n");
+        cprint( STDERR_FILENO, "Usage:\n");
+        cprint( STDERR_FILENO, "\t%s [-V <value gradual increase> ] [-N <name gradual increase> ] \n\n", progname[0]);
+        cprint( STDERR_FILENO, "\tOutputs inputs name-value pairs. Every character is printed\n");
+        cprint( STDERR_FILENO, "\t<value gradual increase> times in value and <name gradual increase> .\n");
+        cprint( STDERR_FILENO, "\tin name.\n");
 }
 

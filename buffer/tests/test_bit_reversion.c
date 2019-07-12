@@ -23,6 +23,10 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
+#include <limits.h>
+
+
 #include <stdio.h>
 #include "../../include/cb_buffer.h"
 
@@ -44,12 +48,12 @@ int main (int argc, char *argv[]) {
 	
         output = cb_reverse_int32_bits(number);
 
-	fprintf(stdout,"\t%X\n", output);
+	cprint( STDERR_FILENO, "\t%X\n", output);
 
         return 0;
 }
 void usage (char *progname[]){
-        printf("\nUsage:\n");
-        printf("\t%s <number> \n", progname[0]);
-        printf("\tProgram outputs reversed input desimal number to stdout in hexadesimal.\n");
+        cprint( STDERR_FILENO, "\nUsage:\n");
+        cprint( STDERR_FILENO, "\t%s <number> \n", progname[0]);
+        cprint( STDERR_FILENO, "\tProgram outputs reversed input desimal number to stdout in hexadesimal.\n");
 }

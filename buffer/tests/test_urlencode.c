@@ -150,9 +150,9 @@ int main(int argc, char **argv) {
 }
 
 void usage (char *progname[]){
-        fprintf(stderr,"Usage:\n");
-        fprintf(stderr,"\t <input> | %s [ -i  | -o ] \n\n", progname[0]);
-        fprintf(stderr,"\tOutputs one byte presentation from url percent encoded input or\n");
-        fprintf(stderr,"\twith flag -o, url percent encoded output from one byte input.\n");
+        cprint( STDERR_FILENO, "Usage:\n");
+        cprint( STDERR_FILENO, "\t <input> | %s [ -i  | -o ] \n\n", progname[0]);
+        cprint( STDERR_FILENO, "\tOutputs one byte presentation from url percent encoded input or\n");
+        cprint( STDERR_FILENO, "\twith flag -o, url percent encoded output from one byte input.\n");
 }
 

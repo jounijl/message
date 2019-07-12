@@ -110,14 +110,14 @@ int main (int argc, char *argv[]) {
 
 	// Unknown name
 	nonexname = (unsigned char *) malloc( 8*sizeof(unsigned char) );
-	if(nonexname==NULL){ fprintf(stderr,"\ttest: nonexname malloc error, errno %i.", errno); return CBERRALLOC; }
+	if(nonexname==NULL){ cprint( STDERR_FILENO, "\ttest: nonexname malloc error, errno %i.", errno); return CBERRALLOC; }
 	nonexname[7]='\0'; 
 	snprintf( (char *) nonexname, (size_t) 8, "unknown" ); // 7+'\0'
 
 	// Encoding number
 	if(argc>=2 && argv[1]!=NULL){
 	  encoding = (int) strtol(argv[1],&str_err,10);
-	  fprintf( stderr, "\nSetting encoding: %i.", encoding );
+	  cprint( STDERR_FILENO, "\nSetting encoding: %i.", encoding );
 	}
 	// Block and buffer size
 	if(argc>=3 && argv[2]!=NULL){
@@ -126,7 +126,7 @@ int main (int argc, char *argv[]) {
 	if(argc>=4 && argv[3]!=NULL){
 	  bufsize = (int) strtol(argv[3],&str_err,10);
 	}else{
- 	  fprintf(stderr,"\ttest: not enough parameters: %i.", argc);
+ 	  cprint( STDERR_FILENO, "\ttest: not enough parameters: %i.", argc);
 	  if(argv[0]!=NULL)
 	    usage(&argv[0]);
           return ERROR;
@@ -139,16 +139,16 @@ int main (int argc, char *argv[]) {
 
 	// Allocation 
         err = cb_allocate_cbfile(&in, 0, bufsize, blksize); 
-        if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %lli.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: error at cb_allocate_cbfile: %lli.", err); return CBERRALLOC;}
         err = cb_allocate_cbfile(&out, 1, bufsize, blksize); 
-        if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_cbfile: %lli.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: error at cb_allocate_cbfile: %lli.", err); return CBERRALLOC;}
 	// Allocate name list to save names to test with them
 	//err = cb_allocate_buffer(&name_list, bufsize);
 	name_list.name=NULL; name_list.current=NULL; name_list.last=NULL; 
 	name_list.currentleaf=NULL; name_list.namecount=0; name_list.toterminal=0;
 	name_list_empty.name=NULL; name_list_empty.current=NULL; name_list_empty.last=NULL; 
 	name_list_empty.currentleaf=NULL; name_list_empty.namecount=0; name_list_empty.toterminal=0;
-	if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error at cb_allocate_buffer, namelist: %lli.", err); return CBERRALLOC;}
+	if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: error at cb_allocate_buffer, namelist: %lli.", err); return CBERRALLOC;}
 	// Filenames
 	memset(&(*infile), ' ', (size_t) FILENAMELEN); infile[FILENAMELEN+5]='\0';
 	memset(&(*outfile), ' ', (size_t) FILENAMELEN+4); outfile[FILENAMELEN+6]='\0';
@@ -182,12 +182,12 @@ int main (int argc, char *argv[]) {
 	for(indx=4; indx<atoms; ++indx){
 		// Filenames
 		if(argv[indx]==NULL){
-	          fprintf(stderr,"\ttest: Filename was null, argc %i, indx %i.\n", argc, indx); 
+	          cprint( STDERR_FILENO, "\ttest: Filename was null, argc %i, indx %i.\n", argc, indx); 
 		  return ERROR;
 		}
 		filename = &( * (unsigned char*) argv[indx]);
 		filenamelen = (int) strlen(argv[indx]);
-		if(filenamelen>FILENAMELEN+6){  fprintf(stderr,"\ttest: Filename was too long."); return ERROR;	}
+		if(filenamelen>FILENAMELEN+6){  cprint( STDERR_FILENO, "\ttest: Filename was too long."); return ERROR;	}
 		for(indx2=0; indx2<filenamelen; ++indx2){
 	           infile[indx2] = filename[indx2];
 	           outfile[indx2] = filename[indx2];
@@ -195,7 +195,7 @@ int main (int argc, char *argv[]) {
 	        if( infile[indx2]!='\0' && infile[indx2]!=' ' && infile[indx2]!='\t' && infile[indx2]!='\n' ){ ++indx2; }
 		infile[indx2]='\0'; outfile[indx2]='.'; outfile[indx2+1]='0'; outfile[indx2+2]='.'; 
 	        outfile[indx2+3]='o'; outfile[indx2+4]='u'; outfile[indx2+5]='t'; outfile[indx2+6]='\0';
-	        fprintf(stderr,"\ninfile: [%s] encoding: %i", infile, encoding);
+	        cprint( STDERR_FILENO, "\ninfile: [%s] encoding: %i", infile, encoding);
 
 		//
 		// Input encoding
@@ -208,7 +208,7 @@ int main (int argc, char *argv[]) {
 		}else{
 		  (*in).fd  = open( &(* (char*) infile), ( O_RDONLY ) ); 
 		}
-	        fprintf(stderr," (errno %i).", errno);
+	        cprint( STDERR_FILENO, " (errno %i).", errno);
 
 		//
 		// Name list pointer to remember the names 
@@ -221,19 +221,19 @@ int main (int argc, char *argv[]) {
 		   err = cb_set_cursor( &in, &nonexname , &nonexnamelen );
 	           if(err==CBSTREAM){
 		      //err = cb_remove_name_from_stream(&in); // This is not necessary, get_chr is not used
-		      fprintf(stderr,"\ttest_cb: CBSTREAM err %lli.\n", err );
+		      cprint( STDERR_FILENO, "\ttest_cb: CBSTREAM err %lli.\n", err );
                    }
-	           if(err==CBNOTFOUND){ fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
+	           if(err==CBNOTFOUND){ cprint( STDERR_FILENO, "\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
 		   if(err!=CBNOTFOUND && ( err<=CBERROR && err>=CBNEGATION ) ){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
-		      fprintf(stderr,"\ttest: cb_set_cursor, %lli.\n", err ); }
+		      cprint( STDERR_FILENO, "\ttest: cb_set_cursor, %lli.\n", err ); }
 		   if(err==CBSTREAMEND || err>CBERROR){
-		      fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err ); }
+		      cprint( STDERR_FILENO, "\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err ); }
        		}else{
-		   fprintf(stderr,"\ttest: Error, in was null or nonexnamelen was 0.\n"); 
+		   cprint( STDERR_FILENO, "\ttest: Error, in was null or nonexnamelen was 0.\n"); 
        		}
-		fprintf(stderr,"\nFirst run, names are:\n"); 
+		cprint( STDERR_FILENO, "\nFirst run, names are:\n"); 
 		err = cb_print_names(&in, CBLOGDEBUG);
-		if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: cb_print_names returned %lli.", err ); }
+		if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: cb_print_names returned %lli.", err ); }
 
 		name_list  = (*(*in).cb).list;
 		(*(*in).cb).list = name_list_empty;
@@ -255,8 +255,8 @@ int main (int argc, char *argv[]) {
  			// Output encoding
 			cb_set_encoding(&out, encoding);
 
-			fprintf(stderr,"\n\n\t Encoding %i", encoding);
-			fprintf(stderr,"\n\t -----------\n");
+			cprint( STDERR_FILENO, "\n\n\t Encoding %i", encoding);
+			cprint( STDERR_FILENO, "\n\t -----------\n");
 
 			//
 			// Open files (output with prefixes)
@@ -268,16 +268,16 @@ int main (int argc, char *argv[]) {
                           inputstream=1;  // to stop the loop after first loop
 			}else{
 			  (*in).fd  = open( &(* (char*) infile), ( O_RDONLY ) );
-                          fprintf(stderr,"\nOpened inputfile [%s], fd %i.", infile, (*in).fd );
+                          cprint( STDERR_FILENO, "\nOpened inputfile [%s], fd %i.", infile, (*in).fd );
 			}
-                        fprintf(stderr,"\noutfile: [%s] encoding: %i", outfile, encoding );
+                        cprint( STDERR_FILENO, "\noutfile: [%s] encoding: %i", outfile, encoding );
 			(*out).fd = open( &(* (char*) outfile), ( O_RDWR | O_CREAT | O_TRUNC ), (mode_t)( S_IRWXU | S_IRWXG ) );
 			if((*in).fd<=-1 || (*out).fd<=-1 ){
-			  fprintf(stderr,"\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
-			  fprintf(stderr,"\ttest: open failed, infile %s outfile %s.\n", infile, outfile);
+			  cprint( STDERR_FILENO, "\ttest: open failed, fd in %i out %i.\n", (*in).fd, (*out).fd);
+			  cprint( STDERR_FILENO, "\ttest: open failed, infile %s outfile %s.\n", infile, outfile);
         		  return ERROR;
 		        }
-			fprintf(stderr," (errno %i).\n", errno);
+			cprint( STDERR_FILENO, " (errno %i).\n", errno);
 
 			//
                         // Write byte order mark
@@ -289,10 +289,10 @@ int main (int argc, char *argv[]) {
 			// After buffer, the rest of the stream. (One test: Unknown names literal name in it.) 
                         if(inputstream!=1){
 			  err = lseek( (*in).fd, (off_t) 0 , (int) SEEK_SET); // off_t on tyyppia long long, 64 bit
-			  if(err<0){fprintf(stderr,"\ttest: fseek returned %lli, errno set is %i.", err, errno ); }
+			  if(err<0){cprint( STDERR_FILENO, "\ttest: fseek returned %lli, errno set is %i.", err, errno ); }
                         }
 
-			fprintf(stderr,"\nSecond run, names are backwards:\n\n"); 
+			cprint( STDERR_FILENO, "\nSecond run, names are backwards:\n\n"); 
 		        if( in!=NULL ){
 			   nameptr = &(* (cb_name *) name_list.name );
 			   fromend=0;
@@ -308,15 +308,15 @@ int main (int argc, char *argv[]) {
 				}
 
 				if(nameptr==NULL){ // 24.5.2013, ehka turha
-				  fprintf(stderr," nameptr was NULL ");
+				  cprint( STDERR_FILENO, " nameptr was NULL ");
 				}
 
 				fromend++;
-				fprintf(stderr," [%lli/%lli] setting cursor to name [", (name_list.namecount-fromend+1), name_list.namecount );
+				cprint( STDERR_FILENO, " [%lli/%lli] setting cursor to name [", (name_list.namecount-fromend+1), name_list.namecount );
 				err = cb_print_ucs_chrbuf( CBLOGDEBUG, &(*nameptr).namebuf, (*nameptr).namelen, (*nameptr).buflen );
-				if(err>=CBERROR){ fprintf(stderr,"\ttest: cb_print_ucs_chrbuf, namebuf, err %lli.", err); }
-				fprintf(stderr,"], length %i, [%li/", (*nameptr).namelen, (*nameptr).nameoffset);
-				fprintf(stderr,"%li/%i].\n", (*nameptr).offset, (*nameptr).length);
+				if(err>=CBERROR){ cprint( STDERR_FILENO, "\ttest: cb_print_ucs_chrbuf, namebuf, err %lli.", err); }
+				cprint( STDERR_FILENO, "], length %i, [%li/", (*nameptr).namelen, (*nameptr).nameoffset);
+				cprint( STDERR_FILENO, "%li/%i].\n", (*nameptr).offset, (*nameptr).length);
 
 				if(in==NULL)
 					cb_clog( CBLOGDEBUG, CBNEGATION, "\n in was null." );
@@ -337,15 +337,15 @@ int main (int argc, char *argv[]) {
 				//cb_clog( CBLOGDEBUG, err, "\n ERR %lli.", err);
 
 				if(err==CBNOTFOUND){
-			           fprintf(stderr,"\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
+			           cprint( STDERR_FILENO, "\ttest: cb_set_cursor, CBNOTFOUND, %lli.\n", err ); }
 				if(err!=CBNOTFOUND && ( err<=CBERROR && err>=CBNEGATION ) ){ // CBOUTOFBUFFER tai CBSTREAM eika CBSTREAMEND sisally
-			           fprintf(stderr,"\ttest: cb_set_cursor, %lli.\n", err ); }
+			           cprint( STDERR_FILENO, "\ttest: cb_set_cursor, %lli.\n", err ); }
 				if(err==CBSTREAMEND || err>CBERROR){
-			           fprintf(stderr,"\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err );
+			           cprint( STDERR_FILENO, "\ttest: cb_set_cursor, STREAMEND or CBERROR, %lli.\n", err );
 				}else if(err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM){
 				   //if(err==CBSTREAM){ 
 				   //   err = cb_remove_name_from_stream(&in); // This should not necessary, get_chr is not used
-			           //   if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }
+			           //   if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }
 				   //}
 
 				   //
@@ -360,11 +360,11 @@ int main (int argc, char *argv[]) {
 				       if( ret<CBERROR && ret!=CBBUFFULL )
                                          err = cb_put_chr(&out, chrout, &outbcount, &outstoredsize); // 12.8.2013
                                          //err = cb_put_chr(&out, &chrout, &outbcount, &outstoredsize);
-                                       if( err!=CBSUCCESS ){ fprintf(stderr,"\ttest:  cb_put_chr, err %lli.", err ); }
+                                       if( err!=CBSUCCESS ){ cprint( STDERR_FILENO, "\ttest:  cb_put_chr, err %lli.", err ); }
                                      }
                                    } err=CBSUCCESS; outindx=0;
 
-                                   if(ret<0){ fprintf(stderr,"\ttest: write error %i, errno %i.", (int)ret, errno ); }
+                                   if(ret<0){ cprint( STDERR_FILENO, "\ttest: write error %i, errno %i.", (int)ret, errno ); }
 
 				   // '='
 				   err = cb_put_chr(&out, (*out).cf.rstart, &outbcount, &outstoredsize);
@@ -375,9 +375,9 @@ int main (int argc, char *argv[]) {
 	                           err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				   if(err==CBSTREAM){ 
 				      err = cb_remove_name_from_stream(&in); 
-			              if(err!=CBSUCCESS){ fprintf(stderr,"\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }
+			              if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest: error in cb_remove_name_from_stream, %lli.\n", err ); }
 				   }
-				   fprintf(stderr," (*out).encoding=%d (*out).encodingbytes=%d content: [", (*out).encoding, (*out).encodingbytes );
+				   cprint( STDERR_FILENO, " (*out).encoding=%d (*out).encodingbytes=%d content: [", (*out).encoding, (*out).encodingbytes );
 
 	                           if( (*in).cf.searchstate==CBSTATETOPOLOGY && (*out).cf.rstart == chr )
 				       ++openpairs;
@@ -385,18 +385,18 @@ int main (int argc, char *argv[]) {
 	                              ( (*in).cf.searchstate==CBSTATETOPOLOGY && openpairs==0 ) )
 				     while( ! ( (*out).cf.bypass != prevchr && (*out).cf.rend == chr ) && err<CBNEGATION){
 				       if(err==CBNOTUTF){
-				 	 fprintf(stderr,"\ttest: read something not in UTF format, CBNOTUTF.\n");
+				 	 cprint( STDERR_FILENO, "\ttest: read something not in UTF format, CBNOTUTF.\n");
 				       }else if(err<CBERROR){
 				         err = cb_put_chr(&out, chr, &encbytes, &strdbytes );
 				       }
 				       if( err!=CBSUCCESS && err!=CBSTREAM && err!=CBFILESTREAM ){
-				         fprintf(stderr,"\ttest: encbytes=%d strdbytes=%d cb_get_chr cb_put_chr err=%lli.\n", encbytes, strdbytes, err ); }
-				       fprintf(stderr,"%lc", (int) chr ); // %C
+				         cprint( STDERR_FILENO, "\ttest: encbytes=%d strdbytes=%d cb_get_chr cb_put_chr err=%lli.\n", encbytes, strdbytes, err ); }
+				       cprint( STDERR_FILENO, "%lc", (int) chr ); // %C
 				       prevchr = chr;
 		                       err = cb_get_chr(&in, &chr, &encbytes, &strdbytes );
 				       if(err==CBSTREAM){ 
 				         err = cb_remove_name_from_stream(&in); // Test if the names value was out of buffer
-			                 if(err!=CBSUCCESS){ fprintf(stderr,"\ttest_cb: error in cb_remove_name_from_stream, %lli.\n", err ); }
+			                 if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ttest_cb: error in cb_remove_name_from_stream, %lli.\n", err ); }
 				       }
 
 	                               if( (*in).cf.searchstate==CBSTATETOPOLOGY ) {
@@ -407,7 +407,7 @@ int main (int argc, char *argv[]) {
 	                               }
 
 				   } // while
-				   fprintf(stderr,"]\n" );
+				   cprint( STDERR_FILENO, "]\n" );
 				   //
 				   // '&' and new line
 				   err = cb_put_chr(&out, (*out).cf.rend, &outbcount, &outstoredsize);
@@ -419,7 +419,7 @@ int main (int argc, char *argv[]) {
 				} // else if
                            } // while
         		}else{ // if in not null
-			   fprintf(stderr,"\ttest: Error, in was null.\n"); 
+			   cprint( STDERR_FILENO, "\ttest: Error, in was null.\n"); 
         		}
 			cb_flush(&out);
 
@@ -430,7 +430,7 @@ int main (int argc, char *argv[]) {
 	                ++encoding;
 	                ++encodingstested;
 
-			err = close( (*out).fd ); if(err!=0){ fprintf(stderr,"\ttest: close out failed."); }
+			err = close( (*out).fd ); if(err!=0){ cprint( STDERR_FILENO, "\ttest: close out failed."); }
                 
 		} // while (encodings)
 		err2 = CBSUCCESS;
@@ -441,7 +441,7 @@ int main (int argc, char *argv[]) {
 
 	// Close input file
 	if(infile[0]=='-'){
-	  err = close( (*in).fd ); if(err!=0){ fprintf(stderr,"\ttest: close in failed."); }
+	  err = close( (*in).fd ); if(err!=0){ cprint( STDERR_FILENO, "\ttest: close in failed."); }
 	}
 
         cb_free_cbfile(&in);

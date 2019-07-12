@@ -54,11 +54,11 @@ int main (int argc, char *argv[]) {
 	  cb_put_ucs_chr(chr, &chrbuf, &bufindx, BLKSIZE);
 	  chr = (unsigned long int) getc(stdin);
 	  if(bufindx>=BLKSIZE || chr==EOF){
-	    fprintf(stderr,"block:[");
+	    cprint( STDERR_FILENO, "block:[");
 	    cb_print_ucs_chrbuf(&chrbuf, bufindx, BLKSIZE);
-	    fprintf(stderr,"]\n");
+	    cprint( STDERR_FILENO, "]\n");
 	    err = cb_copy_ucs_chrbuf_from_end(&chrbuf, &bufindx, BLKSIZE, OVERLAPSIZE );
-	    if(err!=CBSUCCESS){ fprintf(stderr,"\nError in cb_copy_from_end_to_start: %i.", err); }
+	    if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError in cb_copy_from_end_to_start: %i.", err); }
 	  }
 	}
 	

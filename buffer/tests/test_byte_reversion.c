@@ -23,6 +23,10 @@
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
+#include <limits.h>
+#include <unistd.h> // STDERR_FILENO 12.7.2019
+
 #include <stdio.h>
 #include "../../include/cb_buffer.h"
 
@@ -35,21 +39,23 @@ int main (int argc, char *argv[]) {
         char *str_err = NULL;
 
         if(argc>=2 && argv[1]!=NULL){
-          //number = (unsigned int) strtol(argv[1],&str_err,16);
-          number = (unsigned int) strtol(argv[1],&str_err,10);
+          number = (unsigned int) strtol(argv[1],&str_err,16);
+          //number = (unsigned int) strtol(argv[1],&str_err,10);
         }else{
           usage(&argv[0]);
           return 1;
         }
 	
-        output = cb_reverse_four_bytes(number);
+        //output = cb_reverse_four_bytes(number);
+        output = cb_reverse_two_bytes(number);
 
-	fprintf(stdout,"\t%X\n", output);
+	cprint( STDERR_FILENO,"\tFrom: %.4X\n", number);
+	cprint( STDERR_FILENO,"\tTo:   %.4X\n", output);
 
         return 0;
 }
 void usage (char *progname[]){
-        printf("\nUsage:\n");
-        printf("\t%s <number> \n", progname[0]);
-        printf("\tProgram outputs byte-reversed input desimal number to stdout in hexadesimal.\n");
+        cprint( STDERR_FILENO,"\nUsage:\n");
+        cprint( STDERR_FILENO,"\t%s <number> \n", progname[0]);
+        cprint( STDERR_FILENO,"\tProgram outputs byte-reversed input desimal number to stdout in hexadesimal.\n");
 }

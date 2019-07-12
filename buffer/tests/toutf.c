@@ -65,7 +65,7 @@ int write_ucs_5B( int count ) {
 
 	fd = fcntl(STDOUT_FILENO, F_DUPFD, 0); 
         err = cb_allocate_cbfile(&out, fd, 0, 512); // stdout
-        if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
         while ( ch = read(0, &(*str), (size_t) 1 ) && count > 0 ){
                 if(ch==-1 && errno==0)
@@ -81,12 +81,12 @@ int write_ucs_5B( int count ) {
                 //err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
                 err = cb_put_chr(&out, chr, &bcount, &strdbytes ); // 12.8.2013
 		--count;
-		fprintf(stderr, "|%lx", chr );
+		cprint( STDERR_FILENO,  "|%lx", chr );
 		if(err>CBERROR)
-		  fprintf(stderr,"\nError at cb_put_chr.");
+		  cprint( STDERR_FILENO, "\nError at cb_put_chr.");
         }
 	err = cb_flush(&out);
-	if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err); }
+	if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_flush: %i.", err); }
 	cb_free_cbfile(&out);
         return CBSUCCESS;
 }
@@ -108,7 +108,7 @@ int write_ucs_2B( int count ) {
 
 	fd = fcntl(STDOUT_FILENO, F_DUPFD, 0); 
         err = cb_allocate_cbfile(&out, fd, 0, 512); 
-        if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
         while ( ch = read(0, &(*str), (size_t) 1 ) && count > 0 ){
                 if(ch==-1 && errno==0)
@@ -126,15 +126,15 @@ int write_ucs_2B( int count ) {
                   continue;
 
 		chr = orchr | str[0] ;
-		fprintf(stderr, "|%x%x", (int) chr>>8, (int) ( chr & 0xff ) );
+		cprint( STDERR_FILENO,  "|%x%x", (int) chr>>8, (int) ( chr & 0xff ) );
 	        //err = cb_put_chr(&out, &chr, &bcount, &strdbytes );
 	        err = cb_put_chr(&out, chr, &bcount, &strdbytes ); // 12.8.2013
 		--count;
 		if(err>CBERROR)
-		  fprintf(stderr,"\nError at cb_put_chr.");
+		  cprint( STDERR_FILENO, "\nError at cb_put_chr.");
         }
 	err = cb_flush(&out);
-	if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err); }
+	if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_flush: %i.", err); }
 	cb_free_cbfile(&out);
         return CBSUCCESS;
 }

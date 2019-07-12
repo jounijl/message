@@ -28,6 +28,7 @@
 #include <time.h>   // time
 #include <string.h> // strcmp
 #include <errno.h>  // int errno
+#include <unistd.h> // STDERR_FILENO 12.7.2019
 
 #include "../include/cb_buffer.h"
 #include "../get_option/get_option.h"
@@ -63,10 +64,10 @@ int main (int argc, char **argv) {
 	long unsigned int seed = (unsigned long) time(NULL);
 	srandom( (unsigned int) seed ); 
 
-/*	fprintf(stderr,"main: argc=%i", argc );
+/*	cprint( STDERR_FILENO, "main: argc=%i", argc );
 	for(u=0;u<argc;++u)
-	  fprintf( stderr,", argv[%i]=%s", u, argv[u] );
-	fprintf( stderr,".\n" ); 
+	  cprint( STDERR_FILENO, ", argv[%i]=%s", u, argv[u] );
+	cprint( STDERR_FILENO, ".\n" ); 
 */
 
 	// Last parameter was null (FreeBSD)
@@ -97,7 +98,7 @@ int main (int argc, char **argv) {
 
 	// Allocate buffer
 	err = cb_allocate_cbfile( &out, 1, bufsize, blksize);
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&out, CBENC1BYTE); // default
 
 	/*
@@ -151,12 +152,12 @@ int main (int argc, char **argv) {
 
 #ifdef DEBUG
 	// Debug
-	fprintf(stderr,"\nDebug: Output ");
+	cprint( STDERR_FILENO, "\nDebug: Output ");
 	if(out!=NULL){
-	  fprintf(stderr," count [%i] encoding [%i] valuesize [%i] namesize [%i]", count, outputenc, valuesize, namesize );
-	  fprintf(stderr," valueincrease [%i] nameincrease [%i]", valueincrease, nameincrease );
+	  cprint( STDERR_FILENO, " count [%i] encoding [%i] valuesize [%i] namesize [%i]", count, outputenc, valuesize, namesize );
+	  cprint( STDERR_FILENO, " valueincrease [%i] nameincrease [%i]", valueincrease, nameincrease );
 	}
-	fprintf(stderr,"\n");
+	cprint( STDERR_FILENO, "\n");
 #endif
 
 	// Program
@@ -194,7 +195,7 @@ int main (int argc, char **argv) {
 	  }
           err = cb_put_chr(&out, (*out).cf.rstart, &bcount, &strdbytes );
 	  err = cb_flush(&out);
-	  if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err ); return err; }
+	  if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_flush: %i.", err ); return err; }
 	  for(u=0; u<vals; ++u){
 	    if(outputenc==CBENCUTF8){
 	    //  if( flip2B5Bflop==0 ){ // alpha = 03B1 / 2 B ; looks like omega (coptic): 10177
@@ -231,7 +232,7 @@ int main (int argc, char **argv) {
 	  }
           err = cb_put_chr(&out, (*out).cf.rend, &bcount, &strdbytes );
 	  err = cb_flush(&out);
-	  if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_flush: %i.", err ); return err; }
+	  if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_flush: %i.", err ); return err; }
 	  nams += nameincrease;
 	  vals += valueincrease;
 	  if( count == -1 )
@@ -245,13 +246,13 @@ int main (int argc, char **argv) {
 
 
 void usage (char *progname[]){
-	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-c <count of pairs> ] | [-e <encoding number> ] \\\n", progname[0]);
-	fprintf(stderr,"\t     | [-v <value size> ] | [-V <value gradual increase> ] \\\n");
-	fprintf(stderr,"\t     | [-n <name size> ] | [-N <name gradual increase> ] \n\n");
-	fprintf(stderr,"\tOutputs name-value pairs to use in testing. Valuesize and namesize can\n");
-	fprintf(stderr,"\tbe chosen and set to increase or decrease. Encoding is a number from\n");
-	fprintf(stderr,"\tcb_encoding.h. Endless output if value of <count of pairs> is -1.\n\n");
+	cprint( STDERR_FILENO, "Usage:\n");
+	cprint( STDERR_FILENO, "\t%s [-c <count of pairs> ] | [-e <encoding number> ] \\\n", progname[0]);
+	cprint( STDERR_FILENO, "\t     | [-v <value size> ] | [-V <value gradual increase> ] \\\n");
+	cprint( STDERR_FILENO, "\t     | [-n <name size> ] | [-N <name gradual increase> ] \n\n");
+	cprint( STDERR_FILENO, "\tOutputs name-value pairs to use in testing. Valuesize and namesize can\n");
+	cprint( STDERR_FILENO, "\tbe chosen and set to increase or decrease. Encoding is a number from\n");
+	cprint( STDERR_FILENO, "\tcb_encoding.h. Endless output if value of <count of pairs> is -1.\n\n");
 }
 
 

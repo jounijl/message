@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h> // strcmp, memset
 #include <errno.h>  // int errno
+#include <unistd.h> // STDERR_FILENO 12.7.2019
 
 #include "../include/cb_buffer.h"
 #include "../include/cb_read.h"
@@ -61,10 +62,10 @@ int main (int argc, char **argv) {
 	unsigned int chr = ' ', chprev = ' ';
 	unsigned long int endchr = ENDCHR;
 
-/*	fprintf(stderr,"main: argc=%i", argc );
+/*	cprint( STDERR_FILENO, "main: argc=%i", argc );
 	for(u=0;u<argc;++u)
-	  fprintf( stderr,", argv[%i]=%s", u, argv[u] );
-	fprintf( stderr,".\n" ); 
+	  cprint( STDERR_FILENO,", argv[%i]=%s", u, argv[u] );
+	cprint( STDERR_FILENO,".\n" ); 
 */
 
 	// Last parameter was null (FreeBSD)
@@ -88,7 +89,7 @@ int main (int argc, char **argv) {
 	  namelen = (int) strlen( argv[fromend] );
 	  namebuflen = NAMEBUFLEN; // 4 * namelen;
 	  name = (unsigned char *) malloc( sizeof(unsigned char)*( (unsigned int) namebuflen + 1 ) );
-	  if(name==NULL){ fprintf(stderr,"\nerror in malloc, name was null"); exit(CBERRALLOC); }
+	  if(name==NULL){ cprint( STDERR_FILENO, "\nerror in malloc, name was null"); exit(CBERRALLOC); }
 	  name[ namelen*4 ] = '\0';
 	  u = 0;
 	  for(i=0; i<namelen && u<namebuflen; ++i){
@@ -98,7 +99,7 @@ int main (int argc, char **argv) {
 	  }
 	  if( namebuflen > u )
 	    name[ u ] = '\0';
-	  if(err!=CBSUCCESS){ fprintf(stderr,"\ncbsearch: cb_put_ucs_chr, err=%i.", err); }
+	  if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\ncbsearch: cb_put_ucs_chr, err=%i.", err); }
 	  if( namebuflen>(namelen*4) )
             name[ namelen*4 ] = '\0';
 
@@ -108,14 +109,14 @@ int main (int argc, char **argv) {
         }
 
 #ifdef DEBUG
-	fprintf(stderr,"\nDebug: name (namelen:%i, namebuflen:%i):", namelen, namebuflen);
+	cprint( STDERR_FILENO, "\nDebug: name (namelen:%i, namebuflen:%i):", namelen, namebuflen);
 	cb_print_ucs_chrbuf( CBLOGDEBUG, &name, (namelen*4), namebuflen);
-	//fprintf(stderr,"\nDebug: argv[fromend]: %s", argv[fromend]);
+	//cprint( STDERR_FILENO, "\nDebug: argv[fromend]: %s", argv[fromend]);
 #endif 
 
 	// Allocate buffer
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_to_consecutive_names(&in);
 	//cb_use_as_stream(&in); // BEFORE TEST 11.8.2015
 	cb_use_as_file(&in); // TEST 11.8.2015
@@ -217,14 +218,14 @@ int main (int argc, char **argv) {
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
 	    if(value!=NULL){
 	      endchr = (unsigned long int) strtol(value,&str_err,16);
-	      fprintf(stderr, "\nAfter get_option, value=%s endchr=0x%.6lX.", value, endchr);
+	      cprint( STDERR_FILENO,  "\nAfter get_option, value=%s endchr=0x%.6lX.", value, endchr);
 	      err = CBSUCCESS;
 	      if( ! ( endchr==0 && errno==EINVAL ) )
 	        err = cb_set_rend( &in, endchr);
-	      if( err>=CBERROR ){ fprintf(stderr,"\nError ar cb_set_rend, %i.", err); }
+	      if( err>=CBERROR ){ cprint( STDERR_FILENO, "\nError ar cb_set_rend, %i.", err); }
             }else{
 	      err = cb_set_rend( &in, endchr); // set to new line, 0x0A
-              if( err>=CBERROR ){ fprintf(stderr,"\nError ar cb_set_rend, %i.", err); }
+              if( err>=CBERROR ){ cprint( STDERR_FILENO, "\nError ar cb_set_rend, %i.", err); }
 	    }
 	    continue;
 	  }
@@ -242,13 +243,13 @@ int main (int argc, char **argv) {
 #ifdef DEBUG
 	// Debug
 	if( name!=NULL )
-	  fprintf(stderr,"\nDebug: Searching [");
+	  cprint( STDERR_FILENO, "\nDebug: Searching [");
 	cb_print_ucs_chrbuf(CBLOGDEBUG, &name, (namelen*4), namebuflen);
 	if(in!=NULL)
-	fprintf(stderr,"] count [%i] buffer size [%i] block size [%i] encoding [%i]", count, bufsize, blksize, inputenc );
+	cprint( STDERR_FILENO, "] count [%i] buffer size [%i] block size [%i] encoding [%i]", count, bufsize, blksize, inputenc );
 	if(in!=NULL)
-	  fprintf(stderr," value end [0x%.6lX]", (*in).cf.rend);
-	fprintf(stderr,"\n");
+	  cprint( STDERR_FILENO, " value end [0x%.6lX]", (*in).cf.rend);
+	cprint( STDERR_FILENO, "\n");
 #endif
 
 	if( uniquenamesandleaves==1 ){
@@ -276,7 +277,7 @@ int main (int argc, char **argv) {
 	for(i=0; i<co && err<=CBERROR; ++i){
 	  if(count==-1)
 	    i = 0;
-	  fprintf(stderr,"\n%i.", (i+1) );
+	  cprint( STDERR_FILENO, "\n%i.", (i+1) );
 	  if( list==0 ) // one name
 	    err = search_and_print_name(&in, &name, (namelen*4), tree );
 	  else{ // list of names
@@ -316,49 +317,49 @@ int main (int argc, char **argv) {
 
 
 void usage (char *progname[]){
-	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] <name> \n\n");
-	fprintf(stderr,"\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
-	fprintf(stderr,"\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] \\\n");
-	fprintf(stderr,"\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
-	fprintf(stderr,"\t-t include the search from the subtrees\n");
-	fprintf(stderr,"\t-u set to unique names \n");
-	fprintf(stderr,"\t-g set to group names \n");
-	fprintf(stderr,"\t-z set to the configuration file format\n");
-	fprintf(stderr,"\t-J use JSON format\n");
-	fprintf(stderr,"\t-x regular expression search\n");
-	fprintf(stderr,"\t-w search one name only\n");
-	fprintf(stderr,"\t-a search name list\n");
-	fprintf(stderr,"\t-m read input to the buffer before starting\n");
-	fprintf(stderr,"\n\tSearches name from input once or <count> times. Buffer\n");
-	fprintf(stderr,"\tand block sizes can be set. End character can be changed\n");
-	fprintf(stderr,"\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
-	fprintf(stderr,"\tdefined with flag -s. Names are searched in order. Search\n");
-	fprintf(stderr,"\tsearches next same names. %s only unfolds the text,\n", progname[0]);
-	fprintf(stderr,"\tit does not remove cr, lf or wsp characters between values\n");
-	fprintf(stderr,"\tand names. Name can be matched from beginning, in the middle\n");
-        fprintf(stderr,"\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
-        fprintf(stderr,"\t<count> is -1, search is endless. With -t the search includes\n");
-        fprintf(stderr,"\tinner subtrees. Name is separated with dots representing\n");
-	fprintf(stderr,"\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
-	fprintf(stderr,"\t -J JSON format. Tree or doubledelimiter values are not printed\n");
-	fprintf(stderr,"\tcorrectly (21.2.2015). -z configuration file format ('{' and\n");
-	fprintf(stderr,"\t '='). -u unique names.\n\n");
-        fprintf(stderr,"\tExample 1:\n");
-        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
-        fprintf(stderr,"\tExample 2:\n");
-        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 %cknow%c\n\n", '%', '%');
-        fprintf(stderr,"\tExample 3:\n");
-        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c 2 -b 1024 -l 512 -s \"name1 name4 %cknown unkno%c\"\n\n", '%', '%');
-        fprintf(stderr,"\tExample 4:\n");
-        fprintf(stderr,"\t   cat testfile.txt | ./cbsearch -c -1 -b 1024 -l 512 un_known\n\n");
-        fprintf(stderr,"\tExample 5:\n");
-        fprintf(stderr,"\t   cat json.txt | ./cbsearch -c -1 -b 1024 -l 512 -J -s \"\\\"glossary\\\".\\\"GlossDiv\\\".\\\"GlossList\\\".\\\"GlossEntry\\\".\\\"GlossDef\\\".\\\"GlossSeeAlso\\\"\" \n\n");
-        fprintf(stderr,"\tExample 6:\n");
-        fprintf(stderr,"\t   cat tree.txt | ./cbsearch -c -1 -b 1024 -l 512 -t -s \"name.leaf1.leaf2\" \n\n");
-        fprintf(stderr,"\tExample 7:\n");
-        fprintf(stderr,"\t   cat conf.txt | ./cbsearch -z -c -1 -b 1024 -l 512 -t -s \"name1.name2\" \n\n");
+	cprint( STDERR_FILENO, "Usage:\n");
+	cprint( STDERR_FILENO, "\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
+	cprint( STDERR_FILENO, "\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] <name> \n\n");
+	cprint( STDERR_FILENO, "\t%s [ -c <count> ] [ -b <buffer size> ] [ -l <block size> ] [ -x ] [ -w ] \\\n", progname[0]);
+	cprint( STDERR_FILENO, "\t     [ -i <encoding number> ] [ -e <char in hex> ] [ -t ] [ -J ] [ -u ] [ -g ] [ -m ] [ -z ] [ -a ] \\\n");
+	cprint( STDERR_FILENO, "\t         -s \"<name1> [ <name2> [ <name3> [...] ] ]\"\n\n");
+	cprint( STDERR_FILENO, "\t-t include the search from the subtrees\n");
+	cprint( STDERR_FILENO, "\t-u set to unique names \n");
+	cprint( STDERR_FILENO, "\t-g set to group names \n");
+	cprint( STDERR_FILENO, "\t-z set to the configuration file format\n");
+	cprint( STDERR_FILENO, "\t-J use JSON format\n");
+	cprint( STDERR_FILENO, "\t-x regular expression search\n");
+	cprint( STDERR_FILENO, "\t-w search one name only\n");
+	cprint( STDERR_FILENO, "\t-a search name list\n");
+	cprint( STDERR_FILENO, "\t-m read input to the buffer before starting\n");
+	cprint( STDERR_FILENO, "\n\tSearches name from input once or <count> times. Buffer\n");
+	cprint( STDERR_FILENO, "\tand block sizes can be set. End character can be changed\n");
+	cprint( STDERR_FILENO, "\tfrom LF (0x0A) with value in hexadesimal. Many names can be\n");
+	cprint( STDERR_FILENO, "\tdefined with flag -s. Names are searched in order. Search\n");
+	cprint( STDERR_FILENO, "\tsearches next same names. %s only unfolds the text,\n", progname[0]);
+	cprint( STDERR_FILENO, "\tit does not remove cr, lf or wsp characters between values\n");
+	cprint( STDERR_FILENO, "\tand names. Name can be matched from beginning, in the middle\n");
+        cprint( STDERR_FILENO, "\tor from the end using character \'%c\' to represent \'any\'. If\n", '%');
+        cprint( STDERR_FILENO, "\t<count> is -1, search is endless. With -t the search includes\n");
+        cprint( STDERR_FILENO, "\tinner subtrees. Name is separated with dots representing\n");
+	cprint( STDERR_FILENO, "\tthe sublevels. Regular expression in name, flag \'x\'. JSON\n");
+	cprint( STDERR_FILENO, "\t -J JSON format. Tree or doubledelimiter values are not printed\n");
+	cprint( STDERR_FILENO, "\tcorrectly (21.2.2015). -z configuration file format ('{' and\n");
+	cprint( STDERR_FILENO, "\t '='). -u unique names.\n\n");
+        cprint( STDERR_FILENO, "\tExample 1:\n");
+        cprint( STDERR_FILENO, "\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 unknown\n\n");
+        cprint( STDERR_FILENO, "\tExample 2:\n");
+        cprint( STDERR_FILENO, "\t   cat testfile.txt | ./cbsearch -c 4 -b 2048 -l 512 %cknow%c\n\n", '%', '%');
+        cprint( STDERR_FILENO, "\tExample 3:\n");
+        cprint( STDERR_FILENO, "\t   cat testfile.txt | ./cbsearch -c 2 -b 1024 -l 512 -s \"name1 name4 %cknown unkno%c\"\n\n", '%', '%');
+        cprint( STDERR_FILENO, "\tExample 4:\n");
+        cprint( STDERR_FILENO, "\t   cat testfile.txt | ./cbsearch -c -1 -b 1024 -l 512 un_known\n\n");
+        cprint( STDERR_FILENO, "\tExample 5:\n");
+        cprint( STDERR_FILENO, "\t   cat json.txt | ./cbsearch -c -1 -b 1024 -l 512 -J -s \"\\\"glossary\\\".\\\"GlossDiv\\\".\\\"GlossList\\\".\\\"GlossEntry\\\".\\\"GlossDef\\\".\\\"GlossSeeAlso\\\"\" \n\n");
+        cprint( STDERR_FILENO, "\tExample 6:\n");
+        cprint( STDERR_FILENO, "\t   cat tree.txt | ./cbsearch -c -1 -b 1024 -l 512 -t -s \"name.leaf1.leaf2\" \n\n");
+        cprint( STDERR_FILENO, "\tExample 7:\n");
+        cprint( STDERR_FILENO, "\t   cat conf.txt | ./cbsearch -z -c -1 -b 1024 -l 512 -t -s \"name1.name2\" \n\n");
 }
 
 /*
@@ -410,18 +411,18 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	    }
 	  }
 	}else{
-	  fprintf(stderr, "\n Name was null.\n");
+	  cprint( STDERR_FILENO,  "\n Name was null.\n");
 	}
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_set_cursor: %i.", err); }
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_set_cursor: %i.", err); }
 	if(tree==0)
 	  nameptr = &(*(*(**in).cb).list.current);
 	else
 	  nameptr = &(*(*(**in).cb).list.currentleaf);
 	if( err==CBSUCCESS || err==CBSUCCESSLEAVESEXIST || err==CBSTREAM || err==CBFILESTREAM ){
 	  //nameptr = &(*(*(**in).cb).list.current);
-	  //fprintf(stderr, "\n cbsearch, printing name:");
+	  //cprint( STDERR_FILENO,  "\n cbsearch, printing name:");
 	  print_name(&(*in), &nameptr );
-	  fprintf(stderr, " cbsearch, printing leaves:");
+	  cprint( STDERR_FILENO,  " cbsearch, printing leaves:");
 	  cb_print_leaves( &nameptr, CBLOGDEBUG );
 
 	  if( (**in).cf.searchmethod==CBSEARCHNEXTGROUPNAMES ) // both were set at start, testing on is enough, 3.1.2017
@@ -429,21 +430,21 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 
 	}
 	if(err==CBMESSAGEHEADEREND ){
-	  fprintf(stderr, "\n Header end. \n");
+	  cprint( STDERR_FILENO,  "\n Header end. \n");
 	}
 	if( tree==0 && ( err==CBNOTFOUND || err==CBMESSAGEHEADEREND ) ){
-	  fprintf(stderr, "\n Name \"");
+	  cprint( STDERR_FILENO,  "\n Name \"");
 	  if( name!=NULL && *name!=NULL && namelength!=0 )
 	    cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name), namelength, namelength );
-	  fprintf(stderr, "\" not found.\n");
+	  cprint( STDERR_FILENO,  "\" not found.\n");
 	  return err;
 	}
 	if(err==CBSTREAM){
-	  fprintf(stderr, "\n Stream.\n");
+	  cprint( STDERR_FILENO,  "\n Stream.\n");
 	}else if(err==CBFILESTREAM){
-	  fprintf(stderr, "\n Filestream.\n");
+	  cprint( STDERR_FILENO,  "\n Filestream.\n");
 	}else if(err==CBSTREAMEND){
-	  fprintf(stderr, "\n Stream end.\n");
+	  cprint( STDERR_FILENO,  "\n Stream end.\n");
 	}
 	return err;
 }
@@ -460,17 +461,17 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 	chrprev=(**cbf).cf.bypass+4; chr=(**cbf).cf.rend+4;
 
-	fprintf(stderr, "\n Name:         \t[");
+	cprint( STDERR_FILENO,  "\n Name:         \t[");
 	cb_print_ucs_chrbuf( CBLOGDEBUG, &(**nm).namebuf, (**nm).namelen, (**nm).buflen);
-	fprintf(stderr, "]\n Name length:  \t%i", (**nm).namelen);
-	fprintf(stderr, "\n Offset:       \t%li", (**nm).offset);
-	fprintf(stderr, "\n Name offset:  \t%ld", (**nm).nameoffset);
-	fprintf(stderr, "\n Length set to:\t%i", (**nm).length);
-	fprintf(stderr, "\n Ahead:        \t%i", (**cbf).ahd.ahead );
-	fprintf(stderr, "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );
-	fprintf(stderr, "\n Matchcount:   \t%li", (**nm).matchcount );
-	fprintf(stderr, "\n Content:      \t");
-	if( (**cbf).cf.json!=1 ) fprintf(stderr, "\"");
+	cprint( STDERR_FILENO,  "]\n Name length:  \t%i", (**nm).namelen);
+	cprint( STDERR_FILENO,  "\n Offset:       \t%li", (**nm).offset);
+	cprint( STDERR_FILENO,  "\n Name offset:  \t%ld", (**nm).nameoffset);
+	cprint( STDERR_FILENO,  "\n Length set to:\t%i", (**nm).length);
+	cprint( STDERR_FILENO,  "\n Ahead:        \t%i", (**cbf).ahd.ahead );
+	cprint( STDERR_FILENO,  "\n Bytes ahead:  \t%i", (**cbf).ahd.bytesahead );
+	cprint( STDERR_FILENO,  "\n Matchcount:   \t%li", (**nm).matchcount );
+	cprint( STDERR_FILENO,  "\n Content:      \t");
+	if( (**cbf).cf.json!=1 ) cprint( STDERR_FILENO,  "\"");
 
 	chrprev = chr;
 	err = cb_get_chr_unfold( &(*cbf), &(**cbf).ahd, &chr, &tmp ); // this should be a separate cb_ring (here, the result is the same), 2.8.2015
@@ -491,7 +492,7 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 	  if(err==CBSTREAM)
 	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary
-	  fprintf(stderr,"%c", (int) chr);
+	  cprint( STDERR_FILENO, "%c", (int) chr);
 	  if( (**cbf).cf.searchstate==CBSTATETOPOLOGY ){
 	    if( chr==(**cbf).cf.rend )
 	      --opennamepairs;
@@ -505,9 +506,9 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 	}
 
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_get_chr_unfold: %i.", err); }
-	if( (**cbf).cf.json!=1 ) fprintf(stderr,"\"\n");
-	else fprintf(stderr,"\n");
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_get_chr_unfold: %i.", err); }
+	if( (**cbf).cf.json!=1 ) cprint( STDERR_FILENO, "\"\n");
+	else cprint( STDERR_FILENO, "\n");
 	return err;
 }
 
@@ -549,33 +550,33 @@ int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, i
             if( ( err==CBSUCCESS || err==CBSTREAM || err==CBFILESTREAM ) && (*(**cbs).cb).list.current!=NULL ){
               if( (*(**cbs).cb).list.current!=NULL && namecount==0 ){
                 firstname = &(*(*(**cbs).cb).list.current);
-                fprintf(stderr,"\nFound \"");
+                cprint( STDERR_FILENO, "\nFound \"");
 		if( firstname!=NULL && (*firstname).namebuf!=NULL && (*firstname).namelen>0 )
 	          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*firstname).namebuf, (*firstname).namelen, (*firstname).buflen );
-	        fprintf(stderr,"\", (from list)");
-                fprintf(stderr," leaves from currentleaf: ");
+	        cprint( STDERR_FILENO, "\", (from list)");
+                cprint( STDERR_FILENO, " leaves from currentleaf: ");
 		if( (*(*(**cbs).cb).list.currentleaf).leaf!=NULL ){ // 15.11.2015
                   leaf = &(* (cb_name*) (*(*(**cbs).cb).list.currentleaf).leaf);
                   cb_print_leaves( &leaf, CBLOGDEBUG );
 		}else{
-		  fprintf(stderr,"(empty)");
+		  cprint( STDERR_FILENO, "(empty)");
 		}
               }else{
 		if( (*(**cbs).cb).list.currentleaf!=NULL ){ // 15.11.2015
                   leaf = &(*(*(**cbs).cb).list.currentleaf);
-                  fprintf(stderr,"\nFound leaf (currentleaf) \"");
+                  cprint( STDERR_FILENO, "\nFound leaf (currentleaf) \"");
   	          cb_print_ucs_chrbuf( CBLOGDEBUG, &(*leaf).namebuf, (*leaf).namelen, (*leaf).buflen );
-	          fprintf(stderr,"\" (from tree).");
-                  fprintf(stderr," leaves from currentleaf: ");
+	          cprint( STDERR_FILENO, "\" (from tree).");
+                  cprint( STDERR_FILENO, " leaves from currentleaf: ");
                   cb_print_leaves( &leaf, CBLOGDEBUG );
 		}else{
-		  fprintf(stderr,"(empty)");
+		  cprint( STDERR_FILENO, "(empty)");
 		}
 	      }
             }else{
-	      fprintf(stderr,"\n\"");
+	      cprint( STDERR_FILENO, "\n\"");
 	      cb_print_ucs_chrbuf( CBLOGDEBUG, &ucsname, undx, undx );
-	      fprintf(stderr,"\" not found.");
+	      cprint( STDERR_FILENO, "\" not found.");
 	    }
 
             if(err!=CBSUCCESS && err!=CBSUCCESSLEAVESEXIST && err!=CBSTREAM && err!=CBFILESTREAM)

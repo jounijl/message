@@ -444,7 +444,7 @@ int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 
 	*chr=low;
 	if( bytes==1 ){ high=0; *bytecount=1;
-	  //fprintf(stderr,"[%c]%i", (char)*chr, *bytecount );
+	  //cprint( STDERR_FILENO,"[%c]%i", (char)*chr, *bytecount );
 	  return err;
 	} // 7 bits, ascii, 0x7F
 	// 00111111 = 0x3F ; 11000000 = 0xC0; 

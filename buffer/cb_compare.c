@@ -70,12 +70,12 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
 	  return CBERRALLOC;
 	}
 
-	//if(scandit==1)	fprintf(stderr,"\ncb_compare_case_insensitive: (scandit) [");
-	//else		fprintf(stderr,"\ncb_compare_rfc2822: [");
+	//if(scandit==1)	cprint( STDERR_FILENO,"\ncb_compare_case_insensitive: (scandit) [");
+	//else		cprint( STDERR_FILENO,"\ncb_compare_rfc2822: [");
 	//if( name1!=NULL && *name1!=NULL )
-	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); fprintf(stderr,"] [");
+	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name1), len1, len1); cprint( STDERR_FILENO,"] [");
 	//if( name2!=NULL && *name2!=NULL )
-	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); fprintf(stderr,"] len1: %i, len2: %i from2: %i.", len1, len2, from2);
+	//  cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2); cprint( STDERR_FILENO,"] len1: %i, len2: %i from2: %i.", len1, len2, from2);
 
 	indx2 = from2;
 	while( indx1<len1 && indx2<len2 && err1==CBSUCCESS && err2==CBSUCCESS ){ // 9.11.2013
@@ -431,9 +431,9 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int 
         hbpat[bufindx] = '\0';
         err=CBSUCCESS; err2=CBSUCCESS;
 
-        //fprintf(stderr,"\ncb_compare_get_matchctl: pattern in host byte order (hbpat) : [");
+        //cprint( STDERR_FILENO,"\ncb_compare_get_matchctl: pattern in host byte order (hbpat) : [");
         //cb_print_ucs_chrbuf( CBLOGDEBUG, &hbpat, bufindx, patsize );
-        //fprintf(stderr,"] err %i, patsize %i.", err, patsize );
+        //cprint( STDERR_FILENO,"] err %i, patsize %i.", err, patsize );
 
         /* hbpat has to be null terminated */
         err2 = cb_compare_get_matchctl_host_byte_order( &hbpat, bufindx, options, &(*ctl), matchctl);
@@ -510,7 +510,7 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	  return CBREWASNULL;
 	}
 
-	//fprintf(stderr,"\ncb_compare_regexp: [");
+	//cprint( STDERR_FILENO,"\ncb_compare_regexp: [");
 
 	/* Allocate subject block to match in parts. */	
         ucsdata = (unsigned char*) malloc( sizeof(char)*( CBREGSUBJBLOCK+1 ) ); // + '\0', bom is ignored
@@ -532,22 +532,22 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	    }
 	    terr = cb_compare_regexp_one_block(&ucsdata, bufindx, 0, &(*mctl), &(*matchcount) );
 
-            //fprintf(stderr,"\ncb_compare_regexp: block:[");
+            //cprint( STDERR_FILENO,"\ncb_compare_regexp: block:[");
             //cb_print_ucs_chrbuf( CBLOGDEBUG, &(*name2), len2, len2);
-            //fprintf(stderr,"] , returns %i. (bufindx=%d, nameindx=%d, len2=%d)", terr, bufindx, nameindx, len2);
+            //cprint( STDERR_FILENO,"] , returns %i. (bufindx=%d, nameindx=%d, len2=%d)", terr, bufindx, nameindx, len2);
 
             if(terr>=CBERROR )
               cb_clog( CBLOGERR, terr, "\ncb_compare_regexp: cb_compare_regexp_one_block error %i.", terr);
             if(terr>=CBNEGATION && terr<CBERROR){
-              ; // fprintf(stderr," err %i.", terr);
+              ; // cprint( STDERR_FILENO," err %i.", terr);
             }else if(terr==CBMATCH){
-              ; // fprintf(stderr," match, %i.", terr);
+              ; // cprint( STDERR_FILENO," match, %i.", terr);
             }else if(terr==CBMATCHGROUP){
-              ; // fprintf(stderr," match group, %i.", terr);
+              ; // cprint( STDERR_FILENO," match group, %i.", terr);
             }else if(terr==CBMATCHMULTIPLE){
-              ; // fprintf(stderr," multiple matches, %i.", terr);
+              ; // cprint( STDERR_FILENO," multiple matches, %i.", terr);
             }else
-              ; // fprintf(stderr," %i.", terr);
+              ; // cprint( STDERR_FILENO," %i.", terr);
 	    if(terr==CBMATCH || terr==CBMATCHMULTIPLE || terr==CBMATCHGROUP){
 	      free(ucsdata);
 	      return terr; // at least one match was found, return
@@ -559,7 +559,7 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	  err = cb_get_ucs_chr(&chr, &(*name2), &nameindx, CBREGSUBJBLOCK );
 	}
 
-	//fprintf(stderr,"]");
+	//cprint( STDERR_FILENO,"]");
 
 	free(ucsdata);
 	return terr;

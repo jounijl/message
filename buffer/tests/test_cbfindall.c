@@ -42,7 +42,7 @@ int main(void) {
 	CBFILE *in = NULL;
 
 	err = cb_allocate_cbfile(&in, 0, 2048, 512);
-        if(err!=CBSUCCESS){ fprintf(stderr,"\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
+        if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 	// Tests: cat testi.txt | $0
 	// cat testi.txt | tr -c -d "&" | wc -c # 53
 	// cat testi.txt | tr -c -d "=" | wc -c # 48
@@ -61,16 +61,16 @@ int main(void) {
 
 	err = cb_find_every_name(&in);
 	if( err==CBVALUEEND ){
-		fprintf(stderr,"\n Returning VALUEEND (method %i)", (*in).cf.searchmethod );
+		cprint( STDERR_FILENO, "\n Returning VALUEEND (method %i)", (*in).cf.searchmethod );
 		if( (*in).cf.searchmethod==CBSTATETOPOLOGY || (*in).cf.searchmethod==CBSTATETREE ){
-			fprintf(stderr,", possible start and endchar mismatch.");
+			cprint( STDERR_FILENO, ", possible start and endchar mismatch.");
 		}
 	}
 	if(err>=CBNEGATION && err!=CBNOTFOUND)
-	  fprintf(stderr,"\ncb_find_every_name: err=%i.", err);
+	  cprint( STDERR_FILENO, "\ncb_find_every_name: err=%i.", err);
 
 	if(err==CBMESSAGEHEADEREND)
-	  fprintf(stderr,"\ncb_find_every_name: stopped at header end.");
+	  cprint( STDERR_FILENO, "\ncb_find_every_name: stopped at header end.");
 
 	cb_print_names(&in, CBLOGDEBUG);
 

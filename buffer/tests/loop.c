@@ -64,19 +64,19 @@ int main (int argc, char *argv[]) {
         // Open file
         fd  = open( &(*argv[1]), ( O_RDONLY ) );
         if(fd<=-1){
-           fprintf(stderr,"\tloop: open failed, fd was %i, file %s.\n", fd, argv[1]);
+           cprint( STDERR_FILENO, "\tloop: open failed, fd was %i, file %s.\n", fd, argv[1]);
            usage(&argv[0]);
            return ERROR;
         }
 
         // Allocate input buffer
         err1 = cb_allocate_cbfile(&in, fd, BUFSIZE, BLKSIZE); 
-        if(err1!=CBSUCCESS){ fprintf(stderr,"\tloop: error at cb_allocate_cbfile: in, err=%i.", err1); return CBERRALLOC;}
+        if(err1!=CBSUCCESS){ cprint( STDERR_FILENO, "\tloop: error at cb_allocate_cbfile: in, err=%i.", err1); return CBERRALLOC;}
         cb_set_encoding(&in, CBENC1BYTE); // one byte encoding
 
         // Allocate output buffer
         err1 = cb_allocate_cbfile(&out, 1, BUFSIZE, BLKSIZE); 
-        if(err1!=CBSUCCESS){ fprintf(stderr,"\tloop: error at cb_allocate_cbfile: out, err=%i.", err1); return CBERRALLOC;}
+        if(err1!=CBSUCCESS){ cprint( STDERR_FILENO, "\tloop: error at cb_allocate_cbfile: out, err=%i.", err1); return CBERRALLOC;}
         cb_set_encoding(&out, CBENC1BYTE); // one byte encoding
 
         //
@@ -88,7 +88,7 @@ int main (int argc, char *argv[]) {
           if(err1==CBSTREAMEND){
             err2 = cb_reinit_cbfile(&in); // set cursor and contentlength to start
             if( lseek( (*in).fd, (off_t)0, SEEK_SET) == -1 ){ // seek to start of file
-              fprintf(stderr,"\tloop: lseek error trying to set to start.");
+              cprint( STDERR_FILENO, "\tloop: lseek error trying to set to start.");
               cb_flush(&out);
               exit(ERROR);
             } err1=CBSUCCESS; err2=err1;
@@ -98,7 +98,7 @@ int main (int argc, char *argv[]) {
 
         cb_free_cbfile(&out);
         cb_free_cbfile(&in);
-        err1 = close( fd ); if(err1!=0){ fprintf(stderr,"\ttest: close file failed."); }
+        err1 = close( fd ); if(err1!=0){ cprint( STDERR_FILENO, "\ttest: close file failed."); }
 
 	return CBSUCCESS;
 }

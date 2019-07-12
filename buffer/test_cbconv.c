@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h> // strcmp
 #include <errno.h>  // int errno
+#include <unistd.h> // STDERR_FILENO 12.7.2019
 
 #include "../include/cb_buffer.h"
 #include "../get_option/get_option.h"
@@ -50,10 +51,10 @@ int main (int argc, char **argv) {
 	CBFILE *out = NULL;
 	unsigned long int chr = 0x61;
 
-/*	fprintf(stderr,"main: argc=%i", argc );
+/*	cprint( STDERR_FILENO, "main: argc=%i", argc );
 	for(u=0;u<argc;++u)
-	  fprintf( stderr,", argv[%i]=%s", u, argv[u] );
-	fprintf( stderr,".\n" ); 
+	  cprint( STDERR_FILENO,", argv[%i]=%s", u, argv[u] );
+	cprint( STDERR_FILENO,".\n" ); 
 */
 
 	// Last parameter was null (FreeBSD)
@@ -71,17 +72,17 @@ int main (int argc, char **argv) {
 	fromend = atoms;
 
 #ifdef DEBUG
-	fprintf(stderr,"\nDebug: name (namelen:%i, namebuflen:%i):", namelen, namebuflen);
+	cprint( STDERR_FILENO, "\nDebug: name (namelen:%i, namebuflen:%i):", namelen, namebuflen);
 	cb_print_ucs_chrbuf(&name, (namelen*4), namebuflen);
-	//fprintf(stderr,"\nDebug: argv[fromend]: %s", argv[fromend]);
+	//cprint( STDERR_FILENO, "\nDebug: argv[fromend]: %s", argv[fromend]);
 #endif 
 
 	// Allocate buffers
 	err = cb_allocate_cbfile( &in, 0, bufsize, blksize);
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&in, CBENC4BYTE);
 	err = cb_allocate_cbfile( &out, 1, bufsize, blksize);
-	if(err>=CBERROR){ fprintf(stderr, "error at cb_allocate_cbfile: %i.", err); }
+	if(err>=CBERROR){ cprint( STDERR_FILENO,  "error at cb_allocate_cbfile: %i.", err); }
 	cb_set_encoding(&out, CBENCUTF8);
 
 	// Parameters
@@ -111,7 +112,7 @@ int main (int argc, char **argv) {
 
 #ifdef DEBUG
 	// Debug
-	fprintf(stderr,"");
+	cprint( STDERR_FILENO, "");
 #endif
 
 	// Program
@@ -119,7 +120,7 @@ int main (int argc, char **argv) {
 	if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_get_chr: error %i.", err  ); }
 	else if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_get_chr: %i.", err  ); }
 	while( err!=CBSTREAMEND && err<CBERROR ){
-	  //fprintf(stderr,"[%c]", (int) chr);
+	  //cprint( STDERR_FILENO, "[%c]", (int) chr);
 	  err = cb_put_chr(&out, chr, &u, &y);
 	  if( err>=CBERROR ){ cb_clog( CBLOGERR, err, "\ncb_put_chr: error %i.", err  ); }
 	  else if( err>=CBNEGATION ){ cb_clog( CBLOGDEBUG, err, "\ncb_put_chr: %i.", err  ); }
@@ -140,10 +141,10 @@ int main (int argc, char **argv) {
 
 
 void usage (char *progname[]){
-	fprintf(stderr,"Usage:\n");
-	fprintf(stderr,"\t%s [-i <encoding number> ] [ -o <encoding number> ] \\\n", progname[0]);
-	fprintf(stderr,"\n\tConverts input from stdin in encoding -i to output\n");
-	fprintf(stderr,"\tin encoding -o. Default input encoding is 4-byte UCS\n");
-	fprintf(stderr,"\trepresentation of a character. Default output encoding\n");
-	fprintf(stderr,"\tis UTF-8.\n");
+	cprint( STDERR_FILENO, "Usage:\n");
+	cprint( STDERR_FILENO, "\t%s [-i <encoding number> ] [ -o <encoding number> ] \\\n", progname[0]);
+	cprint( STDERR_FILENO, "\n\tConverts input from stdin in encoding -i to output\n");
+	cprint( STDERR_FILENO, "\tin encoding -o. Default input encoding is 4-byte UCS\n");
+	cprint( STDERR_FILENO, "\trepresentation of a character. Default output encoding\n");
+	cprint( STDERR_FILENO, "\tis UTF-8.\n");
 }
