@@ -1,6 +1,6 @@
-/* 
- * Library to read and write streams. 
- * 
+/*
+ * Library to read and write streams.
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
@@ -8,12 +8,12 @@
  *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- * 
+ *
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -24,19 +24,19 @@
 #include "../include/cb_buffer.h"
 
 // Debug
-int  cb_fifo_print_buffer(cb_ring *cfi, int priority){
-        int i=0, err=0, chrsize=0; unsigned long int chr = ' ';
+signed int  cb_fifo_print_buffer(cb_ring *cfi, signed int priority){
+        signed int i=0, err=0, chrsize=0; unsigned long int chr = ' ';
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         for( i = (*cfi).ahead; i > 0; i-=4 ){
           err = cb_fifo_get_chr(&(*cfi), &chr, &chrsize);
-          cb_clog( priority, CBSUCCESS, "%c", (int) chr);
+          cb_clog( priority, CBSUCCESS, "%c", (signed int) chr);
           err = cb_fifo_put_chr(&(*cfi), chr, chrsize);
         }
 	return err;
 }
 // Debug
-int  cb_fifo_print_counters(cb_ring *cfi, int priority){
+signed int  cb_fifo_print_counters(cb_ring *cfi, signed int priority){
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         cb_clog( priority, CBSUCCESS, "\nahead:            %i", (*cfi).ahead );
@@ -49,7 +49,7 @@ int  cb_fifo_print_counters(cb_ring *cfi, int priority){
         cb_clog( priority, CBSUCCESS, "\nstreamstop:       %i", (*cfi).streamstop );
         return CBSUCCESS;
 }
-int  cb_fifo_allocate_buffers(cb_ring *cfi){
+signed int  cb_fifo_allocate_buffers(cb_ring *cfi){
 	if( cfi==NULL ) return CBERRALLOC;
 	(*cfi).buf = (unsigned char*) malloc( sizeof(unsigned char)*(CBREADAHEADSIZE+1) );
 	(*cfi).buflen = CBREADAHEADSIZE;
@@ -58,8 +58,24 @@ int  cb_fifo_allocate_buffers(cb_ring *cfi){
 	if( (*cfi).buf==NULL || (*cfi).storedsizes==NULL ) return CBERRALLOC;
 	return CBSUCCESS;
 }
-int  cb_fifo_init_counters(cb_ring *cfi){
-	int err = CBSUCCESS;
+signed int  cb_fifo_free_buffers(cb_ring *cfi){
+	if( cfi==NULL ) return CBERRALLOC;
+	if( (*cfi).buf!=NULL ){
+		memset( &(*cfi).buf[0], 0x20, CBREADAHEADSIZE );
+		(*cfi).buf[ CBREADAHEADSIZE ] = '\0';
+		free( (*cfi).buf );
+		(*cfi).buf = NULL;
+	}
+	if( (*cfi).storedsizes!=NULL ){
+		memset( &(*cfi).storedsizes[0], 0x20, CBREADAHEADSIZE );
+		(*cfi).storedsizes[ CBREADAHEADSIZE ] = '\0';
+		free( (*cfi).storedsizes );
+		(*cfi).storedsizes = NULL;
+	}
+	return CBSUCCESS;
+}
+signed int  cb_fifo_init_counters(cb_ring *cfi){
+	signed int err = CBSUCCESS;
         if( cfi==NULL ) return CBERRALLOC;
         (*cfi).ahead=0;
         (*cfi).bytesahead=0;
@@ -68,32 +84,32 @@ int  cb_fifo_init_counters(cb_ring *cfi){
         (*cfi).streamstart=-1;
         (*cfi).streamstop=-1;
 	(*cfi).currentindex = 0; // 30.6.2016
-	memset( &((*cfi).buf[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
+	memset( &((*cfi).buf[0]), (signed int) 0x20, (size_t) CBREADAHEADSIZE);
 	(*cfi).buf[CBREADAHEADSIZE]='\0';
 	(*cfi).buflen=CBREADAHEADSIZE;
-	memset( &((*cfi).storedsizes[0]), (int) 0x20, (size_t) CBREADAHEADSIZE);
+	memset( &((*cfi).storedsizes[0]), (signed int) 0x20, (size_t) CBREADAHEADSIZE);
 	(*cfi).storedsizes[CBREADAHEADSIZE]='\0';
 	(*cfi).sizeslen=CBREADAHEADSIZE;
 
         return err;
 }
-int  cb_fifo_set_stream(cb_ring *cfi){
+signed int  cb_fifo_set_stream(cb_ring *cfi){
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).streamstart==-1)
 	  (*cfi).streamstart=(*cfi).ahead;
-	return CBSUCCESS;	
+	return CBSUCCESS;
 }
-int  cb_fifo_set_endchr(cb_ring *cfi){
+signed int  cb_fifo_set_endchr(cb_ring *cfi){
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).streamstop==-1)
 	  (*cfi).streamstop=(*cfi).ahead;
 	return CBSUCCESS;
 }
-int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){ 
-        int err=CBSUCCESS; unsigned long int chrs=0;
-	int tmp1=0, tmp2=0;
+signed int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
+        signed int err=CBSUCCESS; unsigned long int chrs=0;
+	signed int tmp1=0, tmp2=0;
 	unsigned char *ptr = NULL;
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
@@ -106,13 +122,13 @@ int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 
 	  ptr = &((*cfi).storedsizes[0]);
           err = cb_get_ucs_chr( &chrs, &ptr, &tmp1, (*cfi).sizeslen );
-	  *chrsize = (int) chrs;
+	  *chrsize = (signed int) chrs;
 
 	  ptr = &((*cfi).buf[0]);
           err = cb_get_ucs_chr( &(*chr), &ptr, &tmp2, (*cfi).buflen );
           if( err == CBSUCCESS ){
             (*cfi).ahead-=4;
-	    (*cfi).bytesahead -= (int) *chrsize;
+	    (*cfi).bytesahead -= (signed int) *chrsize;
 	    (*cfi).last-=4;
 	    if( (*cfi).last<0 )
 	      (*cfi).last = (*cfi).buflen + (*cfi).last;
@@ -125,9 +141,10 @@ int  cb_fifo_revert_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
         }else
           return CBEMPTY;
 }
-int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
-        int err=CBSUCCESS, tmp=0; unsigned long int chrs=0;
+signed int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, signed int *chrsize){
+        signed int err=CBSUCCESS, tmp=0; unsigned long int chrs=0;
 	unsigned char *ptr = NULL;
+//cb_clog( CBLOGDEBUG, CBNEGATION, "(fifo get chr)" );
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).ahead>0){
@@ -143,8 +160,8 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
 
 	  ptr = &((*cfi).storedsizes[0]);
           err = cb_get_ucs_chr( &chrs, &ptr, &tmp, (*cfi).sizeslen );
-	  *chrsize = (int) chrs;
-	  (*cfi).bytesahead -= (int) *chrsize; // alustettu nolla tulee takaisin
+	  *chrsize = (signed int) chrs;
+	  (*cfi).bytesahead -= (signed int) *chrsize; // alustettu nolla tulee takaisin
 	  if(err==CBSUCCESS && (*cfi).streamstart==0)
 	    return CBSTREAM;
 	  if(err==CBSUCCESS && (*cfi).streamstop==0)
@@ -153,9 +170,10 @@ int  cb_fifo_get_chr(cb_ring *cfi, unsigned long int *chr, int *chrsize){
         }else
           return CBEMPTY;
 }
-int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
-        int err=CBSUCCESS, tmp=0;
+signed int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, signed int chrsize){
+        signed int err=CBSUCCESS, tmp=0;
 	unsigned char *ptr = NULL;
+//cb_clog( CBLOGDEBUG, CBNEGATION, "(fifo put chr)" );
         if( cfi==NULL ) // || (*cfi).buf==NULL)
           return CBERRALLOC;
         if((*cfi).ahead>=(*cfi).buflen-4)
@@ -170,16 +188,16 @@ int  cb_fifo_put_chr(cb_ring *cfi, unsigned long int chr, int chrsize){
 
 	ptr = &((*cfi).storedsizes[0]);
         err = cb_put_ucs_chr( (unsigned long int) chrsize, &ptr, &tmp, (*cfi).sizeslen );
-        (*cfi).bytesahead += (int) chrsize;
+        (*cfi).bytesahead += (signed int) chrsize;
 
         return err;
 }
 
 /*
- * 4-byte characterbuffer. 
+ * 4-byte characterbuffer.
  */
-int cb_print_ucs_chrbuf(int priority, unsigned char **chrbuf, int namelen, int buflen){
-        int index=0, err=CBSUCCESS;
+signed int cb_print_ucs_chrbuf(signed int priority, unsigned char **chrbuf, signed int namelen, signed int buflen){
+        signed int index=0, err=CBSUCCESS;
         unsigned long int chr=0x20; // 11.12.2014
         if(chrbuf==NULL && *chrbuf==NULL){ return CBERRALLOC; }
 	if(namelen<4){ // 4.7.2015, 4 bytes minimum
@@ -205,7 +223,7 @@ int cb_print_ucs_chrbuf(int priority, unsigned char **chrbuf, int namelen, int b
         return CBSUCCESS;
 }
 
-int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx, int buflen){
+signed int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, signed int *bufindx, signed int buflen){
         if( chrbuf==NULL || *chrbuf==NULL || bufindx==NULL){   return CBERRALLOC; }
         if( *bufindx>(buflen-4) ){                             return CBBUFFULL; }
         (*chrbuf)[*bufindx]   = (unsigned char) (chr>>24);
@@ -217,9 +235,11 @@ int  cb_put_ucs_chr(unsigned long int chr, unsigned char **chrbuf, int *bufindx,
         return CBSUCCESS;
 }
 
-int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx, int buflen){
+signed int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, signed int *bufindx, signed int buflen){
         const unsigned long int N = 0xFFFFFF00; // 0xFFFFFFFF - 0xFF = 0xFFFFFF00
+//cb_clog( CBLOGDEBUG, CBNEGATION, "(ucs chr)" );
         if( chr==NULL || bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
+        if( *bufindx>=buflen ){               return CBVALUEEND; } // 26.11.2021
         if( *bufindx>(buflen-4) ){               return CBARRAYOUTOFBOUNDS; }
         *chr = (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1; 
         *chr = *chr | (unsigned long int) (*chrbuf)[*bufindx]; *chr = (*chr<<8) & N; *bufindx+=1;
@@ -230,8 +250,8 @@ int  cb_get_ucs_chr(unsigned long int *chr, unsigned char **chrbuf, int *bufindx
 } 
 
 // 16.3.2014, a regexp block, not tested yet (16.3.2014)
-int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, int *bufindx, int buflen, int countfromend ){
-	int cpyblk=0, indx=0;
+signed int  cb_copy_ucs_chrbuf_from_end(unsigned char **chrbuf, signed int *bufindx, signed int buflen, signed int countfromend ){
+	signed int cpyblk=0, indx=0;
 	if( bufindx==NULL || chrbuf==NULL || *chrbuf==NULL ){     return CBERRALLOC; }
 	if(*bufindx >= countfromend)
 	  cpyblk = countfromend; // multiple of 4, usually the buffer is full before copying

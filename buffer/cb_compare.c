@@ -1,6 +1,6 @@
-/* 
+/*
  * Library to read and write streams. Valuepair list and search. Different character encodings.
- * 
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
@@ -8,12 +8,12 @@
  *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- * 
+ *
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -23,16 +23,16 @@
 #include "../include/cb_buffer.h"     // main function definitions (the only one needed)
 #include "../include/cb_compare.h"    // utilities
 
-//static int  cb_compare_print_fullinfo(cb_match *mctl);
-static int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl);
+//static signed int  cb_compare_print_fullinfo(cb_match *mctl);
+static signed int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, signed int patsize, unsigned int options, cb_match *ctl, signed int matchctl);
 
 /*
  * Returns most likely ASCII bytes. Returns -1 on error,
  * length of error text if succeeded, 15.11.2018. */
-int  cb_compare_get_regexp_error_text( int errorcode, unsigned char **textbuffer, int textbufferlen ){
+signed int  cb_compare_get_regexp_error_text( signed int errorcode, unsigned char **textbuffer, signed int textbufferlen ){
         unsigned char unrecognized[26] = { 'U', 'n', 'r', 'e', 'c', 'o', 'g', 'n', 'i', 'z', 'e', 'd', ' ', 'e', 'r', 'r', 'o', 'r', ' ', 'c', 'o', 'd', 'e', '.', '\0' };
-        int unrecognizedlen = 25;
-        int err = CBSUCCESS;
+        signed int unrecognizedlen = 25;
+        signed int err = CBSUCCESS;
         if( textbuffer==NULL || *textbuffer==NULL ) return -1;
         err = pcre2_get_error_message( errorcode, &(* (PCRE2_UCHAR*) textbuffer), (PCRE2_SIZE) textbufferlen);
 cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare_get_regexp_error_text: error text length %i.", err );
@@ -54,17 +54,17 @@ cb_flush_log();
 }
 
 
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
+signed int  cb_compare_rfc2822(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2){ // from2 23.11.2013
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
 	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_rfc2822: parameter was null." );
 	  return CBERRALLOC;
 	}
 	return cb_compare_case_insensitive( &(*name1), len1, &(*name2), len2, from2, 0 );
 }
-int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, char scandit ){ // from2 23.11.2013, 7.9.2016
+signed int  cb_compare_case_insensitive(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2, signed char scandit ){ // from2 23.11.2013, 7.9.2016
 	unsigned long int chr1=0x65, chr2=0x65;
-	int err1=CBSUCCESS, err2=CBSUCCESS;
-	int indx1=0, indx2=0;
+	signed int err1=CBSUCCESS, err2=CBSUCCESS;
+	signed int indx1=0, indx2=0;
 	if(name1==NULL || name2==NULL || *name1==NULL || *name2==NULL){
 	  cb_clog( CBLOGERR, CBERRALLOC, "\ncb_compare_rfc2822: parameter was null." );
 	  return CBERRALLOC;
@@ -129,10 +129,10 @@ int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char 
  * Compares if name1 matches name2. CBMATCHPART returns if name1 is longer
  * than name2. CBMATCHLENGTH returns if name1 is shorter than name2.
  */
-int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **name2, int len2, cb_match *mctl){
-	int err = CBSUCCESS, mcount = 1;
-	int indx = 0;
-	int dfr = 0;
+signed int  cb_compare(CBFILE **cbs, unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, cb_match *mctl){
+	signed int err = CBSUCCESS, mcount = 1;
+	signed int indx = 0;
+	signed int dfr = 0;
 	unsigned char stb[3] = { 0x20, 0x20, '\0' };
 	unsigned char *stbp = NULL;
 	cb_match newmctl;
@@ -149,7 +149,7 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
  	} // 24.10.2015
 
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: matchctl %i.", (*mctl).matchctl );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: address of name1: %lx, address of name2: %lx.", (long int) *name1, (long int) *name2 );
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_compare: address of name1: %lx, address of name2: %lx.", (signed long int) *name1, (signed long int) *name2 );
 
 /**
 	//if( (*mctl).matchctl<=-7 && (*mctl).matchctl>=-10){
@@ -325,10 +325,10 @@ int  cb_compare(CBFILE **cbs, unsigned char **name1, int len1, unsigned char **n
 	}
 	return err; // other information
 }
-int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2){ // from2 23.11.2013
+signed int  cb_compare_strict(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2){ // from2 23.11.2013
 	signed err=CBSUCCESS, cmp=0;
-	int indx1=0, indx2=0, num=0;
-	char stp=0;
+	signed int indx1=0, indx2=0, num=0;
+	signed char stp=0;
 	if( name1==NULL || name2==NULL || *name1==NULL || *name2==NULL )
 	  return CBERRALLOC;
 
@@ -377,7 +377,7 @@ int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, i
 
 /*
  * To use compare -7 and -8 . 4-byte text with PCRE UTF-32 (in place of UCS). */
-int  cb_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
+signed int  cb_get_matchctl(CBFILE **cbf, unsigned char **pattern, signed int patsize, unsigned int options, cb_match *ctl, signed int matchctl){
 	if(ctl==NULL){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_get_matchctl: allocation error."); return CBERRALLOC; }
 	if(cbf!=NULL && *cbf!=NULL)
 	  if( (**cbf).cf.asciicaseinsensitive==1)
@@ -389,9 +389,9 @@ int  cb_get_matchctl(CBFILE **cbf, unsigned char **pattern, int patsize, unsigne
 	return cb_compare_get_matchctl(&(*pattern), patsize, options, &(*ctl), matchctl);
 }
 
-int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
-        unsigned char *hbpat = NULL; int indx=0, bufindx=0; unsigned long int chr = 0;
-        int err=CBSUCCESS, err2=CBSUCCESS;
+signed int  cb_compare_get_matchctl(unsigned char **pattern, signed int patsize, unsigned int options, cb_match *ctl, signed int matchctl){
+        unsigned char *hbpat = NULL; signed int indx=0, bufindx=0; unsigned long int chr = 0;
+        signed int err=CBSUCCESS, err2=CBSUCCESS;
 
 	if( pattern==NULL || *pattern==NULL || ctl==NULL ){
           cb_clog( CBLOGDEBUG, CBERRALLOC, "\ncb_compare_get_matchctl: allocation error, %i.", CBERRALLOC);
@@ -401,10 +401,10 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int 
         /*
          * Pattern in host byte order */
         hbpat = (unsigned char*) malloc( sizeof(char)*( (unsigned int) patsize+1 ) ); // '\0' + argumentsize
-        //hbpat = (unsigned char*) malloc( sizeof(char)*( (unsigned int) patsize+5 ) ); // '\0' + argumentsize, 21.10.2015, test UTF BOM
+        //hbpat = (unsigned char*) malloc( sizeof(signed char)*( (unsigned int) patsize+5 ) ); // '\0' + argumentsize, 21.10.2015, test UTF BOM
         if( hbpat==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare_get_matchctl: allocation error, host byte pattern."); return CBERRALLOC; }
-        memset( &(*hbpat), (int) 0x20, (size_t) patsize );
-        //memset( &(*hbpat), (int) 0x20, (size_t) (patsize+4) ); // test BOM
+        memset( &(*hbpat), (signed int) 0x20, (size_t) patsize );
+        //memset( &(*hbpat), (signed int) 0x20, (size_t) (patsize+4) ); // test BOM
         hbpat[patsize]='\0';
         //hbpat[patsize+4]='\0'; // test BOM
 
@@ -443,8 +443,8 @@ int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int 
 }
 
 
-int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl){
-	int errcode=0; // , err=CBSUCCESS;
+signed int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, signed int patsize, unsigned int options, cb_match *ctl, signed int matchctl){
+	signed int errcode=0; // , err=CBSUCCESS;
 	PCRE2_SIZE erroffset=0;
 	PCRE2_SPTR32 sptr = NULL; // PCRE_SPTR32 vastaa const unsigned int*
 
@@ -466,7 +466,7 @@ int  cb_compare_get_matchctl_host_byte_order(unsigned char **pattern, int patsiz
 
 [http://www.regular-expressions.info/pcre2.html]
 
-Before you can use a regular expression, it needs to be converted into a binary format for improved efficiency. To do this, simply call pcre2_compile() 
+Before you can use a regular expression, it needs to be converted signed into a binary format for improved efficiency. To do this, simply call pcre2_compile() 
 passing your regular expression as a string. If the string is null-terminated, you can pass PCRE2_ZERO_TERMINATED as the second parameter. Otherwise, 
 pass the length in code units as the second parameter. For UTF-8 this is the length in bytes, while for UTF-16 or UTF-32 this is the length in bytes 
 divided by 2 or 4. 
@@ -484,7 +484,7 @@ divided by 2 or 4.
 	if( (*ctl).re==NULL ){
           cb_clog( CBLOGERR, CBERRREGEXCOMP, "\ncb_compare_get_matchctl: error compiling re, re is null, offset %zu, at re offset %i.", erroffset, errcode);
 	  (*ctl).errcode = errcode;
-	  (*ctl).erroffset = (int) erroffset;
+	  (*ctl).erroffset = (signed int) erroffset;
           return CBERRREGEXCOMP;
         }
 
@@ -494,12 +494,12 @@ divided by 2 or 4.
  * Copies name2 to subject string block in host byte order (pcre32) and compares block by block
  * from start of name2 or from overlapsize to the end of block. Compares compiled regexp to 4-byte 
  * string name2 in blocks using pcre32. */
-int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *matchcount){
+signed int  cb_compare_regexp(unsigned char **name2, signed int len2, cb_match *mctl, signed int *matchcount){
 	unsigned char *ucsdata = NULL;
-	int nameindx=0, bufindx=0;
+	signed int nameindx=0, bufindx=0;
 	unsigned long int chr = 0x20;
 	unsigned int opt=0;
-	int err=CBSUCCESS, err2=CBSUCCESS, terr=CBMISMATCH;
+	signed int err=CBSUCCESS, err2=CBSUCCESS, terr=CBMISMATCH;
 
 	if( name2==NULL || *name2==NULL || mctl==NULL || matchcount==NULL){ 
 	  cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare_regexp: allocation error."); 
@@ -513,9 +513,9 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 	//cprint( STDERR_FILENO,"\ncb_compare_regexp: [");
 
 	/* Allocate subject block to match in parts. */	
-        ucsdata = (unsigned char*) malloc( sizeof(char)*( CBREGSUBJBLOCK+1 ) ); // + '\0', bom is ignored
+        ucsdata = (unsigned char*) malloc( sizeof(signed char)*( CBREGSUBJBLOCK+1 ) ); // + '\0', bom is ignored
         if( ucsdata==NULL ){ cb_clog( CBLOGALERT, CBERRALLOC, "\ncb_compare_regexp: ucsdata, allocation error %i.", CBERRALLOC ); return CBERRALLOC; }
-        memset( &(*ucsdata), (int) 0x20, (size_t) CBREGSUBJBLOCK );
+        memset( &(*ucsdata), (signed int) 0x20, (size_t) CBREGSUBJBLOCK );
         ucsdata[CBREGSUBJBLOCK]='\0';
 
 	/*
@@ -566,9 +566,9 @@ int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *mat
 }
 /*
  * Compares compiled regexp to 4-byte string name2 using 32-bit functions. */
-int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount){
-	int opt=0, err=-1, pcrerc=0, oveccount=-1;
-        int groupcount=0;
+signed int  cb_compare_regexp_one_block(unsigned char **name2, signed int len2, signed int startoffset, cb_match *mctl, signed int *matchcount){
+	signed int opt=0, err=-1, pcrerc=0, oveccount=-1;
+        signed int groupcount=0;
 	PCRE2_SIZE *ovector=NULL; 
 	pcre2_match_data_32 *match_data=NULL;
 	const pcre2_code_32 *pcrecode = NULL; 
@@ -612,7 +612,7 @@ pcre_match_another:
 
 	/** startoffset: The length and starting offset are in code units, not characters. [http://www.regular-expressions.info/pcre2.html] **/
 
-	oveccount = (int) pcre2_get_ovector_count( &(*match_data) );
+	oveccount = (signed int) pcre2_get_ovector_count( &(*match_data) );
 
         if( pcrerc >= 0 ){ // one|many or groupmatch
           *matchcount+=1;
@@ -628,7 +628,7 @@ pcre_match_another:
             //pcre_get_substring would search the next substring(s) before returning PCRE_ERROR_NOSUBSTRING
           }
 	  ovector = pcre2_get_ovector_pointer_32( &(*match_data) );
-          startoffset = (int) ovector[0];
+          startoffset = (signed int) ovector[0];
 	  if( startoffset>0 )
             goto pcre_match_another;
         }else if( pcrerc==PCRE2_ERROR_NOMATCH && err==-1){
@@ -653,13 +653,13 @@ pcre_match_another:
 /*
  * pcre2 info. */
 /**************
-int  cb_compare_print_fullinfo(cb_match *mctl){
-	int res=0;
+signed int  cb_compare_print_fullinfo(cb_match *mctl){
+	signed int res=0;
 	pcre2_code_32 *re = NULL;
 	unsigned char *cres = NULL;
 	//unsigned char  errmsg[6] = {'e','r','r','o','r','\0'};
 	unsigned char  errmsg[1024];
-        memset( &(errmsg[0]), (int) 0x20, (size_t) 1024 );
+        memset( &(errmsg[0]), (signed int) 0x20, (size_t) 1024 );
 	cres = &(*errmsg);
 
 	if(mctl==NULL){  return CBERRALLOC; }

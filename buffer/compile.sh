@@ -51,8 +51,8 @@ fi
 # Library archive
 #
 
-LIBSRCS=" cb_endian.c cb_transfer.c cb_buffer.c cb_compare.c ../read/cb_read.c ../read/cb_json.c ../read/cb_urlencode.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
-LIBOBJS=" ${LIBOBJS} cb_endian.o cb_transfer.o cb_buffer.o cb_compare.o cb_read.o cb_json.o cb_urlencode.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
+LIBSRCS=" cb_endian.c cb_transfer.c cb_buffer.c cb_compare.c ../read/cb_search_group.c ../read/cb_read.c ../read/cb_timeout_read.c ../read/cb_json.c ../read/cb_urlencode.c cb_encoding.c cb_search.c cb_fifo.c cb_log.c "
+LIBOBJS=" ${LIBOBJS} cb_endian.o cb_transfer.o cb_buffer.o cb_compare.o cb_search_group.o cb_read.o cb_timeout_read.o cb_json.o cb_urlencode.o cb_encoding.o cb_search.o cb_fifo.o cb_log.o "
 LIBARCH="libcb.a"
 if [ "$1"="development" ]
  then
@@ -122,21 +122,22 @@ $CC $FLAGS -c ../get_option/get_option.c &&
 mv get_option.o ../buffer/
 cd ../buffer
 rm test_cbconv.o
-$CC $FLAGS -c ../buffer/test_cbconv.c 
+$CC $FLAGS -c ../buffer/test_cbconv.c
 
 
 #for I in CBSETSTATEFUL CBSETSTATELESS CBSETSTATETOPOLOGY CBSETSTATETREE
 #  do
 #   rm test_cbsearch.o
-#   $CC $FLAGS -D$I -c ../buffer/test_cbsearch.c 
+#   $CC $FLAGS -D$I -c ../buffer/test_cbsearch.c
 #   rm cb_buffer_$I.o
 #   $CC $FLAGS -D$I -c ../buffer/cb_buffer.c -o ../buffer/cb_buffer_$I.o
 #   rm cbsearch.$I
 #   $LD $LDFLAGS test_cbsearch.o cb_buffer_$I.o get_option.o $LIBARCH -o cbsearch.$I
 # done
+$CC $FLAGS -c ../buffer/test_cbsearch.c
 #rm cbsearch
 # CBSETSTATETREE:
-$LD $LDFLAGS test_cbsearch.o get_option.o ${MUSLOBJS} $LIBARCH -o cbsearch 
+$LD $LDFLAGS test_cbsearch.o get_option.o ${MUSLOBJS} $LIBARCH -o cbsearch
 #rm cbconv
 $LD $LDFLAGS test_cbconv.o get_option.o ${MUSLOBJS} $LIBARCH -o cbconv
 

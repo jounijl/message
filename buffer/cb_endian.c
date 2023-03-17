@@ -1,6 +1,6 @@
-/* 
- * Library to read and write streams. Different character encodings.       
- * 
+/*
+ * Library to read and write streams. Different character encodings.
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
@@ -8,12 +8,12 @@
  *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- * 
+ *
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -23,7 +23,7 @@
 //removed 20180822 #include "../include/cb_endian.h"
 #include "../include/cb_buffer.h"
 
-/* 
+/*
  * Reverse 32 bits.
  */
 unsigned int  cb_reverse_int32_bits(unsigned int from){
@@ -36,7 +36,7 @@ unsigned int  cb_reverse_int32_bits(unsigned int from){
 	new = new | upper;
 	return new;
 }
-/* 
+/*
  * Reverse integers last 16 bits. First 16 bits are meaningless.
  */
 unsigned int  cb_reverse_int16_bits(unsigned int from){
@@ -100,7 +100,7 @@ unsigned int  cb_reverse_two_bytes(unsigned int  from){
 }
 
 /*
- * OSI Representation layer:  Host byte order conversion if needed 
+ * OSI Representation layer:  Host byte order conversion if needed
  * ----------------------------------------------------------------------
  * OSI Session layer:         4-byte UCS in application or in stored form
  */
@@ -108,16 +108,16 @@ unsigned int  cb_from_host_byte_order_to_ucs( unsigned int chr ){
         return cb_from_ucs_to_host_byte_order( chr );
 }
 unsigned int  cb_from_ucs_to_host_byte_order( unsigned int chr ){
-	int test = cb_test_cpu_endianness();
-        if( test == CBBIGENDIAN ){ 
+	signed int test = cb_test_cpu_endianness();
+        if( test == CBBIGENDIAN ){
 	  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_from_ucs_to_host_byte_order: cb_test_cpu_endianness, big endian." );
           return chr;
-        }else if( test == CBLITTLEENDIAN ){ 
+        }else if( test == CBLITTLEENDIAN ){
           return cb_reverse_four_bytes( chr );
         }
         return chr;
 }
-int  cb_test_cpu_endianness(){
+signed int  cb_test_cpu_endianness(){
         static union {
           unsigned short  two;
           unsigned char   td[ sizeof(unsigned short) ];

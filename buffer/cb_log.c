@@ -1,6 +1,6 @@
-/* 
+/*
  * Library to read and write streams. Searches valuepairs locations to a list. Uses different character encodings.
- * 
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
@@ -8,12 +8,12 @@
  *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- * 
+ *
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -25,7 +25,7 @@
 #include "../include/cb_buffer.h"
 
 /*
- * Prints (**cbn).cf.logpriority level logging messages to stderr. 
+ * Prints (**cbn).cf.logpriority level logging messages to stderr.
  */
 
 // http://clang.llvm.org/docs/AttributeReference.html#format-gnu-format
@@ -47,32 +47,32 @@
 static CBFILE         *cblog = NULL;
 static signed int      logpriority = CBLOGDEBUG;
 
-int  cb_flush_log( void ){
+signed int  cb_flush_log( void ){
 	if( cblog!=NULL )
 		return cb_flush( &cblog );
 	else
 		fflush( stderr ); // write directly writes, fflush should be useless here, 27.2.2017
 	return CBEMPTY;
 }
-int  cb_log_set_cbfile( CBFILE **cbf ){
+signed int  cb_log_set_cbfile( CBFILE **cbf ){
 	if( cbf==NULL || *cbf==NULL ) return CBERRALLOC;
 	cblog = &( **cbf );
 	return CBSUCCESS;
 }
-int  cb_log_get_fd( void ){
+signed int  cb_log_get_fd( void ){
 	if( cblog==NULL ) return -1;
 	return (*cblog).fd;
 }
-int  cb_log_set_fd( int logfd ){
+signed int  cb_log_set_fd( signed int logfd ){
 	if( cblog==NULL ) return -1;
 	(*cblog).fd = logfd;
 	return CBSUCCESS;
 }
 
-int  cb_log_get_logpriority( void ){
+signed int  cb_log_get_logpriority( void ){
 	return logpriority;
 }
-int  cb_log_set_logpriority( signed int logpr ){
+signed int  cb_log_set_logpriority( signed int logpr ){
 	if(logpr<0 && logpriority>=0) return CBNOTSET;
 	logpriority = logpr;
 	return CBSUCCESS;
@@ -80,10 +80,10 @@ int  cb_log_set_logpriority( signed int logpr ){
 
 /*
  * 'stdio.h' replacement (where needed). */
-int  cprint( int fd, const char* restrict fmt, ... ){
-        int err = CBSUCCESS;
+signed int  cprint( signed int fd, const char* restrict fmt, ... ){
+        signed int err = CBSUCCESS;
         char snbuf[CBDPRINTBUFLEN+1];
-        int  sncontentlen = 0;
+        signed int  sncontentlen = 0;
         va_list argptr;
         snbuf[CBDPRINTBUFLEN] = '\0';
         va_start( argptr, fmt );
@@ -92,18 +92,18 @@ int  cprint( int fd, const char* restrict fmt, ... ){
         sncontentlen = vsnprintf( &snbuf[0], CBDPRINTBUFLEN, fmt, argptr );
 #pragma clang diagnostic pop
         va_end( argptr );
-        err = (int) write( fd, &snbuf[0], (size_t) sncontentlen );
+        err = (signed int) write( fd, &snbuf[0], (size_t) sncontentlen );
         if(err<0){ return CBERRPRINT; }
         return CBSUCCESS;
 }
 
 /*
- * Log. */
-int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
-	int err = CBSUCCESS, indx=0, bc=0, sb=0;
+ * Log. */ /* 19.1.2021: const char * */
+signed int  cb_clog( signed int priority, signed int errtype, const char* restrict format, ... ){
+	signed int err = CBSUCCESS, indx=0, bc=0, sb=0;
 	char snbuf[CBLOGLINELENGTH+1];
 	unsigned char *snb = NULL;
-	int  sncontentlen = 0;
+	signed int  sncontentlen = 0;
 	va_list argptr;
 	snbuf[CBLOGLINELENGTH] = '\0';
 	snb = &( (unsigned char*) snbuf)[0];
@@ -124,7 +124,7 @@ int  cb_clog( int priority, int errtype, const char* restrict format, ... ){
 			if(err>=CBERROR){ cprint( STDERR_FILENO, "\ncb_log: cb_write, error %i.", err ); }
 			//27.2.2017: cb_flush( &cblog ); // 22.12.2016
 		}else{
-			err = (int) write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
+			err = (signed int) write( STDERR_FILENO, &snbuf[0], (size_t) sncontentlen );
 			if(err<0){ cprint( STDERR_FILENO, "\ncb_log: write, error %i.", err ); }
 		}
 	}

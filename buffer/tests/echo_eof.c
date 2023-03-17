@@ -1,9 +1,10 @@
-#include <stdio.h>
+#include <unistd.h> // write
 
 //int  main(int argc, char *argv[]);
 //int  main(int argc, char *argv[]){
 int  main(void);
 int  main(void){
-	fprint( stdout, "%c", (unsigned char) 0x00 );
+	const unsigned char chr = 0x00;
+	write( STDOUT_FILENO, &chr, 1 );
 	return 0;
 }

@@ -1,14 +1,14 @@
-/* 
+/*
  * Library to read and write streams. Valuepair indexing with different character encodings.
- * 
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
  * disclaimer in the documentation and/or other materials provided with the distribution.
- * 
+ *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
@@ -33,12 +33,12 @@
 #define bytesareutf16bigebom(h,l)   bytesareutf8bom(h,l)     // 0000 FEFF
 #define bytesareutf16littleebom(h,l)  ( l==0xFE && h==0xFF ) // 0000 FFFE
 
-#define masktoutf8tail(x)           x = ( ( x & 0x3F ) | 0x80 ) 
-#define masktoutf8head2(x)          x = ( ( x & 0x1F ) | 0xC0 ) 
-#define masktoutf8head3(x)          x = ( ( x & 0x0F ) | 0xE0 ) 
-#define masktoutf8head4(x)          x = ( ( x & 0x07 ) | 0xF0 ) 
-#define masktoutf8head5(x)          x = ( ( x & 0x03 ) | 0xF8 ) 
-#define masktoutf8head6(x)          x = ( ( x & 0x01 ) | 0xFC ) 
+#define masktoutf8tail(x)           x = ( ( x & 0x3F ) | 0x80 )
+#define masktoutf8head2(x)          x = ( ( x & 0x1F ) | 0xC0 )
+#define masktoutf8head3(x)          x = ( ( x & 0x0F ) | 0xE0 )
+#define masktoutf8head4(x)          x = ( ( x & 0x07 ) | 0xF0 )
+#define masktoutf8head5(x)          x = ( ( x & 0x03 ) | 0xF8 )
+#define masktoutf8head6(x)          x = ( ( x & 0x01 ) | 0xFC )
 
 /*    0xxxxxxx
  *    110xxxxx 10xxxxxx
@@ -62,6 +62,13 @@
 #define CBDEFAULTENCODING           1
 #define CBDEFAULTENCODINGBYTES      1   // Default maximum count of bytes, set as 0 for any count number of bytes, 1 if auto
 
+#ifndef CBREADTIMEOUT
+#define CBREADTIMEOUT              14
+#endif
+
+#ifndef CBWRITETIMEOUT
+#define CBWRITETIMEOUT              16
+#endif
 
 /*
  * Optional transfer encodings.
@@ -69,15 +76,19 @@
  * [ (optional) transfer encoding [ (optional) transfer encoding extension [ encoding ] ] ]
  */
 
-#define CBTRANSENCOCTETS            0   // Write and read bytes, default.
-#define CBTRANSENCCHUNKS            1   // Write and read length information and corresponding chunks as in RFC-2616 3.6.1 Chunked Transer Coding
-					// Note that the block size has to be more than the biggest possible chunk.
+#define CBTRANSENCOCTETS                 0   // Write and read bytes, default.
+#define CBTRANSENCCHUNKS                 1   // Write and read length information and corresponding chunks as in RFC-2616 3.6.1 Chunked Transer Coding
+					     // Note that the block size has to be more than the biggest possible chunk.
+//#define CBTRANSENCEXTRA                  2   // Use set functionpointer as read and write functions, 26.9.2019
+#define CBTRANSENCFUNCTIONPOINTER        3   // Timeout in reading or writing and other functions in 'cb_read' and 'cb_write' function pointer
+//23.1.2022: #define CBTRANSENCFUNCTIONPOINTERREAD    3   // Timeout in reading and other functions in 'cb_read' function pointer
+//23.1.2022: #define CBTRANSENCFUNCTIONPOINTERWRITE   4   // Timeout in reading and other functions in 'cb_read' function pointer
 
 //#define CBTRANSENCODINGCHUNKSIZE    256
 #define CBTRANSENCODINGCHUNKSIZE    1024
 
 /*
- * Optional transfer encoding extensions. 
+ * Optional transfer encoding extensions.
  */
 #define CBNOEXTENSIONS 	            0
 

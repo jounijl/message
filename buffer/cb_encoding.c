@@ -22,20 +22,54 @@
 #include <unistd.h>
 #include "../include/cb_buffer.h"
 
-void cb_bytecount(unsigned long int *chr, int *bytecount);
+void cb_bytecount(unsigned long int *chr, signed int *bytecount);
 
-static int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
-static int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
-//static int  cb_multibyte_write(CBFILE **cbs, char *buf, int size); // Convert char to long int, put them and flush
-static int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes);
-static int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes);
+static signed int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch);
+static signed int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int  ch);
+//static signed int  cb_multibyte_write(CBFILE **cbs, char *buf, signed int size); // Convert char to long int, put them and flush
+static signed int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes);
+static signed int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, signed int *bytecount, signed int *storedbytes);
 
-static int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes); // 29.9.2015
+static signed int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes); // 29.9.2015
 
+void cb_clog_encoding( signed int priority, signed int errtype, signed int enc ){
+	switch( enc ){
+	    case 0:
+		cb_clog( priority, errtype, "CBENCAUTO" );
+		break;
+	    case 1:
+		cb_clog( priority, errtype, "CBENC1BYTE" );
+		break;
+	    case 2:
+		cb_clog( priority, errtype, "CBENC2BYTE" );
+		break;
+	    case 3:
+		cb_clog( priority, errtype, "CBENCUTF8" );
+		break;
+	    case 4:
+		cb_clog( priority, errtype, "CBENC4BYTE" );
+		break;
+	    case 5:
+		cb_clog( priority, errtype, "CBENCUTF16LE" );
+		break;
+	    case 6:
+		cb_clog( priority, errtype, "CBENCPOSSIBLEUTF16LE" );
+		break;
+	    case 7:
+		cb_clog( priority, errtype, "CBENCUTF16BE" );
+		break;
+	    case 8:
+		cb_clog( priority, errtype, "CBENCUTF32LE" );
+		break;
+	    case 9:
+		cb_clog( priority, errtype, "CBENCUTF32BE" );
+		break;
+	}
+}
 /*
  * If ahead had bytes or unfold==1, unfolds read character(s). */
-int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-	int err = CBSUCCESS;
+signed int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes){
+	signed int err = CBSUCCESS;
 	if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ) return CBERRALLOC;
 #ifdef CBBENCHMARK
           ++(**cbs).bm.reads;
@@ -51,17 +85,35 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 
 	err = cb_get_chr_stateless( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 
-//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_stateless: err %i." , err );
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr: cb_get_chr_stateless, CBERRTIMEOUT, err %i.", err );
+	cb_flush_log();
+}else if( err!=CBSUCCESS ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr: cb_get_chr_stateless, err %i.", err );
+	cb_flush_log();
+}
+ ***/
+//        if(err==CBERRTIMEOUT ) return err; // 18.7.2021, TEST 18.7.2021
+
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\nb_get_chr: cb_get_chr_stateless: err %i." , err );
 
 	/*
 	 * 8.5.2016. */
 	if( (**cbs).cf.stopatmessageend==1 ){
 		if( cb_test_message_end( &(*cbs) ) == CBMESSAGEEND ){ // has elapsed messageend
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: cb_get_chr_stateless, MESSAGEEND has elapsed." );
+//cb_flush_log();
 			//12.10.2016: if(err<CBERROR )
-			if(err<CBERROR && ((*(**cbs).cb).index+1) >= (*(**cbs).cb).messageoffset ) // is currently over message end, 12.10.2016
+			if(err<CBERROR && ((*(**cbs).cb).index+1) >= (*(**cbs).cb).messageoffset ){ // is currently over message end, 12.10.2016
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: cb_get_chr_stateless, return MESSAGEEND");
+//cb_flush_log();
 				return CBMESSAGEEND;
-			else
+			}else{
+//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: cb_get_chr_stateless, return %i (stopatmessageend).", err );
+//cb_flush_log();
 				return err;
+			}
 		}
 	}
 
@@ -72,8 +124,15 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 		}
 	}
 
-	if( (**cbs).cf.searchstate!=CBSTATETREE )
+	if( (**cbs).cf.searchstate!=CBSTATETREE ){
+if( err!=CBSUCCESS ){
+  //cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr: cb_get_chr_stateless: return %i (1), id %i, transferencoding %i.", err, (**cbs).id, (**cbs).transferencoding );
+  //cb_print_conf( &(*cbs), CBLOGDEBUG );
+  //cb_flush_log();
+}
 		return err;
+	}
+
 	/*
 	 * Set flag if reading from outside the library functions (cb_search_get_chr switches it back). */
 	if( (*(**cbs).cb).index+1 >= (*(**cbs).cb).contentlen ){ // at the end of buffer edge or at stream (reading a not yet read character)
@@ -84,12 +143,18 @@ int  cb_get_chr(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *store
 		// The same as in get_chr_unfold, see cb_search_get_chr:
 		(*(**cbs).cb).list.rd.lastchroffset = (*(**cbs).cb).index - 1; // 1.10.2015: is not needed, only if chr is rend and subrend counts (states should be at initial state in every rend)
 	}
+/***
+if( err!=CBSUCCESS ){
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_get_chr_stateless: return %i (2).", err );
+	cb_flush_log();
+}
+ ***/
 	return err;
 }
 /*
  * Without the cb_read used with CBSTATETREE. */
-int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-	long int chroffset=0;
+signed int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes){
+	signed long int chroffset=0;
         if( cbs==NULL || *cbs==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL || (**cbs).cb==NULL ){ return CBERRALLOC; }
 
 	if( (**cbs).ahd.ahead > 0 && ( (**cbs).ahd.currentindex + (**cbs).ahd.bytesahead )==(*(**cbs).cb).contentlen  ){
@@ -104,8 +169,8 @@ int  cb_get_chr_stateless(CBFILE **cbs, unsigned long int *chr, int *bytecount, 
 	 * Library never unfolds characters read elsewhere than cb_set_cursor_match_length_ucs_matchctl */
 	return cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 }
-int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes){
-       int err=CBSUCCESS, ret=CBNOTFOUND;
+signed int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes){
+       signed int err=CBSUCCESS, ret=CBNOTFOUND;
        if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
        if((**cbs).encoding==CBENCAUTO) // auto
          ret = cb_get_ucs_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
@@ -132,12 +197,21 @@ int  cb_get_chr_sub(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *s
        else if((**cbs).encoding==CBENCUTF16LE || (**cbs).encoding==CBENCUTF16BE || (**cbs).encoding==CBENCPOSSIBLEUTF16LE) // utf-16
          ret = cb_get_utf16_ch(&(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
 
+
+/***
+if( ret==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr_sub, CBERRTIMEOUT, ret %i.", ret );
+	cb_flush_log();
+}
+ ***/
+
        return ret;
 }
 
-int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *storedbytes){ // 12.8.2013
-        unsigned long int schr; schr = chr;
-        int err=CBSUCCESS; 
+signed int  cb_put_chr(CBFILE **cbs, unsigned long int chr, signed int *bytecount, signed int *storedbytes){ // 12.8.2013
+        unsigned long int schr; 
+        signed int err=CBSUCCESS; 
+	schr = chr;
         if(cbs==NULL||*cbs==NULL){ return CBERRALLOC; }
         if((**cbs).encoding==CBENCUTF8) // utf
           return cb_put_ucs_ch( &(*cbs), &chr, &(*bytecount), &(*storedbytes) ); // 17.3.2017
@@ -169,27 +243,27 @@ int  cb_put_chr(CBFILE **cbs, unsigned long int chr, int *bytecount, int *stored
         return CBNOENCODING;
 }
 
-int  cb_set_encodingbytes(CBFILE **str, int bytecount){
+signed int  cb_set_encodingbytes(CBFILE **str, signed int bytecount){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encodingbytes=bytecount;
 	return CBSUCCESS;
 }
-int  cb_get_encoding(CBFILE **str, int *number){
+signed int  cb_get_encoding(CBFILE **str, signed int *number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	*number = (**str).encoding;
 	return CBSUCCESS;
 }
-int  cb_set_transfer_encoding(CBFILE **str, int number){
+signed int  cb_set_transfer_encoding(CBFILE **str, signed int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).transferencoding = number;
 	return CBSUCCESS;
 }
-int  cb_set_transfer_extension(CBFILE **str, int number){
+signed int  cb_set_transfer_extension(CBFILE **str, signed int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).transferextension = number;
 	return CBSUCCESS;
 }
-int  cb_set_encoding(CBFILE **str, int number){
+signed int  cb_set_encoding(CBFILE **str, signed int number){
 	if(str==NULL || *str==NULL){ return CBERRALLOC; }
 	(**str).encoding=number;
 	if(number==CBENCAUTO) // automatic, tries bom and reverts to default if encoding is not found
@@ -218,8 +292,8 @@ int  cb_set_encoding(CBFILE **str, int number){
 }
 
 /****
-int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
-	int err=0, indx=0;
+signed int  cb_multibyte_write(CBFILE **cbs, char *buf, signed int size){
+	signed int err=0, indx=0;
 	if(*cbs!=NULL && buf!=NULL)
 	  if((**cbs).blk!=NULL){
 	    for(indx=0; indx<size && err<CBERROR; ++indx){
@@ -234,8 +308,8 @@ int  cb_multibyte_write(CBFILE **cbs, char *buf, int size){
 }
  ****/
 
-int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
-	int err=CBSUCCESS, index=0; unsigned char byte=0x00; // null character
+signed int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
+	signed int err=CBSUCCESS, index=0; unsigned char byte=0x00; // null character
 	if( cbs==NULL || *cbs==NULL || ch==NULL ) return CBERRALLOC; // 17.3.2017
 	*ch = 0;
 	//for(index=0; index<(**cbs).encodingbytes && index<32 && err<CBERROR ;++index){
@@ -244,6 +318,14 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 		( (**cbs).cf.stopatheaderend==0 || err!=CBMESSAGEHEADEREND ) ; ++index ){ // 30.3.2016
 	  //err = cb_get_ch(cbs, &byte);
 	  err = cb_get_ch( &(*cbs), &byte); // 17.3.2017
+
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBNEGATION, "[RETURN CBERRTIMEOUT, err %i (%c) (3)]", err, byte );
+	return err; // 18.7.2021
+}
+ ***/
+
 	  // 6.8.2017: here, += instead of =, is this correct: *ch+=(unsigned long int)byte;
 	  *ch = (unsigned long int) byte; // 6.8.2017
 	  if(index<((**cbs).encodingbytes-1) && index<32 && err<CBERROR){ *ch=(*ch)<<8;}
@@ -251,8 +333,8 @@ int  cb_get_multibyte_ch(CBFILE **cbs, unsigned long int *ch){
 	return err;
 }
 
-int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
-	int err=CBSUCCESS, index=0, indx=0;
+signed int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
+	signed int err=CBSUCCESS, index=0, indx=0;
 	unsigned char byte='0'; unsigned long int tmp=0;
 	if( cbs==NULL || *cbs==NULL ) return CBERRALLOC; // 17.3.2017
 	tmp = ch;
@@ -274,8 +356,8 @@ int  cb_put_multibyte_ch(CBFILE **cbs, unsigned long int ch){
  * lower than 4, only chr is used and chr_high is ignored.
  * UTF-8, rfc-3629
  */
-int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes ){
-	int err=CBSUCCESS, indx=0; char byteswritten=0, utfbytes=0;
+signed int  cb_put_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, signed int *bytecount, signed int *storedbytes ){
+	signed int err=CBSUCCESS, indx=0; char byteswritten=0, utfbytes=0;
 	unsigned char byte=0, byte2=0;
 	unsigned long int chr_tmp=0, chr_tmp2=0;
 	if(cbs==NULL || *cbs==NULL){ return CBERRALLOC; }
@@ -366,8 +448,8 @@ cb_put_utf8_ch_return_bytecount_error:
  * one byte in any encoding if encodingbytes is set to 1.
  * UTF-8, rfc-3629
  */
-int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, int *bytecount, int *storedbytes ){
-	int err=CBSUCCESS, state=0, indx=0; 
+signed int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr_high, signed int *bytecount, signed int *storedbytes ){
+	signed int err=CBSUCCESS, state=0, indx=0; 
 	unsigned char byte='0';	
 	if(cbs==NULL||*cbs==NULL||(**cbs).cb==NULL||(**cbs).blk==NULL){ return CBERRALLOC; }
 	*chr=0; *chr_high=0; *bytecount=0;
@@ -378,11 +460,21 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 
 //cb_clog( CBLOGDEBUG, CBNEGATION, "err %i (%c),", err, byte );
 
+
+if( err==CBERRTIMEOUT ){
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "[RETURN CBERRTIMEOUT, err %i (%c) (1)]", err, byte );
+	//cb_flush_log();
+	return err; // 18.7.2021
+}
+
 	//
 	//if( *chr == (unsigned long int) EOF || err > CBNEGATION ) { return err; } // pitaako err kasitella paremmin ... 30.3.2013
 	//if( *chr == (unsigned long int) EOF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || 
-	if( *chr == (unsigned long int) 0x00FF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || \
-		( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEHEADEREND ) ) { return err; } // err could be treated better ... 30.3.2013, 30.3.2016, 8.4.2016, 30.10.2016 Unicode EOF
+	//18.7.2021: if( *chr == (unsigned long int) 0x00FF || err > CBNEGATION || ( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) ||
+	if( *chr == (unsigned long int) 0x00FF || err > CBNEGATION || \
+		err==CBERRTIMEOUT || \
+		( (**cbs).cf.stopatheaderend==1 && err==CBMESSAGEEND ) || \
+		( (**cbs).cf.stopatmessageend==1 && err==CBMESSAGEHEADEREND ) ) { return err; } // err could be treated better ... 30.3.2013, 30.3.2016, 8.4.2016, 30.10.2016 Unicode EOF, timeout 18.7.2021
 	//
 
 	if( byteisascii( byte ) || (**cbs).encodingbytes==1 ){ // Return success even if byte is any one byte byte
@@ -404,6 +496,13 @@ int  cb_get_utf8_ch(CBFILE **cbs, unsigned long int *chr, unsigned long int *chr
 	if( state>1 && state<=6 ){
 	  for(indx=1;indx<state;++indx){
 	    err = cb_get_ch( &(*cbs), &byte); *bytecount=*bytecount+1; // 17.3.2017
+
+if( err==CBERRTIMEOUT ){
+	//cb_clog( CBLOGDEBUG, CBNEGATION, "[RETURN CBERRTIMEOUT, err %i (%c) (2)]", err, byte );
+	//cb_flush_log();
+	return err; // 18.7.2021
+}
+
 	    //err = cb_get_ch(cbs, &byte); *bytecount=*bytecount+1;
 	    if(state<=4){
 	      *chr=*chr<<8; *chr+=byte;
@@ -435,12 +534,18 @@ cb_get_utf8_ch_return_bom:
  * Returns one 32 bit UCS word from UTF-8 and a number of bytes UTF-8 uses to save
  * it, 'bytecount'. Returns errors.
  */
-int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_get_ucs_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
 	unsigned long int low=0, high=0, tmp1=0, tmp2=0, result=0;
 	int bytes=0, err=0; *chr=0; *bytecount=0;
 	err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, &(*storedbytes)); // 5.8.2017
 	//5.8.2017: err = cb_get_utf8_ch( &(*cbs), &low, &high, &bytes, storedbytes);
 	//err = cb_get_utf8_ch(cbs, &low, &high, &bytes, storedbytes);
+
+if( err==CBERRTIMEOUT ){
+	//cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_ucs_ch, CBERRTIMEOUT, err %i.", err );
+	//cb_flush_log();
+	return err; // 18.7.2021
+}
 
 	*chr=low;
 	if( bytes==1 ){ high=0; *bytecount=1;
@@ -505,7 +610,7 @@ cb_get_ucs_ch_return:
 	return err; // 30.3.2013, all from cb_get_utf8_ch
 }
 
-int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
 	int bytes=0; 
 	unsigned long int tmp=0x00, low=0x00, high=0x00;
 	unsigned char byte1=0, byte2=0, byte3=0, byte4=0, byte5=0, byte6=0;
@@ -559,7 +664,7 @@ int  cb_put_ucs_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *st
 	return CBERRBYTECOUNT;
 }
 // Count utf-8 words bytes
-void cb_bytecount(unsigned long int *chr, int *count){
+void cb_bytecount(unsigned long int *chr, signed int *count){
         if( *chr <= 0x7F ) *count = 1; // <= 7 bits
         else if( *chr > 0x7F && *chr <= 0x7FF ) *count = 2; // <= 11 bits
         else if( *chr > 0x7FF && *chr <= 0xFFFF ) *count = 3; // <= 16 bits
@@ -570,7 +675,7 @@ void cb_bytecount(unsigned long int *chr, int *count){
 }
 
 // From four first bytes, use if contentlen is more than two, three or four
-int  cb_bom_encoding(CBFILE **cbs){
+signed int  cb_bom_encoding(CBFILE **cbs){
 	if( cbs!=NULL && *cbs!=NULL && (**cbs).cb!=NULL ){
 	  if( (*(**cbs).cb).contentlen >= 3 ){
 	    if( (*(**cbs).cb).buf[0]==0xEF && (*(**cbs).cb).buf[1]==0xBB && (*(**cbs).cb).buf[2]==0xBF ) // UTF-8
@@ -603,8 +708,8 @@ int  cb_bom_encoding(CBFILE **cbs){
 /*
  * BOM should allways be the first characters, U+FEFF in encoding.
  */
-int  cb_write_bom(CBFILE **cbs){
-        int err=CBNOENCODING; int e=0, y=0;
+signed int  cb_write_bom(CBFILE **cbs){
+        signed int err=CBNOENCODING; int e=0, y=0;
         if(cbs==NULL || *cbs==NULL)
           return CBERRALLOC;
 	if( cb_test_cpu_endianness()==CBBIGENDIAN ){ // network byte order
@@ -646,9 +751,9 @@ int  cb_write_bom(CBFILE **cbs){
  * 000uuuuuxxxxxxxxxxxxxxxx 	110110wwwwxxxxxx 110111xxxxxxxxxx
  * wwww = uuuuu - 1 , in case if chr is greater than 0xFFFF and still less or equal than 0xFFFFF
  */
-int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
         unsigned long int upper=0xD800, lower=0xDC00; // 110110 0000 000000 = 0xD800 ; 110111 00000 00000 = 0xDC00
-        int err=CBSUCCESS;
+        signed int err=CBSUCCESS;
 	if(cbs==NULL || *cbs==NULL || chr==NULL )
 	  return CBERRALLOC;
 
@@ -684,9 +789,9 @@ int  cb_put_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         }
         return CBWRONGENCODINGCALL;
 }
-int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_get_utf16_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
         unsigned long int upper=0, lower=0; 
-        int err=CBSUCCESS; 
+        signed int err=CBSUCCESS; 
 	if(cbs==NULL || *cbs==NULL || chr==NULL )
 	  return CBERRALLOC;
 	*storedbytes=0;
@@ -721,7 +826,7 @@ cb_get_utf16_ch_get_next_chr:
         return err;
 }
 
-int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
 	if(cbs==NULL || *cbs==NULL || chr==NULL )
 	  return CBERRALLOC;
 	if((**cbs).encoding==CBENCUTF32LE){
@@ -734,9 +839,9 @@ int  cb_put_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         }
         return CBWRONGENCODINGCALL;
 }
-int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *storedbytes ){
+signed int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, signed int *bytecount, signed int *storedbytes ){
         unsigned long int rev = 0;
-	int err=CBSUCCESS;
+	signed int err=CBSUCCESS;
 	if(cbs==NULL || *cbs==NULL || chr==NULL )
 	  return CBERRALLOC;
 #ifdef BIGENDIAN
@@ -764,14 +869,15 @@ int  cb_get_utf32_ch(CBFILE **cbs, unsigned long int *chr, int *bytecount, int *
         return CBWRONGENCODINGCALL;
 }
 
-int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset){
+signed int  cb_get_chr_unfold(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset){
         int bytecount=0, storedbytes=0;
         if(cbs==NULL || *cbs==NULL || chroffset==NULL || chr==NULL || ahd==NULL)  return CBERRALLOC;
 	return cb_get_chr_unfold_sub( &(*cbs), &(*ahd), &(*chr), &(*chroffset), &bytecount, &storedbytes );
 }
 
-int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, int *bytecount, int *storedbytes){
-        int tmp=0; int err=CBSUCCESS;
+signed int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, long int *chroffset, signed int *bytecount, signed int *storedbytes){
+        signed int tmp=0;
+	signed int err=CBSUCCESS;
         unsigned long int empty=0x61;
         if(cbs==NULL || *cbs==NULL || ahd==NULL || chroffset==NULL || chr==NULL || bytecount==NULL || storedbytes==NULL)
           return CBERRALLOC;
@@ -783,6 +889,13 @@ int  cb_get_chr_unfold_sub(CBFILE **cbs, cb_ring *ahd, unsigned long int *chr, l
           err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
           if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
           if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr_unfold_sub, CBERRTIMEOUT, err %i (1).", err );
+	cb_flush_log();
+}
+ ***/
+	  if(err==CBERRTIMEOUT ) return err; // 18.7.2021, TEST 18.7.2021
 
 cb_get_chr_unfold_try_another:
           if( WSP( *chr ) && err<CBNEGATION ){
@@ -790,6 +903,13 @@ cb_get_chr_unfold_try_another:
             err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
             if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
             if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr_unfold_sub, CBERRTIMEOUT, err %i (2).", err );
+	cb_flush_log();
+}
+ ***/
+	    if(err==CBERRTIMEOUT ) return err; // 18.7.2021, TEST 18.7.2021
             if( WSP( *chr ) && err<CBNEGATION ){
               cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp );
               goto cb_get_chr_unfold_try_another;
@@ -802,12 +922,26 @@ cb_get_chr_unfold_try_another:
             err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
             if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
             if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr_unfold_sub, CBERRTIMEOUT, err %i (3).", err );
+	cb_flush_log();
+}
+ ***/
+	    if(err==CBERRTIMEOUT ) return err; // 18.7.2021, TEST 18.7.2021
 
             if( LF( *chr ) && err<CBNEGATION ){ 
               cb_fifo_put_chr( &(**cbs).ahd, *chr, *storedbytes);
               err = cb_get_chr_sub( &(*cbs), &(*chr), &(*bytecount), &(*storedbytes) );
               if(err==CBSTREAM || err==CBFILESTREAM){  cb_fifo_set_stream( &(**cbs).ahd ); }
               if(err==CBSTREAMEND){  cb_fifo_set_endchr( &(**cbs).ahd ); }
+/***
+if( err==CBERRTIMEOUT ){
+	cb_clog( CBLOGDEBUG, CBSUCCESS, "\ncb_get_chr_unfold_sub, CBERRTIMEOUT, err %i (4).", err );
+	cb_flush_log();
+}
+ ***/
+	    if(err==CBERRTIMEOUT ) return err; // 18.7.2021, TEST 18.7.2021
 
               if( WSP( *chr ) && err<CBNEGATION ){
                 cb_fifo_revert_chr( &(**cbs).ahd, &empty, &tmp ); // LF

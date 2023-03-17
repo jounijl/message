@@ -41,26 +41,26 @@
  * these, struct cb_match is in cb_buffer.h .
  */
 
-int  cb_compare_strict(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
-int  cb_compare_rfc2822(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2);
+signed int  cb_compare_strict(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2);
+signed int  cb_compare_rfc2822(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2);
 
 /*
  * Pattern is converted to host byte order from 4-byte UCS representation. */
-int  cb_compare_get_matchctl(unsigned char **pattern, int patsize, unsigned int options, cb_match *ctl, int matchctl); 
+signed int  cb_compare_get_matchctl(unsigned char **pattern, signed int patsize, unsigned int options, cb_match *ctl, signed int matchctl); 
 
 /*
  * Matches name2 in overlapping blocks. Converts name2 from 4-byte UCS form to host byte order. */
-int  cb_compare_regexp(unsigned char **name2, int len2, cb_match *mctl, int *matchcount);
+signed int  cb_compare_regexp(unsigned char **name2, signed int len2, cb_match *mctl, signed int *matchcount);
 
 /*
  * Match one line. Name2 has to be in host byte order (pcre32). */
-int  cb_compare_regexp_one_block(unsigned char **name2, int len2, int startoffset, cb_match *mctl, int *matchcount);
+signed int  cb_compare_regexp_one_block(unsigned char **name2, signed int len2, signed int startoffset, cb_match *mctl, signed int *matchcount);
 
 /*
  * Match ASCII and additionally scandinavic letters if 'scandit' is set to 1. */
-int  cb_compare_case_insensitive(unsigned char **name1, int len1, unsigned char **name2, int len2, int from2, char scandit );
+signed int  cb_compare_case_insensitive(unsigned char **name1, signed int len1, unsigned char **name2, signed int len2, signed int from2, signed char scandit );
 
 /*
  * Error text given by pcre2 ( if err was CBERRREGEXCOMP or CBERRREGEXEC ). */
-int  cb_compare_get_regexp_error_text( int errorcode, unsigned char **textbuffer, int textbufferlen ); // 15.11.2018
+signed int  cb_compare_get_regexp_error_text( signed int errorcode, unsigned char **textbuffer, signed int textbufferlen ); // 15.11.2018
 

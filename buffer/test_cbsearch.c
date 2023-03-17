@@ -44,17 +44,17 @@
 
 #define DEBUG
 
-int  main (int argc, char **argv);
-int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, char tree);
-int  print_name(CBFILE **cbf, cb_name **nm);
-int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl);
+signed int  main (signed int argc, char **argv);
+signed int  search_and_print_name(CBFILE **in, unsigned char **name, signed int namelength, signed char tree);
+signed int  print_name(CBFILE **cbf, cb_name **nm);
+signed int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, signed int namelen, signed int matchctl);
 void usage ( char *progname[] );
 
-int main (int argc, char **argv) {
-	int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
+signed int main (signed int argc, char **argv) {
+	signed int i=-1, u=0, atoms=0, fromend=0, err=CBSUCCESS;
 	unsigned int namearraylen=0, y=0;
-	int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
-	char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0, inmem=0, sgroups=0;
+	signed int bufsize=BUFSIZE, blksize=BLKSIZE, namelen=0, namebuflen=0, count=1, co=0;
+	signed char list=0, inputenc=CBENC1BYTE, tree=0, uniquenamesandleaves=0, oneword=0, inmem=0, sgroups=0;
 	char *str_err = NULL;
 	const char *value = NULL, *namearray = NULL;
 	CBFILE *in = NULL;
@@ -86,7 +86,7 @@ int main (int argc, char **argv) {
 	/*
 	 * Name */
         if ( atoms >= 2 ){
-	  namelen = (int) strlen( argv[fromend] );
+	  namelen = (signed int) strlen( argv[fromend] );
 	  namebuflen = NAMEBUFLEN; // 4 * namelen;
 	  name = (unsigned char *) malloc( sizeof(unsigned char)*( (unsigned int) namebuflen + 1 ) );
 	  if(name==NULL){ cprint( STDERR_FILENO, "\nerror in malloc, name was null"); exit(CBERRALLOC); }
@@ -134,7 +134,7 @@ int main (int argc, char **argv) {
 	for(i=1 ; i<fromend ; ++i){ 
 	  u = get_option( argv[i], argv[i+1], 'c', &value); // count
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
-	    count = (int) strtol(value,&str_err,10);
+	    count = (signed int) strtol(value,&str_err,10);
             if(count==0 && errno==EINVAL)
               count = 1;
 	    continue;
@@ -166,14 +166,14 @@ int main (int argc, char **argv) {
 	  }
 	  u = get_option( argv[i], argv[i+1], 'b', &value); // buffer size
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
-	    bufsize = (int) strtol(value,&str_err,10);
+	    bufsize = (signed int) strtol(value,&str_err,10);
             if(bufsize==0 && errno==EINVAL)
               bufsize = BUFSIZE;
 	    continue;
 	  }
 	  u = get_option( argv[i], argv[i+1], 'l', &value); // block size
 	  if( u == GETOPTSUCCESS || u == GETOPTSUCCESSATTACHED || u == GETOPTSUCCESSPOSSIBLEVALUE ){
-	    blksize = (int) strtol(value,&str_err,10);
+	    blksize = (signed int) strtol(value,&str_err,10);
             if(blksize==0 && errno==EINVAL)
               blksize = BLKSIZE;
 	    continue;
@@ -282,7 +282,7 @@ int main (int argc, char **argv) {
 	    err = search_and_print_name(&in, &name, (namelen*4), tree );
 	  else{ // list of names
 	    if(namearray!=NULL){
-	      memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
+	      memset( &(*name), (signed int) 0x20, (unsigned int) namebuflen );
 	      namearraylen = (unsigned int) strnlen( &(*namearray), (unsigned int) namebuflen );
 	      u = 0; chprev = (unsigned long int) 0x0A; namelen=0;
 	      for(y=0; y<namearraylen && y<10000; ++y ){ // (if first char in name is sp, possibly prints "null name")
@@ -297,7 +297,7 @@ int main (int argc, char **argv) {
 	          name[ namelen*4 ] = '\0'; 								// error here, null is at wrong place 16.7.2015
 	          err = search_and_print_name(&in, &name, namelen, tree );
 	          namelen = 0; u = 0;
-	          memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
+	          memset( &(*name), (signed int) 0x20, (unsigned int) namebuflen );
 	        }
 	      }
 	    }
@@ -307,7 +307,7 @@ int main (int argc, char **argv) {
 	// Debug:
 	//cb_print_names(&in, CBLOGDEBUG);
 
-	memset( &(*name), (int) 0x20, (unsigned int) namebuflen );
+	memset( &(*name), (signed int) 0x20, (unsigned int) namebuflen );
 	name[namebuflen] = '\0';
 	cb_free_cbfile(&in);
 	free( name );
@@ -365,8 +365,8 @@ void usage (char *progname[]){
 /*
  * Search name and print it.
  */
-int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, char tree){
-	int err = 0, indx = 0; unsigned long int stchr = 0x20, endchr = 0x20;
+signed int  search_and_print_name(CBFILE **in, unsigned char **name, signed int namelength, signed char tree){
+	signed int err = 0, indx = 0; unsigned long int stchr = 0x20, endchr = 0x20;
 	unsigned char tmp[CBNAMEBUFLEN+1];
 	unsigned char *ptr = NULL;
 	cb_name   *nameptr = NULL;
@@ -448,11 +448,11 @@ int  search_and_print_name(CBFILE **in, unsigned char **name, int namelength, ch
 	}
 	return err;
 }
-int  print_name(CBFILE **cbf, cb_name **nm){
-	int err = 0;
+signed int  print_name(CBFILE **cbf, cb_name **nm){
+	signed int err = 0;
 	signed long int tmp=0;
 
-	int opennamepairs=1; // cbstatetopology
+	signed int opennamepairs=1; // cbstatetopology
 
 	unsigned long int chr = (unsigned long int) ' ', chrprev = (unsigned long int) ' ';
 
@@ -492,7 +492,7 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 	  if(err==CBSTREAM)
 	    cb_remove_name_from_stream(&(*cbf)); // used as a stream and removing a name whose value is across the buffer boundary
-	  cprint( STDERR_FILENO, "%c", (int) chr);
+	  cprint( STDERR_FILENO, "%c", (signed int) chr);
 	  if( (**cbf).cf.searchstate==CBSTATETOPOLOGY ){
 	    if( chr==(**cbf).cf.rend )
 	      --opennamepairs;
@@ -514,10 +514,10 @@ int  print_name(CBFILE **cbf, cb_name **nm){
 
 /*
  * Search name1.name2.name3  */
-int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, int namelen, int matchctl){
+signed int  search_and_print_tree(CBFILE **cbs, unsigned char **dotname, signed int namelen, signed int matchctl){
 
-        int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
-        int                  ret = CBNEGATION;
+        signed int err=CBSUCCESS, err2=CBSUCCESS, indx=0, undx=0;
+        signed int                  ret = CBNEGATION;
         char           namecount = 0;
         unsigned char  origsearchstate = 1;
         unsigned   char *ucsname = NULL;

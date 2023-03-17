@@ -38,9 +38,9 @@ LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -
 #$LD $LDFLAGS test_bit_reversion.o $FOBJS -o test_bit_reversion
 #rm test_bit_reversion.o
 
-$CC $FLAGS -c test_byte_reversion.c &&
-$LD $LDFLAGS test_byte_reversion.o $FOBJS -o test_byte_reversion
-rm test_byte_reversion.o
+#$CC $FLAGS -c test_byte_reversion.c &&
+#$LD $LDFLAGS test_byte_reversion.o $FOBJS -o test_byte_reversion
+#rm test_byte_reversion.o
 
 $CC $FLAGS -c loop.c &&
 $LD $LDFLAGS loop.o $FOBJS -o loop
@@ -50,33 +50,33 @@ rm loop.o
 #$LD $LDFLAGS test_cbprint.o $FOBJS ../get_option.o -o cbprint
 #rm test_cbprint.o
 
-$CC $FLAGS -c test_cbfindall.c &&
-$LD $LDFLAGS test_cbfindall.o $FOBJS -o cbfindall
-rm test_cbfindall.o
+#$CC $FLAGS -c test_cbfindall.c &&
+#$LD $LDFLAGS test_cbfindall.o $FOBJS -o cbfindall
+#rm test_cbfindall.o
 
 #$CC $FLAGS -c test_cb_fifo.c &&
 #$LD $LDFLAGS test_cb_fifo.o $FOBJS -o test_cbfifo
 #rm test_cb_fifo.o
 
-$CC $FLAGS -c test_cbwords.c &&
-$LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
-rm test_cbwords.o
+#$CC $FLAGS -c test_cbwords.c &&
+#$LD $LDFLAGS test_cbwords.o $FOBJS -o test_cbwords
+#rm test_cbwords.o
 
-$CC $FLAGS -c test_searchonename.c &&
-$LD $LDFLAGS test_searchonename.o $FOBJS -o test_onename
-rm test_searchonename.o
+#$CC $FLAGS -c test_searchonename.c &&
+#$LD $LDFLAGS test_searchonename.o $FOBJS -o test_onename
+#rm test_searchonename.o
 
-$CC $FLAGS -c test_cbwordlist.c &&
-$LD $LDFLAGS test_cbwordlist.o $FOBJS -o test_cblist
-rm test_cbwordlist.o
+#$CC $FLAGS -c test_cbwordlist.c &&
+#$LD $LDFLAGS test_cbwordlist.o $FOBJS -o test_cblist
+#rm test_cbwordlist.o
 
-$CC $FLAGS -c test_urlencode.c &&
-$LD $LDFLAGS test_urlencode.o $FOBJS ../get_option.o -o urlencode
-rm test_urlencode.o
+#$CC $FLAGS -c test_urlencode.c &&
+#$LD $LDFLAGS test_urlencode.o $FOBJS ../get_option.o -o urlencode
+#rm test_urlencode.o
 
-$CC $FLAGS -c test_cpuendianness.c &&
-$LD $LDFLAGS test_cpuendianness.o $FOBJS -o ./cpu
-rm test_cpuendianness.o
+#$CC $FLAGS -c test_cpuendianness.c &&
+#$LD $LDFLAGS test_cpuendianness.o $FOBJS -o ./cpu
+#rm test_cpuendianness.o
 
 $CC $FLAGS -c echo_eof.c &&
 $LD $LDFLAGS echo_eof.o -o echoeof &&

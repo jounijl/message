@@ -1,6 +1,6 @@
-/* 
+/*
  * Library to read and write streams. Valuepair list and search. Different character encodings.
- * 
+ *
  * Copyright (C) 2009, 2010, 2013, 2014, 2015 and 2016. Jouni Laakso
  *
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
@@ -8,12 +8,12 @@
  *
  * Otherwice, this library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser        
  * General Public License version 2.1 as published by the Free Software Foundation 6. of June year 2012;
- * 
+ *
  * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
  * more details. You should have received a copy of the GNU Lesser General Public License along with this library; if
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- * 
+ *
  * licence text is in file LIBRARY_LICENCE.TXT with a copyright notice of the licence text.
  */
 
@@ -42,12 +42,12 @@
 
 /*
  * To put characters '=' and '&' (or other URL characters),
- * cb_put_ch should be used instead of cb_put_chr. 
+ * cb_put_ch should be used instead of cb_put_chr.
  */
-int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb){
-	char hex[7] = { 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, '\0' };
+signed int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, signed int *bc, signed int *sb){
+	char  hex[7] = { 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, '\0' };
 	char *hexptr = NULL;
-	int  hexlen = 6, err=CBSUCCESS, indx=0;
+	signed int  hexlen = 6, err=CBSUCCESS, indx=0;
 	hexptr = &hex[0];
 	err = cb_copy_url_encoded_bytes( &hexptr, &hexlen, chr, &(*bc), &(*sb) );
 	if(err>=CBERROR){ cb_clog( CBLOGERR, err, "\ncb_put_url_encode: cb_copy_url_encoded_bytes, error %i.", err); }
@@ -58,13 +58,13 @@ int  cb_put_url_encode(CBFILE **cbs, unsigned long int chr, int *bc, int *sb){
 }
 
 /*
- * Copy UCS string from URL encoded data. Does not allocate. 
+ * Copy UCS string from URL encoded data. Does not allocate.
  *
  * Can be used with only one buffer, the same buffer can be the resultbuffer.
  */
-int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, unsigned char **ucsdata, int *ucsdatalen, int ucsbuflen ){
-	int err = CBSUCCESS, indx=0, num=0, ucsindx=0; // ucsindx is important to be able to use only one parameter buffer, 23.5.2016
-	char cr_on=0;
+signed int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, signed int ucshexdatalen, unsigned char **ucsdata, signed int *ucsdatalen, signed int ucsbuflen ){
+	signed int err = CBSUCCESS, indx=0, num=0, ucsindx=0; // ucsindx is important to be able to use only one parameter buffer, 23.5.2016
+	signed char cr_on=0;
 	unsigned long int chr=0x20, chprev=0x20;
 	char hex[3] = { '0', '0', '\0' };
 	if( ucshexdata==NULL || *ucshexdata==NULL || ucsdata==NULL || *ucsdata==NULL || ucsdatalen==NULL ){
@@ -76,6 +76,7 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucshexdata), ucshexdatalen, ucshexdatalen );
 	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
 
+	//26.11.2021 test: for(indx=0; indx<ucshexdatalen && ucsindx<ucsbuflen && err<CBNEGATION && err2<CBNEGATION;){
 	for(indx=0; indx<ucshexdatalen && ucsindx<ucsbuflen && err<CBNEGATION;){
 		chprev = chr;
 
@@ -107,23 +108,27 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 					cr_on = 0;
 				}
 				if( ucsindx<ucsbuflen && err<CBNEGATION ){ // %<hexnum><hexnum> #1
-					hex[0] = (char) chprev; hex[1] = (char) chr;
-					num = (int) strtol( &hex[0], NULL, 16);
+					hex[0] = (signed char) chprev; hex[1] = (signed char) chr;
+					num = (signed int) strtol( &hex[0], NULL, 16);
 					err = cb_put_ucs_chr( (unsigned long int) num, &(*ucsdata), &ucsindx, ucsbuflen);
 				}
 			}else{
-			 	if(cr_on==1){ // CR #3
+			 	if( cr_on==1 ){ // CR #3
 					err = cb_put_ucs_chr( (unsigned long int) 0x0D, &(*ucsdata), &ucsindx, ucsbuflen);
 					cr_on = 0;
 				}
 				if( ucsindx<ucsbuflen && err<CBNEGATION ){ // %<hexnum><hexnum> #2
-					hex[0] = (char) chr; 
+					hex[0] = (signed char) chr; 
 					chprev = chr;
 					err = cb_get_ucs_chr( &chr, &(*ucshexdata), &indx, ucshexdatalen);
+// 26.11.2021, kohta
 					if(err>CBERROR){ cb_clog( CBLOGDEBUG, err, "\ncb_decode_url_encoded_bytes: cb_get_ucs_chr (5), error %i.", err ); continue; } // stop
-					hex[1] = (char) chr;
-					num = (int) strtol( &hex[0], NULL, 16);
-					err = cb_put_ucs_chr( (unsigned long int) num, &(*ucsdata), &ucsindx, ucsbuflen);
+					if(err==CBVALUEEND){ cb_clog( CBLOGDEBUG, err, "\ncb_decode_url_encoded_bytes: cb_get_ucs_chr (6), %i.", err ); continue; } // stop, 26.11.2021
+					hex[1] = (signed char) chr;
+					num = (signed int) strtol( &hex[0], NULL, 16);
+					//if( err<CBNEGATION ){ // 26.11.2021
+						err = cb_put_ucs_chr( (unsigned long int) num, &(*ucsdata), &ucsindx, ucsbuflen);
+					//}
 				}
 			}
 			continue;
@@ -142,16 +147,17 @@ int  cb_decode_url_encoded_bytes(unsigned char **ucshexdata, int ucshexdatalen, 
 	}
 	*ucsdatalen = ucsindx;
 
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoded data  [");
-	//cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsdata), *ucsdatalen, ucsbuflen );
-	//cb_clog( CBLOGDEBUG, CBNEGATION, "]");
-
+/***
+	cb_clog( CBLOGDEBUG, CBNEGATION, "\ncb_decode_url_encoded_bytes: encoded data  [");
+	cb_print_ucs_chrbuf( CBLOGDEBUG, &(*ucsdata), *ucsdatalen, ucsbuflen );
+	cb_clog( CBLOGDEBUG, CBNEGATION, "]");
+ ***/
 	return err;
 }
 
 /*
  * Copies URL encoded bytes to buffer 'hex' and return sizes. Does not allocate. */
-int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long int chr, int *bc, int *sb){
+signed int  cb_copy_url_encoded_bytes( char **hexdata, signed int *hexdatalen, unsigned long int chr, signed int *bc, signed int *sb){
 	char hex[3] = { 0x02, 0x00, '\0' };
 	if( bc==NULL || sb==NULL ) return CBERRALLOC;
 	*bc=0; *sb=0; 
@@ -162,35 +168,35 @@ int  cb_copy_url_encoded_bytes(char **hexdata, int *hexdatalen, unsigned long in
 		if(*hexdatalen<3){ cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_url_encoded_bytes: hexdata buffer was too small, error %i.", CBERRALLOC ); return CBERRALLOC; }
 		snprintf( &hex[0], (size_t) 3, "%.2X", (unsigned int) chr ); // size-1 characters
 		(*hexdata)[0] = (unsigned char) 0x25; // '%'
-		(*hexdata)[1] = (char) hex[0];
-		(*hexdata)[2] = (char) hex[1];
-		*sb = 3; *bc = 1; 
+		(*hexdata)[1] = (signed char) hex[0];
+		(*hexdata)[2] = (signed char) hex[1];
+		*sb = 3; *bc = 1;
 		*hexdatalen = 3;
 	}else if( chr==0x20 ){
 		if(*hexdatalen<1){ cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_url_encoded_bytes: hexdata buffer was too small, error %i.", CBERRALLOC ); return CBERRALLOC; }
 		(*hexdata)[0] = (unsigned char) 0x2B; // '+'
-		*sb = 1; *bc = 1; 
+		*sb = 1; *bc = 1;
 		*hexdatalen = 1;
 	}else if( chr==0x0D ){ // CR, ignore this and wait for the LF
 		*sb = 0; *bc = 0; *hexdatalen = 0;
 	}else if( chr==0x0A ){ // LF, both CR and LF
 		if(*hexdatalen<6){ cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_url_encoded_bytes: hexdata buffer was too small, error %i.", CBERRALLOC ); return CBERRALLOC; }
 		snprintf( &hex[0], (size_t) 3, "%.2X", (unsigned int) 0x0D ); // size-1 characters, CR
-		(*hexdata)[0] = (char) 0x25; // '%'
-		(*hexdata)[1] = (char) hex[0];
-		(*hexdata)[2] = (char) hex[1];
+		(*hexdata)[0] = (signed char) 0x25; // '%'
+		(*hexdata)[1] = (signed char) hex[0];
+		(*hexdata)[2] = (signed char) hex[1];
 		snprintf( &hex[0], (size_t) 3, "%.2X", (unsigned int) 0x0A ); // size-1 characters, LF
-		(*hexdata)[3] = (char) 0x25; // '%'
-		(*hexdata)[4] = (char) hex[0];
-		(*hexdata)[5] = (char) hex[1];
+		(*hexdata)[3] = (signed char) 0x25; // '%'
+		(*hexdata)[4] = (signed char) hex[0];
+		(*hexdata)[5] = (signed char) hex[1];
 		*sb = 6; *bc = 2; *hexdatalen = 6;
 	}else if( url_special_ch( chr ) ){ // unnecessary, 25.5.2016
 		if(*hexdatalen<0){ cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_url_encoded_bytes: hexdata buffer was too small, error %i.", CBERRALLOC ); return CBERRALLOC; }
-		(*hexdata)[0] = (char) chr;
+		(*hexdata)[0] = (signed char) chr;
 		*sb = 1; *bc = 1; *hexdatalen = 1;
 	}else if( chr<=0xFF && chr>0x00 ){
 		if(*hexdatalen<0){ cb_clog( CBLOGERR, CBERRALLOC, "\ncb_copy_url_encoded_bytes: hexdata buffer was too small, error %i.", CBERRALLOC ); return CBERRALLOC; }
-		(*hexdata)[0] = (char) chr;
+		(*hexdata)[0] = (signed char) chr;
 		*sb = 1; *bc = 1; *hexdatalen = 1;
 	}else{
 		cb_clog( CBLOGERR, CBERRBYTECOUNT, "\ncb_copy_url_encoded_bytes: character 0x%.4lX was not in range, error %i.", chr, CBERRBYTECOUNT );

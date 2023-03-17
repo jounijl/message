@@ -18,6 +18,8 @@ export LANG
 # cat -e tests/testi2.txt # display non printing characters
 ./test_cb 1 512 1024 tests/testi2.txt
 
+# valgrind --leak-check=full --show-leak-kinds=all -v --track-origins=yes ./test_cb 1 512 1024 tests/testi2.txt
+
 echo; file tests/*.out
 
 #echo
