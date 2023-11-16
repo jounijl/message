@@ -14,6 +14,10 @@ LDFLAGS=" -Weverything -I/usr/local/include -I. -I/usr/include -I../../include -
 #$LD $LDFLAGS test_regexp_search.o $FOBJS -o test_regexp_search
 #rm test_regexp_search.o
 
+$CC $FLAGS -c test_groups.c &&
+$LD $LDFLAGS test_groups.o $FOBJS -o test_groups
+rm test_groups.o
+
 #$CC $FLAGS -c regexp_search.c &&
 #$LD $LDFLAGS regexp_search.o $FOBJS -o regexp_search
 #rm regexp_search.o
