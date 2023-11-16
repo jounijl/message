@@ -53,8 +53,8 @@ signed int  main (signed int argc, char **argv){
         if(err!=CBSUCCESS){ cprint( STDERR_FILENO, "\nError at cb_allocate_cbfile: %i.", err); return CBERRALLOC;}
 
 	cb_set_encoding(&in, CBENCUTF8);
-	//(*in).cf.searchmethod = CBSEARCHNEXTGROUPNAMES;
-	(*in).cf.searchmethod = CBSEARCHNEXTLASTGROUPNAMES;
+	(*in).cf.searchmethod = CBSEARCHNEXTGROUPNAMES;
+	//(*in).cf.searchmethod = CBSEARCHNEXTLASTGROUPNAMES;
 
 	err = CBSUCCESS;
 	for( group=0; group<100 && ( err<CBNEGATION && err!=CBMESSAGEHEADEREND && err!=CBMESSAGEEND ); ++group ){
